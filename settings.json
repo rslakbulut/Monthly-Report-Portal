@@ -1,0 +1,63 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm i -g @google/clasp)",
+      "Bash(clasp --version)",
+      "Bash(clasp login*)",
+      "Bash(clasp status)",
+      "Bash(clasp push)",
+      "Bash(cat .clasp.json)",
+      "Bash(echo '{\"scriptId\":*)",
+      "Bash(ls -la ~/.clasprc.json)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/guard-clasprc-bash.sh",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/guard-source-repos.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/guard-clasprc-read.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/guard-source-repos.sh",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/guard-wcag-comments.sh",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/notify-baslarken-sync.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

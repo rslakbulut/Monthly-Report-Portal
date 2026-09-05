@@ -1,0 +1,248 @@
+{
+  "_kaynak": "eng-furkany/Standartlar, docs/baslarken.md ile senkron tutulur. baslarken.md değişirse buraya da yansıt.",
+  "_senkron_tarihi": "2026-09-01",
+  "categories": [
+    {
+      "id": "renk", "code": "01", "title": "Renk Paleti", "doc": "docs/renkler.md, tokens/colors.css",
+      "mode": "default",
+      "desc": "Marka rengi olarak yalnız resmi ValeoDashboard paleti (tokens/colors.css) kullanılır; Bursa CV hex'leri yalnız durum-rozeti deseni için referanstır, birebir taşınmaz.",
+      "signal": "Her projede geçerli — CSS/stil içeren her proje bu kategoriye girer.",
+      "items": [
+        {"text": "Resmi palet kullanılıyor", "hint": "Kod tabanında #041b3c, #76ff03, #0072ce, #003d9b değerlerinden en az marka rengi (#041b3c veya #0072ce) ara."},
+        {"text": "Bursa CV hex'leri (#1B2B4B, #78BE20) marka rengi olarak taşınmamış", "hint": "Bu iki hex'i grep'le; bulunursa marka rengi mi yoksa yalnız durum-rozeti deseni mi (soluk zemin+doygun yazı) olduğunu ayırt et."},
+        {"text": "Durum rozetlerinde soluk zemin + doygun yazı deseni var", "hint": "Badge/chip/status CSS sınıflarında background açık ton + color koyu ton eşleşmesi ara."},
+        {"text": "Renk kullanımı tutarlı (tek bir yerde tanımlı değişken/token, dağınık hardcoded hex değil)", "hint": "Aynı marka rengi birden fazla dosyada farklı hex olarak tekrar ediyor mu kontrol et."}
+      ]
+    },
+    {
+      "id": "logo", "code": "02", "title": "Logo", "doc": "docs/logo.md",
+      "mode": "default",
+      "desc": "Resmi logo dosyası kullanılıyor; yüklenemezse küçük/self-contained bir yedek dosyaya düşülür.",
+      "signal": "Her projede geçerli.",
+      "items": [
+        {"text": "Logo yüklenemezse küçük/self-contained bir yedek dosyaya (~600×285 / <100KB, Valeo_Logo_AIClubPortal.png benzeri) düşülüyor", "hint": "<img> etiketinde onerror niteliği veya eşdeğer bir fallback mekanizması ara; yedek dosya da 3840×1825 gibi devasa değilse bayrak kaldır."},
+        {"text": "Logo yüksekliği 32px'i geçmiyor", "hint": "Logo CSS'inde height/max-height değerine bak."},
+        {"text": "Koyu zeminde logo okunur kalıyor (beyaza çevrilmiş ya da zaten açık renkli)", "hint": "Header/sidebar arka planı koyuysa logo filter/invert veya ayrı bir varyant kullanılıyor mu?"},
+        {"text": "Logonun yanına ayrıca ürün/metin yazılmamış", "hint": "Logo bitişiğinde başlık metni var mı bak — varsa standarda aykırı."}
+      ]
+    },
+    {
+      "id": "ikon", "code": "02b", "title": "İkonlar", "doc": "docs/ikonlar.md",
+      "mode": "default",
+      "desc": "Resmi ikon kütüphanesi Lucide — elle çizilmiş özel SVG'ler kaynak projelerden birebir taşınmaz.",
+      "signal": "Herhangi bir ikon/SVG kullanan proje.",
+      "items": [
+        {"text": "İkonlar Lucide kaynaklı (veya en azından tutarlı, tek bir kütüphaneden)", "hint": "SVG path'lerinde lucide-* class'ı, ya da 'lucide' paket referansı ara; yoksa kaç farklı elle-çizilmiş özel ikon seti kullanıldığına bak."},
+        {"text": "İkon boyutu tutarlı (20px, ikon-only butonlarda 16px)", "hint": "SVG width/height veya font-size değerlerinin proje genelinde tutarlı olup olmadığına bak."},
+        {"text": "İkonlar currentColor ile boyanıyor, sabit hex değil", "hint": "SVG fill/stroke niteliklerinde currentColor var mı, yoksa hardcoded hex mi?"}
+      ]
+    },
+    {
+      "id": "layout", "code": "03", "title": "Layout İskeleti", "doc": "docs/jenerik-desenler.md, docs/sidebar.md",
+      "mode": "default",
+      "desc": "Font/köşe yarıçapı ölçeği ve sidebar deseni; ≤768px'te bottom-nav'a geçiş varsayılan.",
+      "signal": "Her projede geçerli.",
+      "items": [
+        {"text": "Tutarlı bir köşe yarıçapı ölçeği var (6/8/12px benzeri)", "hint": "border-radius değerlerinin proje genelinde kaç farklı rastgele değer aldığına bak."},
+        {"text": "Sidebar veri-güdümlü bir menü yapısından geliyor (çok sayfalıysa) ya da bilinçli olarak statik (az sayfalıysa)", "hint": "SIDEBAR_MENU benzeri bir veri dizisi veya menü öğelerinin elle, sayfa sayfa kopyalanmış HTML olup olmadığına bak."},
+        {"text": "≤768px'te sidebar yerini bottom-nav'a bırakıyor", "hint": "CSS'te @media (max-width:768px) altında sidebar'ı gizleyip alt gezinme çubuğu gösteren bir kural ara."},
+        {"text": "Header sabit yükseklikte ve marka renginde", "hint": "Header CSS'ine bak — height sabit mi, background marka rengi mi?"}
+      ]
+    },
+    {
+      "id": "tablo", "code": "04", "title": "Veri Tabloları", "doc": "docs/veri-listeleme.md",
+      "mode": "default",
+      "desc": "google.script.run sonucu her zaman denetlenir; büyük tablolarda parçalı çizim sanallaştırma değildir, indirmeden önce flush zorunludur.",
+      "signal": "Listeleme/filtreleme tablosu olan projeler. Tablo/liste UI'ı yoksa kapsam dışı.",
+      "items": [
+        {"text": "Sunucudan gelen sonuç her zaman denetleniyor ({error}/false kontrolü atlanmıyor)", "hint": "google.script.run.withSuccessHandler veya eşdeğer API çağrılarında dönen sonucun kontrol edilip edilmediğine bak — sessiz hata riski."},
+        {"text": "Filtre/sıralama tek bir ortak katmandan geçiyor (dağınık, sayfa başına ayrı filtre kodu değil)", "hint": "Filtreleme mantığının kaç farklı yerde ayrı ayrı yazıldığına bak."},
+        {"text": "Büyük tablolarda (1000+ satır) parçalı/zamanlanmış çizim var", "hint": "Tüm satırların tek seferde innerHTML ile mi yazıldığına, yoksa chunk/batch bir render deseni olup olmadığına bak."},
+        {"text": "İndirme/yazdırma öncesi tüm satırların DOM'a yazılması garanti ediliyor (chunk flush)", "hint": "Export/print fonksiyonunun render zamanlayıcısını beklediğine dair bir çağrı ara."},
+        {"text": "Mobilde tablo kart görünümüne dönüşüyor", "hint": "@media altında tablo → kart dönüşümü CSS'i ara."}
+      ]
+    },
+    {
+      "id": "kanban", "code": "04b", "title": "Kanban Panosu", "doc": "docs/kanban.md",
+      "mode": "optional",
+      "desc": "Sabit aşamalı, sürükle-bırakla ilerleyen bir iş listesi varsa geçerli.",
+      "signal": "draggable/dragover/kanban-column benzeri sinyaller varsa Aktif; yoksa Kapsam Dışı.",
+      "items": [
+        {"text": "Sürükle-bırakta dragover engeli var (varsayılan tarayıcı davranışı önleniyor)", "hint": "dragover event handler'ında preventDefault() çağrısı ara."},
+        {"text": "Görev kartı yeterince bilgi katmanına sahip (başlık, durum, sorumlu, tarih gibi)", "hint": "Kart bileşeninin kaç farklı veri alanı gösterdiğine bak."},
+        {"text": "Sürükle-bırak klavyeyle de yapılabiliyor", "hint": "Kart taşımak için klavye kısayolu/erişilebilir alternatif ara — yalnız mouse dragover varsa eksik."},
+        {"text": "Sütun grupları (varsa) tutarlı bir kontrol bileşeniyle filtreleniyor", "hint": "Swimlane/grup filtresi için segmented control benzeri bir UI ara."}
+      ]
+    },
+    {
+      "id": "popup", "code": "05", "title": "Detay Popup'ı", "doc": "docs/detay-popup.md",
+      "mode": "optional",
+      "desc": "Tabloda bir hücreye tıklayınca salt-okunur hızlı bakış gösteriliyorsa geçerli (InfoModal benzeri).",
+      "signal": "Satıra tıklayınca açılan salt-okunur bir detay/preview varsa Aktif.",
+      "items": [
+        {"text": "Tek bir paylaşılan (singleton) popup bileşeni var, satır başına ayrı modal değil", "hint": "Her satır için ayrı modal DOM'u mu üretiliyor, yoksa tek bir bileşen mi yeniden dolduruluyor?"},
+        {"text": "Yalnız salt-okunur hızlı bakış için, form/düzenleme içermiyor", "hint": "Popup içinde input/kaydet butonu varsa bu aslında 'Sağ Panel' kategorisine giriyor olabilir."}
+      ]
+    },
+    {
+      "id": "panel", "code": "05b", "title": "Sağ Panel (Düzenlenebilir Detay)", "doc": "docs/detay-panel.md",
+      "mode": "optional",
+      "desc": "Bir kaydı listeden çıkmadan görüntüleyip düzenleme + kayıtlar arası gezinme varsa geçerli.",
+      "signal": "Düzenlenebilir bir yan panel/drawer varsa Aktif.",
+      "items": [
+        {"text": "Kayıt alanları yerinde düzenlenebiliyor (ayrı bir sayfaya gitmeden)", "hint": "Panel içinde input/select alanları ve kaydet mekanizması ara."},
+        {"text": "Önceki/sonraki kayda geçiş var", "hint": "Panelde ok/ok tuşu ile gezinme kontrolü ara."},
+        {"text": "Salt-okunur popup'tan (varsa) ayrı, karıştırılmamış", "hint": "Aynı bileşen hem popup hem panel görevi görüyorsa not düş."}
+      ]
+    },
+    {
+      "id": "bilesen", "code": "06", "title": "Bileşenler", "doc": "docs/bilesenler.md",
+      "mode": "default",
+      "desc": "Modal, toast ve filtre bileşenlerinin ortak deseni.",
+      "signal": "Her projede geçerli.",
+      "items": [
+        {"text": "Modal/overlay için ortak bir bileşen kullanılıyor (sayfa başına ayrı overlay değil)", "hint": "'modal' geçen class/id isimlerinin tutarlılığına bak — erişilebilirlik kancaları genelde bu isimlendirmeye bağlı çalışır."},
+        {"text": "Hızlı geri bildirim (toast) ile eyleme çağıran bildirim ayrımı var", "hint": "Tek bir showToast benzeri fonksiyon mu var, yoksa her bildirim türü aynı mı davranıyor?"},
+        {"text": "Filtre alanlarında native <select> yerine özel/erişilebilir bir dropdown var", "hint": "<select> etiketlerini say; filtre amaçlı kullanılan native select'ler standarda aykırı sayılabilir."}
+      ]
+    },
+    {
+      "id": "form", "code": "06b", "title": "Form Kontrolleri", "doc": "docs/form-kontrolleri.md",
+      "mode": "optional",
+      "desc": "Checkbox/radio/switch/metin alanı varsa geçerli.",
+      "signal": "input[type=checkbox|radio], .switch benzeri kontroller varsa Aktif.",
+      "items": [
+        {"text": "Checkbox/radio/switch boyutları tutarlı", "hint": "Bu kontrollerin CSS boyutlarının proje genelinde aynı olup olmadığına bak."},
+        {"text": "Her kontrolde yeterli dokunma hedefi var (görünmez de olsa ~48×48px)", "hint": "Küçük checkbox'ların etrafında padding/görünmez tıklama alanı (ör. label'ın tamamı tıklanabilir mi) var mı?"}
+      ]
+    },
+    {
+      "id": "yardim", "code": "06c", "title": "Yardım Paneli + İlk Kullanım Turu", "doc": "docs/yardim-paneli.md",
+      "mode": "optional",
+      "desc": "Teknik terime aşina olmayan bir kullanıcı kitlesi veya günlük dönülen bir sistemse geçerli.",
+      "signal": "Yardım çekmecesi/onboarding turu gibi bir bileşen varsa Aktif; yoksa ve proje küçük/basitse Kapsam Dışı.",
+      "items": [
+        {"text": "Uygulama içi bir yardım/dokümantasyon paneli var", "hint": "Yardım ikonu, çekmece, SSS benzeri bir bileşen ara."},
+        {"text": "Aranabilir/filtrelenebilir", "hint": "Yardım panelinde arama kutusu var mı?"},
+        {"text": "İlk kullanım turu (onboarding) var", "hint": "Tooltip/spotlight tabanlı bir ilk-kullanım akışı ara."}
+      ]
+    },
+    {
+      "id": "etkilesim", "code": "06d", "title": "Etkileşim Kuralları", "doc": "docs/etkilesim-kurallari.md",
+      "mode": "default",
+      "desc": "Proje-bağımsız dört desen — hızlı ekleme, ölçüt destekli arama, kademeli Escape, hareket kataloğu.",
+      "signal": "Her projede geçerli.",
+      "items": [
+        {"text": "Hızlı ekleme akışı var (uzun form yerine akıllı varsayımlarla tek adımda ekleme)", "hint": "Yeni kayıt eklerken zorunlu tam form mu açılıyor, yoksa kısa yol var mı?"},
+        {"text": "Arama kutusu ölçüt/anahtar kelime destekliyor (örn. alan:değer söz dizimi)", "hint": "Arama fonksiyonunda özel operatör ayrıştırma (parsing) var mı?"},
+        {"text": "Birden fazla katman (modal/panel/tooltip) açıkken Escape önceliğe göre kapanıyor", "hint": "Escape tuşu dinleyicisinin tek bir katmanı mı yoksa en üsttekini mi kapattığına bak."},
+        {"text": "Animasyon/geçiş süreleri tutarlı bir ölçekten geliyor", "hint": "transition-duration değerlerinin proje genelinde rastgele mi yoksa birkaç sabit değerden mi geldiğine bak."}
+      ]
+    },
+    {
+      "id": "grafik", "code": "07", "title": "Grafikler", "doc": "docs/grafikler.md",
+      "mode": "optional",
+      "desc": "Kaynak yalnız Bursa CV Projects — ValeoDashboard'da boş canvas dışında bir standart yok.",
+      "signal": "<canvas> veya bir grafik kütüphanesi kullanımı varsa Aktif.",
+      "items": [
+        {"text": "Chart.js (veya eşdeğer, gerçekten initialize edilmiş) kullanılıyor — boş canvas yer tutucusu değil", "hint": "new Chart(...) çağrısı var mı, yoksa <canvas> boş mu duruyor?"},
+        {"text": "Grafik renk paleti resmi marka renkleriyle türetilmiş", "hint": "Grafik renklerinin tokens/colors.css'teki paletle örtüşüp örtüşmediğine bak."},
+        {"text": "Grafik kapsayıcısı sabit yükseklikte, sonsuz büyüme/küçülme döngüsü yok", "hint": "maintainAspectRatio:false + sabit yükseklikli wrapper var mı?"},
+        {"text": "'Yüklenemeyen veri' ile 'boş veri' görsel olarak ayrılmış", "hint": "Veri çekme hatasında 'Tekrar dene' benzeri bir durum mu gösteriliyor, yoksa sıfır/boş grafik mi?"}
+      ]
+    },
+    {
+      "id": "a11y", "code": "08", "title": "Erişilebilirlik", "doc": "docs/jenerik-desenler.md, docs/muhendislik-standartlari.md",
+      "mode": "default",
+      "desc": "Proje-bağımsız dört temel kalıp + klavye/form erişilebilirliği bulguları.",
+      "signal": "Her projede geçerli.",
+      "items": [
+        {"text": ":focus-visible stili tanımlı", "hint": "CSS'te :focus-visible kuralı ara."},
+        {"text": "prefers-reduced-motion saygı görüyor", "hint": "@media (prefers-reduced-motion: reduce) kuralı ara."},
+        {"text": "Skip-link ve sr-only yardımcı sınıfları var", "hint": ".skip-link ve .sr-only (veya eşdeğer) class'larını ara."},
+        {"text": "Modal'larda ARIA + odak tuzağı çalışıyor", "hint": "aria-modal, role=dialog, ve odağı modal içinde tutan bir mekanizma ara."},
+        {"text": "Birincil eylemler yalnız klavyeyle de tamamlanabiliyor", "hint": "Tıklama gerektiren ama tabindex/keydown karşılığı olmayan div/span tabanlı 'buton'lar ara."},
+        {"text": "Form alanlarında label for eşleşmesi ve durum değişikliklerinde aria-live var", "hint": "label[for] ile input id eşleşmesine ve hata/başarı mesajlarında aria-live bölgesine bak."}
+      ]
+    },
+    {
+      "id": "darkmode", "code": "09", "title": "Koyu Mod", "doc": "docs/koyu-mod.md",
+      "mode": "default",
+      "desc": "2026-08-29 kararıyla varsayılan — kullanıcı özellikle istemedikçe atlanmaz.",
+      "signal": "Her projede geçerli (varsayılan).",
+      "items": [
+        {"text": "Koyu mod açma/kapama mekanizması var", "hint": "applyDarkMode benzeri bir fonksiyon veya data-theme/dark class toggle'ı ara."},
+        {"text": "OS tercihini algılıyor", "hint": "prefers-color-scheme media query veya matchMedia('(prefers-color-scheme: dark)') kullanımı ara."},
+        {"text": "Kullanıcı tercihi kalıcı olarak saklanıyor", "hint": "Seçimin bir sonraki ziyarette hatırlandığına dair bir kalıcılık mekanizması ara."}
+      ]
+    },
+    {
+      "id": "yetki", "code": "10", "title": "Yetki Görünümü", "doc": "docs/yetki-gorunumu.md",
+      "mode": "optional",
+      "desc": "Kullanıcı rolüne göre bazı kontroller kısıtlanıyorsa geçerli — gerçek kontrol her zaman sunucuda olmalı.",
+      "signal": "Rol/izin bazlı UI farklılaşması varsa Aktif.",
+      "items": [
+        {"text": "Rol bazlı görünürlük istemci tarafında bir desenle yönetiliyor", "hint": "data-w / body.no-* benzeri bir görünürlük deseni ara."},
+        {"text": "Gerçek yetki kontrolü sunucu tarafında da yapılıyor (yalnız istemci gizleme değil)", "hint": "Sunucu fonksiyonlarında (ör. her google.script.run hedefi) kullanıcı/rol kontrolü var mı? KRİTİK: yoksa bu bir güvenlik açığı, yalnız stil bulgusu değil, öne çıkar."}
+      ]
+    },
+    {
+      "id": "print", "code": "11", "title": "Yazdırma", "doc": "docs/yazdirma.md",
+      "mode": "optional",
+      "desc": "Sayfa yazdırma veya PDF alma ihtiyacı varsa geçerli.",
+      "signal": "@media print kuralı veya bir 'Yazdır'/'PDF' butonu varsa Aktif.",
+      "items": [
+        {"text": "@media print ile gezinme/filtre gizleniyor", "hint": "@media print bloğunda nav/sidebar/filtre display:none var mı?"},
+        {"text": "Tablo sayfa sınırında düzgün kırılıyor", "hint": "break-inside / page-break kuralları ara."},
+        {"text": "Renkli başlık zemini yazdırmada korunuyor", "hint": "print-color-adjust / -webkit-print-color-adjust kuralı ara."}
+      ]
+    },
+    {
+      "id": "dil", "code": "12", "title": "Dil (TR/EN)", "doc": "docs/dil-yerellestirme.md",
+      "mode": "default",
+      "desc": "2026-08-29 kararıyla varsayılan sözlük tabanlı dil değişimi — yalnız Türkçe biçimlendirme yetmez.",
+      "signal": "Her projede geçerli (varsayılan).",
+      "items": [
+        {"text": "Metinler bir sözlük/çeviri katmanından geliyor (hardcoded Türkçe metin yerine)", "hint": "T{} veya t() benzeri bir çeviri fonksiyonu/sözlük nesnesi ara."},
+        {"text": "Dil değiştiğinde <html lang> gerçekten güncelleniyor", "hint": "document.documentElement.lang atamasını ara."},
+        {"text": "Sabit kategoriler/durum metinleri de çeviri kapsamında", "hint": "Durum rozeti metinlerinin (örn. 'Tamamlandı') sözlükte olup olmadığına bak, yoksa yarım çeviri sayılır."},
+        {"text": "Sayı/tarih biçimi seçili dile göre değişiyor", "hint": "toLocaleDateString/toLocaleNumberString gibi locale-duyarlı biçimlendirme ara."}
+      ]
+    },
+    {
+      "id": "workspace", "code": "13", "title": "Google Workspace Add-on", "doc": "docs/workspace-addon.md",
+      "mode": "optional",
+      "desc": "Bağımsız bir web app değil, Docs/Sheets içine açılan bir Apps Script add-on ise geçerli.",
+      "signal": "manifest'te addOns bloğu veya container-bound HtmlService sidebar'ı varsa Aktif.",
+      "items": [
+        {"text": "Sabit header/footer uygulanmış", "hint": "Add-on sidebar HTML'inde sabit bir üst/alt bant var mı?"},
+        {"text": "Picker senkronizasyonu (varsa) doğru çalışıyor", "hint": "Google Picker API kullanımı ve seçilen dosyanın state ile senkronize olduğuna bak."}
+      ]
+    },
+    {
+      "id": "appsscript", "code": "14", "title": "Apps Script'e Push", "doc": ".claude/skills/apps-script-push/SKILL.md",
+      "mode": "optional",
+      "desc": "Claude Code web'in bulut konteynerinden clasp ile canlıya push gerekiyorsa geçerli — bir tasarım deseni değil oturum mekaniği, bu yüzden kod taramasıyla değil geçmiş oturum pratiğiyle değerlendirilir.",
+      "signal": ".clasp.json dosyası varsa Aktif.",
+      "items": [
+        {"text": ".clasprc.json (kimlik dosyası) repoda veya commit geçmişinde yok", "hint": "git log ve dosya listesinde .clasprc.json ara — KRİTİK: bulunursa bu bir sızıntı, hemen öne çıkar."},
+        {"text": ".clasp.json'da scriptId tanımlı", "hint": ".clasp.json içeriğine bak."}
+      ]
+    },
+    {
+      "id": "muhendislik", "code": "15", "title": "Mühendislik Sağlamlığı", "doc": "docs/muhendislik-standartlari.md",
+      "mode": "default",
+      "desc": "7 ayrı arkadaş projenin denetimlerinde bağımsız tekrarlanan 9 puan-kaybı kalıbı — varsayılan olarak baştan aranır.",
+      "signal": "Her projede geçerli (varsayılan).",
+      "items": [
+        {"text": "Sunucu tarafı fonksiyonlarında yetkilendirme kontrolü var", "hint": "Her sunucu/API fonksiyonunun başında kullanıcı/rol doğrulaması var mı? KRİTİK: yoksa öne çıkar."},
+        {"text": "\"Başarılı\" mesajı ekrana yazılmadan önce gerçek sonuç doğrulanıyor", "hint": "Bir işlemin sonucu kontrol edilmeden sabit bir başarı mesajı mı gösteriliyor?"},
+        {"text": "En az bir zamanlanmış görev/tetikleyici var (varsa otomasyon ihtiyacı)", "hint": "Cron, time-based trigger, scheduled job ara."},
+        {"text": "Yarım/stub özellikler arayüzden gizli", "hint": "Tıklanınca hiçbir şey yapmayan veya 'yakında' diyen ama görünür duran butonlar ara."},
+        {"text": "En az bir eşik-tabanlı uyarı/analiz katmanı var", "hint": "Belirli bir eşiği geçince kullanıcıyı uyaran bir mantık ara."},
+        {"text": "Kullanım verisi toplanıp özetleniyor", "hint": "Temel bir analytics/log/kullanım özeti mekanizması ara."},
+        {"text": "Kritik hesaplamalar için test var", "hint": "Test dosyası/klasörü ve en azından birkaç golden-value testi ara."}
+      ]
+    }
+  ]
+}

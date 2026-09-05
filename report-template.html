@@ -1,0 +1,538 @@
+<title>Standartlar Uyumluluk Raporu</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --valeo-blue:#041b3c; --valeo-green:#76ff03; --valeo-mid:#0072ce; --valeo-dark:#003d9b;
+    --surface:#ffffff; --surface-dim:#f1f5f9;
+    --neutral-100:#e4eaf0; --neutral-300:#9aaab8; --neutral-600:#4a6070;
+    --blue-200:#7ab8e0;
+
+    --bg:#eef2f7; --panel:var(--surface); --panel-alt:var(--surface-dim);
+    --border:var(--neutral-100); --border-strong:var(--neutral-300);
+    --text:var(--valeo-blue); --text-dim:var(--neutral-600); --text-faint:var(--neutral-300);
+    --accent:var(--valeo-mid);
+    --cta-bg:var(--valeo-green); --cta-fg:var(--valeo-blue);
+    --header-bg:var(--valeo-blue); --header-fg:#f4f8fc; --header-fg-dim:#a9c2dd;
+
+    --good-fg:#15803d; --good-bg:#dcfce7; --good-track:#22c55e;
+    --warn-fg:#92400e; --warn-bg:#fef3c7; --warn-track:#f59e0b;
+    --bad-fg:#b91c1c;  --bad-bg:#fee2e2;  --bad-track:#ef4444;
+    --track:var(--neutral-100);
+
+    --radius-sm:6px; --radius-md:8px; --radius-lg:12px;
+    --shadow-card:0 1px 2px rgba(4,27,60,0.06), 0 1px 1px rgba(4,27,60,0.04);
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0a1420; --panel:#111d2e; --panel-alt:#0d1826;
+      --border:#20304a; --border-strong:#33496a;
+      --text:#eaf1f8; --text-dim:#9db0c4; --text-faint:#5b7288;
+      --accent:var(--blue-200);
+      --cta-bg:var(--valeo-green); --cta-fg:#04142a;
+      --header-bg:#071121; --header-fg:#f4f8fc; --header-fg-dim:#8ba7c4;
+      --good-fg:#4ade80; --good-bg:rgba(74,222,128,0.14); --good-track:#4ade80;
+      --warn-fg:#fbbf24; --warn-bg:rgba(251,191,36,0.14); --warn-track:#fbbf24;
+      --bad-fg:#f87171;  --bad-bg:rgba(248,113,113,0.14); --bad-track:#f87171;
+      --track:#1c2a3f;
+      --shadow-card:0 1px 2px rgba(0,0,0,0.3), 0 1px 1px rgba(0,0,0,0.2);
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0a1420; --panel:#111d2e; --panel-alt:#0d1826;
+    --border:#20304a; --border-strong:#33496a;
+    --text:#eaf1f8; --text-dim:#9db0c4; --text-faint:#5b7288;
+    --accent:var(--blue-200);
+    --cta-bg:var(--valeo-green); --cta-fg:#04142a;
+    --header-bg:#071121; --header-fg:#f4f8fc; --header-fg-dim:#8ba7c4;
+    --good-fg:#4ade80; --good-bg:rgba(74,222,128,0.14); --good-track:#4ade80;
+    --warn-fg:#fbbf24; --warn-bg:rgba(251,191,36,0.14); --warn-track:#fbbf24;
+    --bad-fg:#f87171;  --bad-bg:rgba(248,113,113,0.14); --bad-track:#f87171;
+    --track:#1c2a3f;
+    --shadow-card:0 1px 2px rgba(0,0,0,0.3), 0 1px 1px rgba(0,0,0,0.2);
+    color-scheme:dark;
+  }
+
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:'IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3{ text-wrap:balance; margin:0; font-family:'IBM Plex Sans Condensed','IBM Plex Sans',sans-serif; }
+  .mono{ font-family:'IBM Plex Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums; }
+  button{ font-family:inherit; }
+  ::selection{ background:var(--cta-bg); color:var(--cta-fg); }
+
+  .eyebrow{ font-family:'IBM Plex Sans Condensed',sans-serif; font-weight:600; font-size:.72rem; letter-spacing:.09em; text-transform:uppercase; }
+
+  header{
+    background:var(--header-bg); color:var(--header-fg);
+    padding:18px clamp(16px,3vw,32px); display:flex; flex-wrap:wrap; align-items:center; gap:20px;
+    position:sticky; top:0; z-index:20; border-bottom:1px solid rgba(255,255,255,0.06);
+  }
+  .brand{ display:flex; flex-direction:column; gap:2px; min-width:200px; }
+  .brand .eyebrow{ color:var(--header-fg-dim); }
+  .brand h1{ font-size:1.3rem; font-weight:700; color:var(--header-fg); }
+  .brand .meta{ font-size:.78rem; color:var(--header-fg-dim); margin-top:2px; }
+
+  .score-block{ display:flex; align-items:center; gap:14px; margin-left:auto; }
+  .ring{
+    --pct:0; width:64px; height:64px; border-radius:50%; position:relative;
+    background:conic-gradient(var(--ring-color,var(--valeo-green)) calc(var(--pct)*1%), rgba(255,255,255,0.12) 0);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .ring::after{ content:''; width:48px; height:48px; border-radius:50%; background:var(--header-bg); position:absolute; }
+  .ring span{ position:relative; z-index:1; font-weight:600; font-size:1rem; color:var(--header-fg); }
+  .score-meta{ display:flex; flex-direction:column; gap:3px; }
+  .status-pill{ display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; font-size:.74rem; font-weight:600; width:max-content; }
+  .score-sub{ font-size:.74rem; color:var(--header-fg-dim); }
+
+  .btn{
+    border:1px solid rgba(255,255,255,0.22); background:transparent; color:var(--header-fg);
+    padding:8px 13px; border-radius:var(--radius-sm); font-size:.82rem; font-weight:500;
+    cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+  }
+  .btn:hover{ background:rgba(255,255,255,0.08); }
+  .btn.cta{ background:var(--cta-bg); color:var(--cta-fg); border-color:transparent; font-weight:600; }
+  .btn.cta:hover{ filter:brightness(1.05); }
+  .btn:focus-visible, [tabindex]:focus-visible{ outline:2px solid var(--valeo-green); outline-offset:2px; }
+
+  .layout{ display:grid; grid-template-columns:290px 1fr; align-items:start; max-width:1180px; margin:0 auto; padding:20px clamp(12px,3vw,28px) 60px; gap:20px; }
+  @media (max-width:860px){ .layout{ grid-template-columns:1fr; } }
+
+  nav.cats{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-card); overflow:hidden; position:sticky; top:96px;
+    max-height:calc(100vh - 116px); overflow-y:auto;
+  }
+  @media (max-width:860px){ nav.cats{ position:static; max-height:none; display:flex; overflow-x:auto; overflow-y:visible; } }
+  .cat-row{
+    display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+    background:transparent; border:0; border-left:3px solid transparent; border-bottom:1px solid var(--border);
+    padding:10px 12px; cursor:pointer; color:var(--text);
+  }
+  @media (max-width:860px){ .cat-row{ flex-direction:column; align-items:flex-start; min-width:150px; border-left:0; border-bottom:0; border-right:1px solid var(--border); } }
+  .cat-row:hover{ background:var(--panel-alt); }
+  .cat-row.active{ background:var(--panel-alt); border-left-color:var(--valeo-green); }
+  .cat-row.summary-row{ font-weight:600; }
+  .cat-code{ font-size:.72rem; font-weight:600; color:var(--text-dim); flex-shrink:0; width:24px; }
+  .cat-info{ flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+  .cat-title{ font-size:.85rem; font-weight:500; line-height:1.25; }
+  .cat-row.na .cat-title{ color:var(--text-faint); }
+  .cat-bar-track{ height:4px; border-radius:2px; background:var(--track); overflow:hidden; }
+  .cat-bar-fill{ height:100%; border-radius:2px; }
+  .cat-pct{ font-size:.7rem; color:var(--text-dim); flex-shrink:0; }
+  .na-tag{ font-size:.66rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--text-faint); flex-shrink:0; }
+  .crit-dot{ width:7px; height:7px; border-radius:50%; background:var(--bad-track); flex-shrink:0; }
+
+  main.detail{ background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-card); padding:clamp(18px,3vw,30px); }
+  .detail-head{ display:flex; flex-wrap:wrap; justify-content:space-between; gap:14px; margin-bottom:6px; }
+  .detail-title-row{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .detail-code{ color:var(--text-faint); font-size:1rem; font-weight:600; }
+  .detail-title{ font-size:1.3rem; font-weight:700; }
+  .doc-chip{ font-family:'IBM Plex Mono',monospace; font-size:.74rem; background:var(--panel-alt); border:1px solid var(--border); padding:2px 8px; border-radius:5px; color:var(--text-dim); }
+  .detail-desc{ color:var(--text-dim); font-size:.92rem; max-width:65ch; margin:8px 0 16px; line-height:1.55; }
+
+  .cat-score-row{ display:flex; align-items:center; gap:12px; margin:16px 0 18px; padding:12px 14px; background:var(--panel-alt); border-radius:var(--radius-md); flex-wrap:wrap; }
+  .cat-score-num{ font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:1rem; }
+  .unclear-note{ font-size:.78rem; color:var(--text-dim); }
+  .cat-note{ margin:0 0 16px; padding:10px 14px; border-left:3px solid var(--border-strong); font-size:.86rem; color:var(--text-dim); background:var(--panel-alt); border-radius:0 var(--radius-sm) var(--radius-sm) 0; }
+
+  .checklist{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px; }
+  .checklist li{ display:flex; align-items:flex-start; gap:10px; padding:10px 8px; border-radius:var(--radius-sm); border-bottom:1px solid var(--border); }
+  .checklist li:last-child{ border-bottom:0; }
+  .status-badge{ width:20px; height:20px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; margin-top:1px; }
+  .status-badge svg{ width:12px; height:12px; }
+  .status-badge.met{ background:var(--good-bg); color:var(--good-fg); }
+  .status-badge.unmet{ background:var(--bad-bg); color:var(--bad-fg); }
+  .status-badge.unclear{ background:var(--warn-bg); color:var(--warn-fg); }
+  .item-body{ flex:1; min-width:0; }
+  .item-text{ font-size:.9rem; line-height:1.45; }
+  .item-text .crit{ display:inline-block; margin-left:6px; font-size:.66rem; font-weight:700; letter-spacing:.03em; color:var(--bad-fg); background:var(--bad-bg); padding:1px 6px; border-radius:999px; vertical-align:middle; }
+  .item-evidence{ font-size:.78rem; color:var(--text-dim); margin-top:3px; font-family:'IBM Plex Mono',monospace; }
+
+  .summary-lede{ font-size:.94rem; color:var(--text-dim); line-height:1.6; max-width:70ch; margin:4px 0 22px; }
+  .rec-grid{ display:flex; flex-direction:column; gap:10px; margin-bottom:8px; }
+  .rec-card{ display:flex; gap:12px; padding:14px 16px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--panel-alt); }
+  .rec-card.critical{ border-color:var(--bad-track); background:var(--bad-bg); }
+  .rec-card .rec-cat{ font-size:.7rem; font-weight:600; color:var(--text-dim); text-transform:uppercase; letter-spacing:.04em; margin-bottom:3px; }
+  .rec-card.critical .rec-cat{ color:var(--bad-fg); }
+  .rec-card .rec-summary{ font-weight:600; font-size:.94rem; margin-bottom:4px; }
+  .rec-card .rec-action{ font-size:.86rem; color:var(--text-dim); line-height:1.5; }
+  .approval-note{ margin-top:22px; padding:14px 16px; border:1px dashed var(--border-strong); border-radius:var(--radius-md); font-size:.85rem; color:var(--text-dim); line-height:1.55; }
+  .approval-note strong{ color:var(--text); }
+
+  .toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(12px);
+    background:var(--valeo-blue); color:#fff; padding:10px 18px; border-radius:999px;
+    font-size:.85rem; font-weight:500; box-shadow:0 8px 24px rgba(0,0,0,0.25);
+    opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s ease; z-index:50;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  footer{ max-width:1180px; margin:0 auto; padding:0 clamp(12px,3vw,28px) 40px; color:var(--text-dim); font-size:.78rem; line-height:1.6; }
+  footer code{ font-family:'IBM Plex Mono',monospace; background:var(--panel-alt); padding:1px 5px; border-radius:4px; }
+
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; } }
+</style>
+
+<header>
+  <div class="brand">
+    <span class="eyebrow">Valeo · Standartlar Uyumluluk Raporu</span>
+    <h1 id="projectTitle">—</h1>
+    <span class="meta mono" id="auditMeta">—</span>
+  </div>
+
+  <div class="score-block">
+    <div class="ring" id="scoreRing"><span id="scoreRingText">–</span></div>
+    <div class="score-meta">
+      <span class="status-pill" id="statusPill">—</span>
+      <span class="score-sub mono" id="scoreSub">—</span>
+    </div>
+  </div>
+
+  <button class="btn cta" id="copyBtn" type="button">Panoya Kopyala</button>
+</header>
+
+<div class="layout">
+  <nav class="cats" id="catNav" aria-label="Kategoriler"></nav>
+  <main class="detail" id="detailPanel"></main>
+</div>
+
+<footer>
+  Bu rapor <code>.claude/skills/standartlar-uyumluluk/</code> denetim modu tarafından, projenin
+  gerçek kod tabanı taranarak üretildi. Bulgular Claude'un o anki değerlendirmesidir, insan
+  gözden geçirmesinin yerine geçmez. <strong>Burada listelenen hiçbir bulgu otomatik olarak koda
+  uygulanmaz</strong> — bir düzeltme istiyorsan ayrıca onay vermen gerekir.
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="application/json" id="findings-data">
+__STANDARTLAR_FINDINGS_JSON__
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var ICONS = {
+    met: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+    unmet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+    unclear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>'
+  };
+  var STATUS_LABEL = {met:'Karşılanıyor', unmet:'Karşılanmıyor', unclear:'Belirsiz'};
+
+  var raw = document.getElementById('findings-data').textContent.trim();
+  var DATA = null;
+  try{ DATA = JSON.parse(raw); }catch(e){ DATA = null; }
+
+  var activeCat = 'summary';
+
+  function catCounts(cat){
+    var met=0, unmet=0, unclear=0;
+    cat.items.forEach(function(it){
+      if(it.status==='met') met++;
+      else if(it.status==='unmet') unmet++;
+      else unclear++;
+    });
+    var denom = met+unmet;
+    var pct = denom ? Math.round((met/denom)*100) : 0;
+    return {met:met, unmet:unmet, unclear:unclear, total:cat.items.length, pct:pct, denom:denom};
+  }
+
+  function statusOf(pct, denom){
+    if(!denom) return 'unclear';
+    if(pct>=75) return 'good';
+    if(pct>=50) return 'warn';
+    return 'bad';
+  }
+
+  function overall(){
+    var met=0, unmet=0, unclear=0, activeCount=0;
+    (DATA.categories||[]).forEach(function(c){
+      if(!c.applicable) return;
+      activeCount++;
+      var s = catCounts(c);
+      met += s.met; unmet += s.unmet; unclear += s.unclear;
+    });
+    var denom = met+unmet;
+    var pct = denom ? Math.round((met/denom)*100) : 0;
+    return {met:met, unmet:unmet, unclear:unclear, denom:denom, pct:pct, activeCount:activeCount};
+  }
+
+  function renderHeader(){
+    document.getElementById('projectTitle').textContent = (DATA && DATA.project) || 'Bilinmeyen Proje';
+    document.getElementById('auditMeta').textContent = DATA ? ('Denetim: ' + (DATA.auditedAt || '—') + (DATA.sourceNote ? ' · ' + DATA.sourceNote : '')) : '';
+
+    if(!DATA){
+      document.getElementById('scoreSub').textContent = 'Bulgu verisi okunamadı';
+      return;
+    }
+    var o = overall();
+    var st = statusOf(o.pct, o.denom);
+    var ring = document.getElementById('scoreRing');
+    ring.style.setProperty('--pct', o.pct);
+    ring.style.setProperty('--ring-color', 'var(--' + st + '-track)');
+    document.getElementById('scoreRingText').textContent = o.pct + '%';
+    var pill = document.getElementById('statusPill');
+    var label = st==='good' ? 'Uyumlu' : st==='warn' ? 'Kısmi Uyum' : o.denom ? 'Yetersiz' : 'Veri Yok';
+    pill.textContent = label;
+    pill.style.background = 'var(--' + st + '-bg)';
+    pill.style.color = 'var(--' + st + '-fg)';
+    document.getElementById('scoreSub').textContent =
+      o.met + '/' + o.denom + ' kriter karşılanıyor · ' + o.unclear + ' belirsiz · ' + o.activeCount + '/' + (DATA.categories||[]).length + ' kategori geçerli';
+  }
+
+  function renderNav(){
+    var nav = document.getElementById('catNav');
+    nav.innerHTML = '';
+    if(!DATA) return;
+
+    var sumRow = document.createElement('button');
+    sumRow.type = 'button';
+    sumRow.className = 'cat-row summary-row' + (activeCat==='summary' ? ' active' : '');
+    sumRow.innerHTML = '<span class="cat-code mono">—</span><span class="cat-info"><span class="cat-title">Özet ve Öneriler</span></span>';
+    sumRow.addEventListener('click', function(){ activeCat='summary'; render(); });
+    nav.appendChild(sumRow);
+
+    (DATA.categories||[]).forEach(function(c){
+      var row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'cat-row' + (c.id===activeCat ? ' active' : '') + (!c.applicable ? ' na' : '');
+
+      var code = document.createElement('span');
+      code.className = 'cat-code mono';
+      code.textContent = c.code;
+      row.appendChild(code);
+
+      var info = document.createElement('span');
+      info.className = 'cat-info';
+      var titleWrap = document.createElement('span');
+      titleWrap.style.display='flex'; titleWrap.style.alignItems='center'; titleWrap.style.gap='6px';
+      var title = document.createElement('span');
+      title.className = 'cat-title';
+      title.textContent = c.title;
+      titleWrap.appendChild(title);
+      if(c.applicable && c.items.some(function(it){ return it.status==='unmet' && it.critical; })){
+        var dot = document.createElement('span');
+        dot.className = 'crit-dot';
+        dot.title = 'Kritik bulgu var';
+        titleWrap.appendChild(dot);
+      }
+      info.appendChild(titleWrap);
+
+      if(c.applicable){
+        var s = catCounts(c);
+        var st = statusOf(s.pct, s.denom);
+        var track = document.createElement('span');
+        track.className = 'cat-bar-track';
+        var fill = document.createElement('span');
+        fill.className = 'cat-bar-fill';
+        fill.style.width = s.pct + '%';
+        fill.style.background = 'var(--' + st + '-track)';
+        track.appendChild(fill);
+        info.appendChild(track);
+      }
+      row.appendChild(info);
+
+      if(c.applicable){
+        var s2 = catCounts(c);
+        var pctText = document.createElement('span');
+        pctText.className = 'cat-pct mono';
+        pctText.textContent = s2.pct + '%';
+        row.appendChild(pctText);
+      } else {
+        var tag = document.createElement('span');
+        tag.className = 'na-tag';
+        tag.textContent = 'Kapsam Dışı';
+        row.appendChild(tag);
+      }
+
+      row.addEventListener('click', function(){ activeCat = c.id; render(); });
+      nav.appendChild(row);
+    });
+  }
+
+  function renderSummary(){
+    var panel = document.getElementById('detailPanel');
+    panel.innerHTML = '';
+    var head = document.createElement('div');
+    head.innerHTML = '<h2 class="detail-title">Özet ve Öneriler</h2>';
+    panel.appendChild(head);
+
+    var lede = document.createElement('p');
+    lede.className = 'summary-lede';
+    var o = overall();
+    lede.textContent = DATA.categories.filter(function(c){return c.applicable;}).length +
+      ' geçerli kategoride ' + o.denom + ' kriter değerlendirildi, ' + o.met + ' tanesi karşılanıyor. ' +
+      (o.unclear ? o.unclear + ' kriter kod taramasıyla kesin belirlenemedi (belirsiz).' : '');
+    panel.appendChild(lede);
+
+    var grid = document.createElement('div');
+    grid.className = 'rec-grid';
+    var recs = DATA.recommendations || [];
+    if(!recs.length){
+      var none = document.createElement('p');
+      none.className = 'detail-desc';
+      none.textContent = 'Bu denetimde öne çıkarılacak bir öneri işaretlenmedi.';
+      grid.appendChild(none);
+    }
+    recs.forEach(function(r){
+      var cat = DATA.categories.filter(function(c){ return c.id===r.categoryId; })[0];
+      var card = document.createElement('div');
+      card.className = 'rec-card' + (r.critical ? ' critical' : '');
+      card.innerHTML =
+        '<div style="flex:1"><div class="rec-cat">' + (cat ? cat.code + ' · ' + cat.title : r.categoryId) + '</div>' +
+        '<div class="rec-summary">' + r.summary + '</div>' +
+        '<div class="rec-action">' + r.action + '</div></div>';
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', function(){ if(cat){ activeCat = cat.id; render(); } });
+      grid.appendChild(card);
+    });
+    panel.appendChild(grid);
+
+    var note = document.createElement('div');
+    note.className = 'approval-note';
+    note.innerHTML = '<strong>Not:</strong> Bu bulgular tespit + öneri amaçlıdır. Herhangi bir kod değişikliği ' +
+      'yapılmadan önce ayrıca onayın istenir — bu rapor kendiliğinden hiçbir dosyayı değiştirmez.';
+    panel.appendChild(note);
+  }
+
+  function renderCategory(c){
+    var panel = document.getElementById('detailPanel');
+    panel.innerHTML = '';
+
+    var head = document.createElement('div');
+    head.className = 'detail-head';
+    var titleRow = document.createElement('div');
+    titleRow.className = 'detail-title-row';
+    titleRow.innerHTML = '<span class="detail-code mono">' + c.code + '</span>' +
+      '<h2 class="detail-title">' + c.title + '</h2>' +
+      '<span class="doc-chip">' + c.doc + '</span>';
+    head.appendChild(titleRow);
+    panel.appendChild(head);
+
+    var desc = document.createElement('p');
+    desc.className = 'detail-desc';
+    desc.textContent = c.desc || '';
+    panel.appendChild(desc);
+
+    if(!c.applicable){
+      var naBox = document.createElement('div');
+      naBox.className = 'cat-note';
+      naBox.textContent = 'Kapsam Dışı. ' + (c.applicabilityNote || 'Bu projede bu kategoriye ait bir sinyal bulunamadı.');
+      panel.appendChild(naBox);
+      return;
+    }
+
+    var s = catCounts(c);
+    var st = statusOf(s.pct, s.denom);
+    var scoreRow = document.createElement('div');
+    scoreRow.className = 'cat-score-row';
+    scoreRow.innerHTML =
+      '<span class="status-pill" style="background:var(--' + st + '-bg);color:var(--' + st + '-fg)">' +
+      (st==='good'?'Uyumlu':st==='warn'?'Kısmi Uyum':s.denom?'Yetersiz':'Veri Yok') + '</span>' +
+      '<span class="cat-score-num mono">' + s.met + '/' + s.denom + '</span>' +
+      (s.unclear ? '<span class="unclear-note">' + s.unclear + ' belirsiz</span>' : '');
+    panel.appendChild(scoreRow);
+
+    if(c.categoryNote){
+      var noteBox = document.createElement('div');
+      noteBox.className = 'cat-note';
+      noteBox.textContent = c.categoryNote;
+      panel.appendChild(noteBox);
+    }
+
+    var list = document.createElement('ul');
+    list.className = 'checklist';
+    c.items.forEach(function(item){
+      var li = document.createElement('li');
+      var badge = document.createElement('span');
+      badge.className = 'status-badge ' + item.status;
+      badge.innerHTML = ICONS[item.status] || ICONS.unclear;
+      badge.title = STATUS_LABEL[item.status] || 'Belirsiz';
+      li.appendChild(badge);
+
+      var body = document.createElement('div');
+      body.className = 'item-body';
+      var text = document.createElement('div');
+      text.className = 'item-text';
+      text.textContent = item.text;
+      if(item.critical && item.status==='unmet'){
+        var crit = document.createElement('span');
+        crit.className = 'crit';
+        crit.textContent = 'KRİTİK';
+        text.appendChild(crit);
+      }
+      body.appendChild(text);
+      if(item.evidence){
+        var ev = document.createElement('div');
+        ev.className = 'item-evidence';
+        ev.textContent = item.evidence;
+        body.appendChild(ev);
+      }
+      li.appendChild(body);
+      list.appendChild(li);
+    });
+    panel.appendChild(list);
+  }
+
+  function render(){
+    renderHeader();
+    renderNav();
+    if(!DATA){
+      document.getElementById('detailPanel').innerHTML = '<p class="detail-desc">Bulgu verisi okunamadı — <code>findings-data</code> script bloğu geçerli JSON içermiyor.</p>';
+      return;
+    }
+    if(activeCat==='summary'){ renderSummary(); return; }
+    var c = DATA.categories.filter(function(x){ return x.id===activeCat; })[0];
+    if(c) renderCategory(c); else renderSummary();
+  }
+
+  function showToast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._h);
+    showToast._h = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+  }
+
+  function buildReportText(){
+    if(!DATA) return '';
+    var o = overall();
+    var lines = [];
+    lines.push('# ' + (DATA.project||'Proje') + ' — Standartlar Uyumluluk Raporu');
+    lines.push('Denetim: ' + (DATA.auditedAt||'—'));
+    lines.push('Genel: ' + o.pct + '% · ' + o.met + '/' + o.denom + ' kriter · ' + o.unclear + ' belirsiz');
+    lines.push('');
+    (DATA.recommendations||[]).forEach(function(r){
+      lines.push('- [' + (r.critical?'KRİTİK':'öneri') + '] ' + r.summary + ' → ' + r.action);
+    });
+    lines.push('');
+    DATA.categories.forEach(function(c){
+      if(!c.applicable){ lines.push('## ' + c.code + ' · ' + c.title + ' — Kapsam Dışı'); lines.push(''); return; }
+      var s = catCounts(c);
+      lines.push('## ' + c.code + ' · ' + c.title + ' — ' + s.met + '/' + s.denom + ' (' + s.pct + '%)');
+      c.items.forEach(function(item){
+        var mark = item.status==='met' ? 'x' : item.status==='unmet' ? ' ' : '?';
+        lines.push('- [' + mark + '] ' + item.text + (item.evidence ? '  (' + item.evidence + ')' : ''));
+      });
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
+
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    var text = buildReportText();
+    if(!text){ showToast('Kopyalanacak veri yok'); return; }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ showToast('Rapor panoya kopyalandı'); })
+        .catch(function(){ showToast('Kopyalama başarısız'); });
+    } else {
+      showToast('Bu tarayıcıda pano erişimi yok');
+    }
+  });
+
+  render();
+})();
+</script>

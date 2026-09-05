@@ -1,0 +1,52 @@
+/* ============================================================
+   RESMİ VALEO RENK PALETİ — kanonik dosya.
+   Kaynak: eng-furkany/ValeoDashboard, ValeoDashboard/Index.html
+   (bkz. tokens/colors-valeo-dashboard.css — bu dosya onun aynısıdır,
+   yalnızca "resmi" ad altında referans kolaylığı için var).
+   Karar: 2026-08-13, bkz. ../docs/renkler.md "Karar Geçmişi".
+   Yeni bir Valeo projesine renk taşırken BURADAN başla.
+   ============================================================ */
+
+:root {
+  /* --- Birincil Palette --- */
+  --valeo-blue  : #041b3c;   /* Ana renk, başlıklar */
+  --valeo-green : #76ff03;   /* Aksiyon, vurgu, aktif öğe */
+  --valeo-mid   : #0072ce;   /* Orta mavi, ikincil vurgu */
+  --valeo-dark  : #003d9b;   /* Butonlar, hover */
+
+  /* --- Nötr / Yüzey --- */
+  --surface      : #ffffff;
+  --surface-dim  : #f1f5f9;
+  --neutral-100  : #e4eaf0;
+  --neutral-300  : #9aaab8;
+  --neutral-600  : #4a6070;
+  --neutral-900  : #1a2f3f;
+
+  /* --- Mavi Ton Skalası --- */
+  --blue-50  : #ddeef9;
+  --blue-200 : #7ab8e0;
+  --blue-500 : #2e7fc0;
+  --blue-800 : #0d3d6e;
+
+  /* --- Durum --- */
+  --success : #22c55e;
+  --danger  : #ef4444;
+  --warning : #f59e0b;
+
+  /* --- Köşe Yarıçapı --- */
+  --radius-sm : 6px;
+  --radius-md : 8px;
+  --radius-lg : 12px;
+}
+
+/* Renk kullanım öncelikleri:
+   --valeo-green → aktif nav ögesi, en yüksek değerli bar, CTA buton
+   --valeo-blue  → sayfa/panel arka planı, header
+   --valeo-mid / --valeo-dark → butonlar, hover, link
+   --neutral-*   → metin hiyerarşisi, kenarlıklar, ayırıcılar
+   --blue-*      → ikon rengi, badge, subtle vurgu
+
+   Dark-mode varyantı yok, WCAG kontrastı belgeli değil — yeni kullanımda
+   elle doğrula. Durum rozeti üretirken tokens/colors-bursa-cv-projects.css
+   içindeki "soluk zemin + doygun yazı" desenini bu renklerle yeniden
+   doğrulayarak uygula (bkz. ../docs/renkler.md). */

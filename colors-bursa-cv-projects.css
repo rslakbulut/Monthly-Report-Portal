@@ -1,0 +1,103 @@
+/* ============================================================
+   Kaynak: CKapitan/Bursa-CV-Projects, src/Stylesheet.html
+   Branş: claude/fresh-start-2026-wu14gy (kopyalandığı tarih: 2026-08-13)
+   Bu dosya AYNEN kopyalanmıştır — kaynak repo değiştirilmemiştir.
+   Yalnız renk/tema ile ilgili değişkenler alınmıştır; layout ölçüleri
+   (--sidebar-width, --header-height, --tbl-*) buraya dahil edilmemiştir,
+   bkz. ../docs/jenerik-desenler.md.
+   ============================================================ */
+
+:root {
+  --valeo-navy:       #1B2B4B;
+  --valeo-blue:       #0057A8;
+  --valeo-green:      #78BE20;
+  --valeo-logo-green: #7DC242;
+  --valeo-white:      #FFFFFF;
+  --valeo-gray-light: #F4F6F8;
+  /* ÖLÇÜM: #6B7280 açık zeminde (#F4F6F8) 4.46 — AA eşiği 4.5'in KIL PAYI
+     altında ve 27 düğümde tekrarlıyordu. #616874 hem sayfa zemininde (5.18)
+     hem de sekme/şerit zemininde (#E5E7EB, 4.53) geçiyor. */
+  --valeo-gray-mid:   #616874;
+  /* ── Aksan METİN renkleri — TEMA DUYARLI ─────────────────────
+     Marka tonları (yeşil #78BE20, turkuaz, menekşe) AÇIK zeminde metin
+     olarak 1.9–2.7 veriyor; KOYU zeminde ise aynı tonlar 5.4–7.9 ile
+     zaten geçiyor. Yani tek bir sabit değer İKİ TEMADA BİRDEN çalışmıyor:
+     açık için koyultulmuş, koyu için markanın kendi tonu kullanılır
+     (`body.dark-mode` bloğundaki override).
+     Dolgu/ikon/grafik renkleri DEĞİŞMEZ — bunlar yalnız METİN içindir. */
+  --valeo-green-text: #4A7614;   /* beyazda 5.06 · #F4F6F8'de 4.67 · açık yeşil rozette 4.56 */
+  --acc-teal-text:    #1C8376;   /* beyazda 4.61 */
+  --acc-violet-text:  #7D68BC;   /* beyazda 4.59 */
+  --acc-green2-text:  #256E40;   /* beyazda 5.87 · açık yeşil rozet zemininde 5.34 */
+  --valeo-blue-text:  #0057A8;   /* beyazda 7.17 — açık temada marka mavisi zaten geçiyor */
+  --acc-amber-text:   #8A5200;   /* beyazda 5.80 — amber METİN; #fbbf24 açık kartta 1.67 */
+  --acc-rose-text:    #B03026;   /* beyazda 5.60 — kırmızı METİN; #f87171 açık kartta 2.9 */
+  --valeo-gray-dark:  #1F2937;
+
+  /* Dolu renkler — grafik/ikon/kenarlık için. Beyaz yazı ile KULLANMA:
+     WCAG AA'da kalıyorlar (ok 2.29, warning 2.15, neutral 2.54, error 3.76,
+     serial 4.23). Rozet metni için aşağıdaki --st-*-fg/bg çiftlerini kullan. */
+  --status-ok:      #78BE20;
+  --status-warning: #F59E0B;
+  --status-error:   #EF4444;
+  --status-info:    #0057A8;
+  --status-neutral: #9CA3AF;
+  --status-serial:  #8B5CF6;
+
+  /* Rozet çiftleri — hepsi açık temada >= 5.4:1 (WCAG 2.2 AA, 11px metin) */
+  --st-ok-bg:   #EEF6E2;  --st-ok-fg:   #3D6B0C;   /* 5.72 */
+  --st-warn-bg: #FDF3E0;  --st-warn-fg: #8A5200;   /* 5.80 */
+  --st-err-bg:  #FCEDEB;  --st-err-fg:  #B03026;   /* 5.60 */
+  --st-info-bg: #E8F1FA;  --st-info-fg: #004E96;   /* 7.27 */
+  --st-neut-bg: #F1F3F6;  --st-neut-fg: #5A6472;   /* 5.40 */
+  --st-ser-bg:  #F1ECFD;  --st-ser-fg:  #5B34C4;   /* 6.64 */
+
+  /* Veri tablosu yüzey token'ları (--dt-*) — ODAK YÜZEYİ.
+     Bu palet her iki temada da KOYU kalır (bkz. kaynak dosyadaki not) —
+     açık sayfa zemininde --valeo-gray-mid kullanılır, --dt-* yalnız
+     KOYU yüzeyde kullanılır. */
+  --dt-bg:      #0f1a2e;
+  --dt-row:     #111c2d;
+  --dt-row-alt: #0f1a2e;
+  --dt-hover:   #1a2f4a;
+  --dt-cell:    #25375a;
+  --dt-cell-rg: #3d5589;
+  --dt-hdr:     #162236;
+  --dt-hdr-fg:  #f0f4f8;   /* 14.44 */
+  --dt-input:   #1e2d45;
+  --dt-sub:     #0d1724;
+  --dt-text:    #e2e8f0;   /* 13.87 */
+  --dt-text-2:  #94a3b8;   /*  6.67 */
+  --dt-muted:   #7A8699;   /*  4.64 */
+  --dt-border:  #2B3F5C;
+
+  --bg:       var(--valeo-gray-light);
+  --card-bg:  var(--valeo-white);
+  --text:     var(--valeo-gray-dark);
+  --border:   #E5E7EB;
+}
+
+/* --- Dark Mode ------------------------------------------- */
+body.dark-mode {
+  --bg:       #0F172A;
+  --card-bg:  #1E293B;
+  /* Koyu temada aksanlar markanın KENDİ tonuna döner. */
+  --valeo-gray-mid:   #8A8F98;   /* #0F172A 5.49 · #1E293B 4.50 */
+  --valeo-green-text: #78BE20;   /* 6.40–7.81 */
+  --acc-teal-text:    #2DD4BF;   /* 7.86–9.59 */
+  --acc-violet-text:  #A78BFA;   /* 5.38–6.56 */
+  --acc-green2-text:  #4ADE80;   /* 8.40–10.25 */
+  --valeo-blue-text:  #87B0D6;   /* marka mavisi koyu kartta 2.04 kalıyordu */
+  --acc-amber-text:   #E0A340;   /* 7.15 */
+  --acc-rose-text:    #F08074;   /* 6.44 */
+  --text:     #F1F5F9;
+  --border:   #334155;
+
+  /* Rozet çiftleri — hepsi koyu temada >= 5.9:1 */
+  --st-ok-bg:   #1E2A16;  --st-ok-fg:   #9FD75A;   /* 8.83 */
+  --st-warn-bg: #2A2113;  --st-warn-fg: #E0A340;   /* 7.15 */
+  --st-err-bg:  #2C1817;  --st-err-fg:  #F08074;   /* 6.44 */
+  --st-info-bg: #12243A;  --st-info-fg: #6BA5E8;   /* 6.10 */
+  --st-neut-bg: #1E2634;  --st-neut-fg: #94A3B8;   /* 5.93 */
+  --st-ser-bg:  #211A38;  --st-ser-fg:  #B69CF5;   /* 7.14 */
+}
