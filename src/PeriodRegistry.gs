@@ -61,7 +61,7 @@ function registerSpreadsheetId_(id, source) {
   try {
     ss = SpreadsheetApp.openById(id);
   } catch (e) {
-    return { ok: false, reason: 'File could not be opened (access may be missing): ' + id };
+    return { ok: false, reason: 'File could not be opened: ' + id + ' — ' + (e && e.message ? e.message : e) };
   }
   var name = ss.getName();
   var p = parsePeriodFromTitle_(name);
