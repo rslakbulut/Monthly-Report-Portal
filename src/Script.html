@@ -13,7 +13,8 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function nf(n,d){ return (n==null||isNaN(n))?'—':Number(n).toLocaleString('en-US',
   {minimumFractionDigits:d||0,maximumFractionDigits:d||0}); }
-function money(m){ return m==null?'—':'€'+nf(m,2)+'M'; }
+function money(m){ return m==null?'—':nf(m,2)+' M€'; }
+function m2(m){ return m==null?'—':nf(m,2); }   // birimsiz, kesirde kullanilir
 function signed(n){ return n==null?'—':(n>0?'+':'')+nf(n,0); }
 function pct(a,b){ return (b&&b>0)?Math.round(a/b*100):null; }
 function clamp01(x){ return Math.max(0,Math.min(1,x)); }
@@ -24,12 +25,13 @@ function addM(a,b){ for(var k in a){ a[k]+=b[k]||0; } return a; }
 
 /* ---------- glossary ---------- */
 var GLOSSARY=[
- ['Annual target','What the site committed at the start of the year — the number of projects to launch and the turnover they bring. Unchanged all year, so it is the yardstick everything else is measured against.','Section 3 “ORDER INTAKE → Budget Year” (turnover) and Section 4 “PROJECT LAUNCH → Budget Year” (count).'],
- ['Plan by <month>','The annual target spread across the months — where the site should be by the reporting month. Not a forecast: it is the commitment, phased.','Section 4 “Budget YTD [CUMUL Number]”.'],
- ['Launched so far','Projects actually launched since 1 January, and the turnover they carry. A project counts only if its real launch date is on or before the reporting month.','Counted row by row from the VS / OES Current Portfolio and TTM Launch tables — the right-hand “Real” date and the Turnover (k€) column.'],
- ['Ahead / behind plan','Launched so far minus Plan by month. Positive means the site is running ahead of its phased commitment, negative means it is behind.','Same as the sheet’s “Launch Delay Number” column, which is exactly Real Launches − Budget YTD.'],
+ ['Budget Year','What the site committed at the start of the year: the projects to launch by year-end and the turnover they bring, in M€. Unchanged all year, so everything else is measured against it. Shown as launched / committed.','Section 3 “ORDER INTAKE → Budget Year” (M€) and Section 4 “PROJECT LAUNCH → Budget Year” (project count).'],
+ ['Budget YTD','The same yearly commitment phased across the months — where the site should stand by the reporting month. Shown as launched / due by now, so the gap is visible without a second figure.','Section 4 “Budget YTD [CUMUL Number]” for the count; for M€, the projects whose planned launch date falls on or before the reporting month.'],
+ ['Real Launches','Projects actually launched since 1 January. A project counts only if its real launch date is on or before the reporting month.','Counted row by row from the VS / OES Current Portfolio and TTM Launch tables — the right-hand “Real” date column.'],
+ ['Launch Done (L.S sent)','The turnover carried by those launched projects, in M€.','The Turnover (k€) column of the same detail rows, converted to M€.'],
+ ['Launch Delay Number','Real Launches minus Budget YTD. Positive means the site is running ahead of its phased commitment, negative means it is behind. Shown as a coloured chip next to Budget YTD.','The sheet’s own “Launch Delay Number” column carries exactly this figure.'],
+ ['Current Portfolio','Projects planned to launch this year, launched or not — the work already in the book.','Counted from the VS / OES Current Portfolio and TTM Launch tables (all rows, regardless of launch date).'],
  ['Sites reported','How many of the 48 sites have a sheet with data in this period. A low number means the picture is incomplete, not that performance is bad.','Sheet presence per site in the selected month’s spreadsheet.'],
- ['Signed portfolio','Projects whose commercial agreement is signed and that are planned to launch this year — work already secured, launched or not.','Section 3 “Current Portfolio (C.A signed)”.'],
  ['NEW / REMAN','NEW covers new product projects. REMAN covers remanufacturing — used parts restored and sold again. They are reported separately.','Column pair repeated across Sections 3 and 4.'],
  ['P1 / P10 / TTM','P1 = projects with development work. P10 (written PCO in some sheets) = projects without development. TTM = an OEM product taken straight to the aftermarket.','Row labels in Section 4; the “Type” column in the detail tables.'],
  ['VS / OES','VS = Valeo Service customers. OES = the OEM’s service arm. Both axes add up to the same total, from different angles.','Row labels in Sections 3 and 4; block names in the detail tables.']
@@ -82,10 +84,11 @@ function siteMetrics(site){
 }
 function sumMetrics(list){
   var acc={budgetCount:0,budgetYTD:0,budgetTurnover:0,realCount:0,realTurnoverM:0,
-           planTurnoverM:0,portfolioTurnoverM:0,behind:0,reported:0};
+           planTurnoverM:0,portfolioTurnoverM:0,portfolioCount:0,behind:0,reported:0};
   list.forEach(function(s){
     var m=siteMetrics(s);
-    ['budgetCount','budgetYTD','budgetTurnover','realCount','realTurnoverM','planTurnoverM','portfolioTurnoverM']
+    ['budgetCount','budgetYTD','budgetTurnover','realCount','realTurnoverM','planTurnoverM',
+     'portfolioTurnoverM','portfolioCount']
       .forEach(function(k){ if(m[k]!=null) acc[k]+=m[k]; });
     if(m.delta!=null&&m.delta<0) acc.behind++;
     if(s.status!=='no-data') acc.reported++;
@@ -114,7 +117,7 @@ function donut(pctCount, pctMoney){
   var R1=52,R2=36,C1=2*Math.PI*R1,C2=2*Math.PI*R2;
   var a=clamp01((pctCount||0)/100)*C1, b=clamp01((pctMoney||0)/100)*C2;
   return '<svg viewBox="0 0 130 130" width="132" height="132" role="img" '+
-    'aria-label="'+(pctCount||0)+'% of projects and '+(pctMoney||0)+'% of turnover delivered">'+
+    'aria-label="'+(pctCount||0)+'% of Budget Year projects, '+(pctMoney||0)+'% of Budget Year turnover">'+
     '<g transform="rotate(-90 65 65)" fill="none" stroke-linecap="round">'+
       '<circle cx="65" cy="65" r="'+R1+'" stroke="var(--track)" stroke-width="11"/>'+
       '<circle cx="65" cy="65" r="'+R1+'" stroke="var(--valeo-mid)" stroke-width="11" '+
@@ -126,7 +129,7 @@ function donut(pctCount, pctMoney){
     '<text x="65" y="63" text-anchor="middle" font-size="25" font-weight="700" '+
       'fill="var(--text)" font-family="Inter,sans-serif">'+(pctCount==null?'—':pctCount+'%')+'</text>'+
     '<text x="65" y="80" text-anchor="middle" font-size="10.5" fill="var(--text-mute)" '+
-      'font-family="Inter,sans-serif" letter-spacing=".06em">OF TARGET</text>'+
+      'font-family="Inter,sans-serif" letter-spacing=".06em">BUDGET YEAR</text>'+
   '</svg>';
 }
 function sparkline(vals, target){
@@ -177,27 +180,37 @@ function crumb(parts){
     };
   });
 }
-function kpi(label, value, unit, sub, cls, gloss){
+function kpi(label, value, unit, sub, cls, gloss, chip){
   return '<div class="kpi'+(cls?' '+cls:'')+'">'+
     '<div class="kpi-head"><span class="kpi-label">'+esc(label)+'</span>'+
       (gloss?'<button class="kpi-info" type="button" data-gloss="'+esc(gloss)+'" '+
-             'aria-label="What is '+esc(label)+'?">ⓘ</button>':'')+'</div>'+
+             'aria-label="What is '+esc(label)+'?">ⓘ</button>':'')+
+      (chip?'<span class="spacer-x"></span>'+chip:'')+'</div>'+
     '<div class="kpi-value">'+value+(unit?'<span class="unit">'+esc(unit)+'</span>':'')+'</div>'+
     '<div class="kpi-sub">'+sub+'</div></div>';
 }
+/* Butun etiketler sayfanin kendi terminolojisi. "Gerceklesen / plan" ayri kart
+   degil, ayni kartta kesir olarak gosterilir; ciro her yerde M€. */
 function kpiRow(a){
-  var pctC=pct(a.realCount,a.budgetCount), pctM=pct(a.realTurnoverM,a.budgetTurnover);
   var ahead=(a.delta>=0);
+  var chip='<span class="pill '+(ahead?'good':'bad')+'" title="Launch Delay Number">'+signed(a.delta)+'</span>';
+  var ytdMoney=(a.planTurnoverM>0)
+      ? m2(a.realTurnoverM)+' / '+m2(a.planTurnoverM)
+      : m2(a.realTurnoverM)+' / —';
   return '<div class="kpis">'+
-    kpi('Annual target', nf(a.budgetCount), 'projects', money(a.budgetTurnover)+' committed', '', 'Annual target')+
-    kpi('Plan by '+monthName(), nf(a.budgetYTD), 'projects', 'where we should be now', '', 'Plan by <month>')+
-    kpi('Launched so far', nf(a.realCount), 'projects',
-        money(a.realTurnoverM)+(pctC!=null?' · '+pctC+'% of target':''), '', 'Launched so far')+
-    kpi(ahead?'Ahead of plan':'Behind plan', signed(a.delta), 'projects',
-        a.behind?a.behind+' site'+(a.behind>1?'s':'')+' behind':'no site behind',
-        ahead?'good':'bad', 'Ahead / behind plan')+
+    kpi('Budget Year',
+        m2(a.realTurnoverM)+' / '+m2(a.budgetTurnover), 'M€',
+        nf(a.realCount)+' / '+nf(a.budgetCount)+' projects', '', 'Budget Year')+
+    kpi('Budget YTD',
+        ytdMoney, 'M€',
+        nf(a.realCount)+' / '+nf(a.budgetYTD)+' projects',
+        ahead?'good':'bad', 'Budget YTD', chip)+
+    kpi('Current Portfolio',
+        m2(a.portfolioTurnoverM), 'M€',
+        nf(a.portfolioCount)+' projects in the book', '', 'Current Portfolio')+
     kpi('Sites reported', a.reported+'<span class="unit">/ '+BOOT.siteCount+'</span>', '',
-        (pctM!=null?pctM+'% of budgeted turnover':'&nbsp;'), '', 'Sites reported')+
+        (a.behind?a.behind+' site'+(a.behind>1?'s':'')+' behind Budget YTD':'no site behind Budget YTD'),
+        '', 'Sites reported')+
   '</div>';
 }
 
@@ -215,18 +228,19 @@ function renderRoLevel(){
   rows.sort(function(x,y){ return (x.a.delta||0)-(y.a.delta||0); });   // worst first
 
   var html=kpiRow(sumMetrics(all));
-  html+='<div class="section-title">By RO — bar shows launched, marker shows plan</div><div class="rolist">';
+  html+='<div class="section-title">By RO — bar shows Real Launches, marker shows Budget YTD</div><div class="rolist">';
   rows.forEach(function(r){
     var a=r.a, ahead=(a.delta>=0);
     html+='<button class="ro-row" type="button" data-ro="'+r.ro+'">'+
       '<span class="ro-id"><span class="ro-code">'+esc(r.ro)+'</span>'+
         '<span class="ro-name">'+esc(BOOT.roLabels[r.ro]||'')+' · '+r.list.length+' sites</span></span>'+
       '<span class="bar-wrap">'+bulletBar(a.realCount,a.budgetYTD,max)+
-        '<span class="bar-figs"><span><b>'+nf(a.realCount)+'</b> launched</span>'+
-        '<span>plan <b>'+nf(a.budgetYTD)+'</b></span>'+
-        '<span>target <b>'+nf(a.budgetCount)+'</b></span></span></span>'+
+        '<span class="bar-figs"><span>Real Launches <b>'+nf(a.realCount)+'</b></span>'+
+        '<span>Budget YTD <b>'+nf(a.budgetYTD)+'</b></span>'+
+        '<span>Budget Year <b>'+nf(a.budgetCount)+'</b></span></span></span>'+
       '<span class="ro-metrics">'+
-        '<span class="metric"><span class="m-v">'+money(a.realTurnoverM)+'</span><span class="m-l">turnover</span></span>'+
+        '<span class="metric"><span class="m-v">'+m2(a.realTurnoverM)+' / '+m2(a.budgetTurnover)+
+          '</span><span class="m-l">M€ launch done / budget</span></span>'+
         '<span class="pill '+(ahead?'good':'bad')+'">'+signed(a.delta)+'</span>'+
       '</span>'+
       '<span class="chev" aria-hidden="true">›</span>'+
@@ -249,20 +263,21 @@ function renderSitesLevel(){
     return av-bv;
   });
   var html=kpiRow(sumMetrics(list));
-  html+='<div class="section-title">Sites — furthest behind first</div>';
+  html+='<div class="section-title">Sites — furthest behind Budget YTD first</div>';
   html+='<div class="tablewrap"><table><thead><tr>'+
-    '<th>Site</th><th class="num">Target</th><th class="num">Plan</th>'+
-    '<th class="num">Launched</th><th class="num">vs plan</th><th class="num">Turnover</th><th>Status</th>'+
+    '<th>Site</th><th class="num">Budget Year</th><th class="num">Budget YTD</th>'+
+    '<th class="num">Real Launches</th><th class="num">Launch Delay</th>'+
+    '<th class="num">Launch Done (M€)</th><th>Status</th>'+
     '</tr></thead><tbody>';
   rows.forEach(function(r){
     html+='<tr data-i="'+r.i+'">'+
       '<td class="site-name" data-label="Site">'+esc(r.s.site)+'</td>'+
-      '<td class="num" data-label="Target">'+nf(r.m.budgetCount)+'</td>'+
-      '<td class="num" data-label="Plan">'+nf(r.m.budgetYTD)+'</td>'+
-      '<td class="num" data-label="Launched">'+nf(r.m.realCount)+'</td>'+
-      '<td class="num" data-label="vs plan"><span class="pill '+
+      '<td class="num" data-label="Budget Year">'+nf(r.m.budgetCount)+'</td>'+
+      '<td class="num" data-label="Budget YTD">'+nf(r.m.budgetYTD)+'</td>'+
+      '<td class="num" data-label="Real Launches">'+nf(r.m.realCount)+'</td>'+
+      '<td class="num" data-label="Launch Delay"><span class="pill '+
         (r.m.delta==null?'mute':(r.m.delta<0?'bad':'good'))+'">'+signed(r.m.delta)+'</span></td>'+
-      '<td class="num" data-label="Turnover">'+money(r.m.realTurnoverM)+'</td>'+
+      '<td class="num" data-label="Launch Done (M€)">'+m2(r.m.realTurnoverM)+'</td>'+
       '<td data-label="Status">'+statusPill(r.s.status)+'</td></tr>';
   });
   html+='</tbody></table></div>'+noticeBlock();
@@ -307,8 +322,8 @@ function renderSiteLevel(){
     (m.delta==null?'<b>not reporting</b> this period'
       :'<b class="'+(ahead?'up':'down')+'">'+Math.abs(m.delta)+' project'+(Math.abs(m.delta)===1?'':'s')+' '+
        (ahead?'ahead of':'behind')+'</b> plan')+
-    ' — <b>'+nf(m.realCount)+'</b> of '+nf(m.budgetCount)+' launched, '+
-    '<b>'+money(m.realTurnoverM)+'</b> of '+money(m.budgetTurnover)+'.</div>';
+    ' — Real Launches <b>'+nf(m.realCount)+'</b> of Budget Year '+nf(m.budgetCount)+', '+
+    'Launch Done <b>'+money(m.realTurnoverM)+'</b> of '+money(m.budgetTurnover)+'.</div>';
 
   /* 2 — progress + 3 type breakdown */
   var maxT=0;
@@ -336,9 +351,9 @@ function renderSiteLevel(){
   var f1=m.budgetTurnover||0, f2=m.portfolioTurnoverM||0, f3=m.realTurnoverM||0;
   var fmax=Math.max(f1,f2,f3)||1;
   var funnel='<div class="funnel">'+
-    fnRow('Annual target',f1,fmax,'')+
-    fnRow('In portfolio',f2,fmax,'b2')+
-    fnRow('Launched',f3,fmax,'b3')+'</div>';
+    fnRow('Budget Year',f1,fmax,'')+
+    fnRow('Current Portfolio',f2,fmax,'b2')+
+    fnRow('Launch Done',f3,fmax,'b3')+'</div>';
 
   /* 6 — indicators */
   var ind=s.indicators||{}, indHtml='';
@@ -355,38 +370,38 @@ function renderSiteLevel(){
   });
 
   var html=head+'<div class="panels">'+
-    '<div class="panel"><h3>Progress against annual target</h3><div class="donut-row">'+
+    '<div class="panel"><h3>Against Budget Year</h3><div class="donut-row">'+
       donut(pctC,pctM)+
       '<div class="donut-legend">'+
         '<span class="lg-item"><span class="lg-dot" style="background:var(--valeo-mid)"></span>'+
-          'Projects <span class="lg-val">'+nf(m.realCount)+' / '+nf(m.budgetCount)+'</span></span>'+
+          'Real Launches <span class="lg-val">'+nf(m.realCount)+' / '+nf(m.budgetCount)+'</span></span>'+
         '<span class="lg-item"><span class="lg-dot" style="background:var(--good-line)"></span>'+
-          'Turnover <span class="lg-val">'+money(m.realTurnoverM)+'</span></span>'+
+          'Launch Done <span class="lg-val">'+m2(m.realTurnoverM)+' / '+m2(m.budgetTurnover)+' M€</span></span>'+
         '<span class="lg-item"><span class="lg-dot" style="background:var(--track)"></span>'+
-          'Plan by '+monthName()+' <span class="lg-val">'+nf(m.budgetYTD)+'</span></span>'+
+          'Budget YTD <span class="lg-val">'+nf(m.budgetYTD)+'</span></span>'+
       '</div></div></div>'+
-    '<div class="panel"><h3>By project type — launched of portfolio</h3><div class="brk">'+brk+'</div></div>'+
-    '<div class="panel"><h3>By customer — launched turnover</h3>'+stack+'</div>'+
-    '<div class="panel"><h3>From target to launched</h3>'+funnel+'</div>'+
+    '<div class="panel"><h3>By project type — Real Launches / Current Portfolio</h3><div class="brk">'+brk+'</div></div>'+
+    '<div class="panel"><h3>By customer — Launch Done (M€)</h3>'+stack+'</div>'+
+    '<div class="panel"><h3>Budget Year → Current Portfolio → Launch Done</h3>'+funnel+'</div>'+
     (indHtml?'<div class="panel" style="grid-column:1/-1"><h3>Indicators — last months</h3>'+indHtml+'</div>':'')+
   '</div>';
 
   html+='<details class="raw"><summary>Show raw numbers</summary>'+
-    '<div class="tablewrap"><table><thead><tr><th>Breakdown</th><th class="num">Portfolio</th>'+
-    '<th class="num">Launched</th><th class="num">Turnover</th></tr></thead><tbody>';
+    '<div class="tablewrap"><table><thead><tr><th>Breakdown</th><th class="num">Current Portfolio</th>'+
+    '<th class="num">Real Launches</th><th class="num">Launch Done (M€)</th></tr></thead><tbody>';
   ['P1','P10','TTM'].forEach(function(t){
     var a=typeTotals(s,t);
     html+='<tr><td data-label="Breakdown">Project type '+t+'</td>'+
-      '<td class="num" data-label="Portfolio">'+nf(a.count)+'</td>'+
-      '<td class="num" data-label="Launched">'+nf(a.ytdCount)+'</td>'+
-      '<td class="num" data-label="Turnover">'+money(a.ytdTurnover/1000)+'</td></tr>';
+      '<td class="num" data-label="Current Portfolio">'+nf(a.count)+'</td>'+
+      '<td class="num" data-label="Real Launches">'+nf(a.ytdCount)+'</td>'+
+      '<td class="num" data-label="Launch Done (M€)">'+m2(a.ytdTurnover/1000)+'</td></tr>';
   });
   ['VS','OES'].forEach(function(c){
     var a=custTotals(s,c);
     html+='<tr><td data-label="Breakdown">Customer '+c+'</td>'+
-      '<td class="num" data-label="Portfolio">'+nf(a.count)+'</td>'+
-      '<td class="num" data-label="Launched">'+nf(a.ytdCount)+'</td>'+
-      '<td class="num" data-label="Turnover">'+money(a.ytdTurnover/1000)+'</td></tr>';
+      '<td class="num" data-label="Current Portfolio">'+nf(a.count)+'</td>'+
+      '<td class="num" data-label="Real Launches">'+nf(a.ytdCount)+'</td>'+
+      '<td class="num" data-label="Launch Done (M€)">'+m2(a.ytdTurnover/1000)+'</td></tr>';
   });
   html+='</tbody></table></div></details>';
 
@@ -408,8 +423,8 @@ function fnRow(label,val,max,cls){
 function noticeBlock(){
   var out='';
   if(F.customer!=='ALL'&&F.type!=='ALL')
-    out+='<div class="notice">Target and plan figures come from the customer row: the source sheet does not '+
-         'cross project type with customer (they are two separate row axes). Launched figures are crossed.</div>';
+    out+='<div class="notice">Budget Year and Budget YTD come from the customer row: the source sheet does '+
+         'not cross project type with customer (they are two separate row axes). Real Launches are crossed.</div>';
   var miss=(DATA.missingSites||[]).length, unk=(DATA.unknownSheets||[]).length;
   if(miss||unk)
     out+='<div class="notice">'+
