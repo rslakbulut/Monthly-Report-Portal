@@ -5,7 +5,7 @@
 
 var BOOT=null, DATA=null;
 var F={status:'NEW',type:'ALL',customer:'ALL'};
-var NAV={level:'ro',ro:null,siteIdx:null};
+var NAV={level:'ro',expandedRo:null,ro:null,siteIdx:null};   // 'ro' | 'site'; expandedRo = acik accordion
 
 /* ---------- helpers ---------- */
 function $(id){ return document.getElementById(id); }
@@ -13,8 +13,9 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function nf(n,d){ return (n==null||isNaN(n))?'—':Number(n).toLocaleString('en-US',
   {minimumFractionDigits:d||0,maximumFractionDigits:d||0}); }
-function money(m){ return m==null?'—':nf(m,2)+' M€'; }
-function m2(m){ return m==null?'—':nf(m,2); }   // birimsiz, kesirde kullanilir
+function money(m){ return m==null?'—':nf(m,1)+' M€'; }   // tek hane yuvarlama (kullanici karari)
+function m2(m){ return m==null?'—':nf(m,1); }   // birimsiz, tek hane, kesirde kullanilir
+function moneyTag(v){ return v==null?'—':'<b>'+nf(v,1)+'</b><span class="cur">M€</span>'; }
 function signed(n){ return n==null?'—':(n>0?'+':'')+nf(n,0); }
 function pct(a,b){ return (b&&b>0)?Math.round(a/b*100):null; }
 function clamp01(x){ return Math.max(0,Math.min(1,x)); }
@@ -165,7 +166,6 @@ function render(){
   if(DATA.error){ $('view').innerHTML='<div class="notice err">'+esc(DATA.error)+'</div>'; return; }
   buildStatusSeg();
   if(NAV.level==='ro') renderRoLevel();
-  else if(NAV.level==='sites') renderSitesLevel();
   else renderSiteLevel();
   if(window.innerWidth<=768)
     document.querySelectorAll('table').forEach(function(t){ t.classList.add('m-cards'); });
@@ -176,14 +176,11 @@ function render(){
 function crumb(parts){
   $('crumb').innerHTML=parts.map(function(p,i){
     var sep=(i<parts.length-1)?'<span class="sep" aria-hidden="true">›</span>':'';
-    return (p.go?'<button type="button" data-go="'+p.go+'">'+esc(p.t)+'</button>':'<b>'+esc(p.t)+'</b>')+sep;
+    return (p.action?'<button type="button" data-ci="'+i+'">'+esc(p.t)+'</button>':'<b>'+esc(p.t)+'</b>')+sep;
   }).join('');
   $('crumb').querySelectorAll('button').forEach(function(b){
-    b.onclick=function(){
-      var g=b.getAttribute('data-go');
-      if(g==='ro') NAV={level:'ro',ro:null,siteIdx:null}; else { NAV.level='sites'; NAV.siteIdx=null; }
-      render();
-    };
+    var i=parseInt(b.getAttribute('data-ci'),10);
+    b.onclick=function(){ parts[i].action(); render(); };
   });
 }
 function kpi(label, value, unit, sub, cls, gloss, chip){
@@ -196,28 +193,27 @@ function kpi(label, value, unit, sub, cls, gloss, chip){
     '<div class="kpi-sub">'+sub+'</div></div>';
 }
 /* Butun etiketler sayfanin kendi terminolojisi.
-   Budget Year sabit bir hedeftir (yil basinda belirlenir) — burada karsilastirma
-   YAPILMAZ, tek bir deger olarak gosterilir. Karsilastirma yalniz Budget YTD
-   kartinda ve orada da "realized" / "plan" AYRI AYRI etiketlenir, cift anlami
-   olan bir "X / Y" kesri kullanilmaz. */
+   Budget Year sabit bir hedeftir (yil basinda belirlenir) — tek deger, kiyas YOK.
+   Budget YTD karti "X budget / Y launched" olarak hem ciro hem adet icin ayni
+   kalipla, cift anlami olmayan sekilde yazilir (kullanici karari). Current
+   Portfolio karti kaldirildi — kullanici "ne oldugu anlasilmiyor" dedi; ayni
+   bilgi site detayindaki huni diyagraminda zaten baglaminda duruyor. */
 function kpiRow(a){
   var ahead=(a.delta>=0);
   var chip='<span class="pill '+(ahead?'good':'bad')+'" title="Launch Delay Number = Real Launches − Budget YTD">'+
     signed(a.delta)+'</span>';
   var planKnown=a.planTurnoverM>0;
+  var ytdMoney=(planKnown?moneyTag(a.planTurnoverM)+' budget / ':'n/a budget / ')+moneyTag(a.realTurnoverM)+' launched';
 
   return '<div class="kpis">'+
-    kpi('Budget Year',
-        m2(a.budgetTurnover), 'M€ committed',
-        nf(a.budgetCount)+' projects committed for the year', '', 'Budget Year')+
-    kpi('Budget YTD',
-        m2(a.realTurnoverM), 'M€ realized',
-        'Budget YTD (plan): '+(planKnown?m2(a.planTurnoverM)+' M€ · ':'')+
-          nf(a.realCount)+' of '+nf(a.budgetYTD)+' projects',
-        ahead?'good':'bad', 'Budget YTD', chip)+
-    kpi('Current Portfolio',
-        m2(a.portfolioTurnoverM), 'M€ booked',
-        nf(a.portfolioCount)+' projects booked this year — launched or not', '', 'Current Portfolio')+
+    kpi('Budget Year', moneyTag(a.budgetTurnover), '', nf(a.budgetCount)+' projects', '', 'Budget Year')+
+    '<div class="kpi">'+
+      '<div class="kpi-head"><span class="kpi-label">Budget YTD</span>'+
+        '<button class="kpi-info" type="button" data-gloss="Budget YTD" aria-label="What is Budget YTD?">ⓘ</button>'+
+        '<span class="spacer-x"></span>'+chip+'</div>'+
+      '<div class="kpi-value kpi-phrase">'+ytdMoney+'</div>'+
+      '<div class="kpi-sub">'+nf(a.budgetYTD)+' budget / '+nf(a.realCount)+' launched</div>'+
+    '</div>'+
     kpi('Sites reported', a.reported+'<span class="unit">/ '+BOOT.siteCount+'</span>', '',
         (a.behind?a.behind+' site'+(a.behind>1?'s':'')+' behind Budget YTD':'no site behind Budget YTD'),
         '', 'Sites reported')+
@@ -225,59 +221,42 @@ function kpiRow(a){
 }
 
 /* ---------- level 1: RO comparison strip ---------- */
-function renderRoLevel(){
-  crumb([{t:'All ROs'}]);
-  var all=DATA.sites||[];
-  var rows=[];
-  BOOT.roOrder.forEach(function(ro){
-    var list=sitesOfRo(ro); if(!list.length) return;
-    rows.push({ro:ro,list:list,a:sumMetrics(list)});
-  });
-  var max=0;
-  rows.forEach(function(r){ max=Math.max(max,r.a.budgetCount||0,r.a.realCount||0); });
-  rows.sort(function(x,y){ return (x.a.delta||0)-(y.a.delta||0); });   // worst first
-
-  var html=kpiRow(sumMetrics(all));
-  html+='<div class="section-title">By RO — bar shows Real Launches, marker shows Budget YTD</div><div class="rolist">';
-  rows.forEach(function(r){
-    var a=r.a, ahead=(a.delta>=0);
-    html+='<button class="ro-row" type="button" data-ro="'+r.ro+'">'+
-      '<span class="ro-id"><span class="ro-code">'+esc(r.ro)+'</span>'+
-        '<span class="ro-name">'+esc(BOOT.roLabels[r.ro]||'')+' · '+r.list.length+' sites</span></span>'+
-      '<span class="bar-wrap">'+bulletBar(a.realCount,a.budgetYTD,max)+
-        '<span class="bar-figs"><span>Real Launches <b>'+nf(a.realCount)+'</b></span>'+
-        '<span>Budget YTD <b>'+nf(a.budgetYTD)+'</b></span>'+
-        '<span>Budget Year <b>'+nf(a.budgetCount)+'</b></span></span></span>'+
-      '<span class="ro-metrics">'+
-        '<span class="metric"><span class="m-v">'+m2(a.realTurnoverM)+' / '+m2(a.budgetTurnover)+
-          '</span><span class="m-l">M€ launch done / budget</span></span>'+
-        '<span class="pill '+(ahead?'good':'bad')+'">'+signed(a.delta)+'</span>'+
-      '</span>'+
-      '<span class="chev" aria-hidden="true">›</span>'+
-    '</button>';
-  });
-  html+='</div>'+noticeBlock();
-  $('view').innerHTML=html;
-  $('view').querySelectorAll('[data-ro]').forEach(function(b){
-    b.onclick=function(){ NAV={level:'sites',ro:b.getAttribute('data-ro'),siteIdx:null}; render(); };
-  });
+/**
+ * RO satirinin altini/ustunu ciziyor. Bar artik ADET degil CIRO tabanli:
+ * dolu kisim = Launch Done (M€), isaret = Budget YTD (M€), tam skala = en
+ * buyuk RO'nun Budget Year cirosu. Sag taraftaki "X / Y" cirosu artik
+ * Budget Year yerine Budget YTD ile eslesiyor — delta cipiyle ayni eksende.
+ */
+function roRowHtml(r,moneyMax){
+  var a=r.a, ahead=(a.delta>=0), open=(NAV.expandedRo===r.ro);
+  return '<button class="ro-row'+(open?' open':'')+'" type="button" data-ro="'+r.ro+'" '+
+    'aria-expanded="'+open+'">'+
+    '<span class="ro-id"><span class="ro-code">'+esc(r.ro)+'</span>'+
+      '<span class="ro-name">'+esc(BOOT.roLabels[r.ro]||'')+' · '+r.list.length+' sites</span></span>'+
+    '<span class="bar-wrap">'+bulletBar(a.realTurnoverM,a.planTurnoverM>0?a.planTurnoverM:null,moneyMax)+
+      '<span class="bar-figs"><span>Launch Done '+moneyTag(a.realTurnoverM)+'</span>'+
+      '<span>Budget YTD '+moneyTag(a.planTurnoverM)+'</span>'+
+      '<span>Budget Year '+moneyTag(a.budgetTurnover)+'</span></span></span>'+
+    '<span class="ro-metrics">'+
+      '<span class="metric"><span class="m-v">'+m2(a.realTurnoverM)+' / '+m2(a.planTurnoverM)+
+        '</span><span class="m-l">M€ launched / Budget YTD</span></span>'+
+      '<span class="pill '+(ahead?'good':'bad')+'" title="Launch Delay Number">'+signed(a.delta)+'</span>'+
+    '</span>'+
+    '<span class="chev" aria-hidden="true">›</span>'+
+  '</button>';
 }
 
-/* ---------- level 2: sites of one RO ---------- */
-function renderSitesLevel(){
-  crumb([{t:'All ROs',go:'ro'},{t:NAV.ro+' — '+(BOOT.roLabels[NAV.ro]||'')}]);
-  var list=sitesOfRo(NAV.ro);
+/** Bir RO'nun site tablosu — accordion'da RO satirinin hemen altina gomuluyor. */
+function siteTableHtml(list){
   var rows=list.map(function(s,i){ return {s:s,m:siteMetrics(s),i:i}; });
   rows.sort(function(a,b){
     var av=(a.m.delta==null?9999:a.m.delta), bv=(b.m.delta==null?9999:b.m.delta);
-    return av-bv;
+    return av-bv;   // furthest behind first
   });
-  var html=kpiRow(sumMetrics(list));
-  html+='<div class="section-title">Sites — furthest behind Budget YTD first</div>';
-  html+='<div class="tablewrap"><table><thead><tr>'+
+  var html='<div class="ro-expand"><div class="tablewrap"><table><thead><tr>'+
     '<th>Site</th><th class="num">Budget Year</th><th class="num">Budget YTD</th>'+
     '<th class="num">Real Launches</th><th class="num">Launch Delay</th>'+
-    '<th class="num">Launch Done (M€)</th><th>Status</th>'+
+    '<th class="num">Launch Done</th><th>Status</th>'+
     '</tr></thead><tbody>';
   rows.forEach(function(r){
     html+='<tr data-i="'+r.i+'">'+
@@ -287,15 +266,50 @@ function renderSitesLevel(){
       '<td class="num" data-label="Real Launches">'+nf(r.m.realCount)+'</td>'+
       '<td class="num" data-label="Launch Delay"><span class="pill '+
         (r.m.delta==null?'mute':(r.m.delta<0?'bad':'good'))+'">'+signed(r.m.delta)+'</span></td>'+
-      '<td class="num" data-label="Launch Done (M€)">'+m2(r.m.realTurnoverM)+'</td>'+
+      '<td class="num" data-label="Launch Done">'+money(r.m.realTurnoverM)+'</td>'+
       '<td data-label="Status">'+statusPill(r.s.status)+'</td></tr>';
   });
-  html+='</tbody></table></div>'+noticeBlock();
+  html+='</tbody></table></div></div>';
+  return html;
+}
+
+function renderRoLevel(){
+  crumb([{t:'All ROs'}]);
+  var all=DATA.sites||[];
+  var rows=[];
+  BOOT.roOrder.forEach(function(ro){
+    var list=sitesOfRo(ro); if(!list.length) return;
+    rows.push({ro:ro,list:list,a:sumMetrics(list)});
+  });
+  var moneyMax=0;
+  rows.forEach(function(r){ moneyMax=Math.max(moneyMax,r.a.budgetTurnover||0); });
+  rows.sort(function(x,y){ return (x.a.delta||0)-(y.a.delta||0); });   // worst first
+
+  var html=kpiRow(sumMetrics(all));
+  html+='<div class="section-title">By RO — bar shows Launch Done vs Budget Year, marker shows Budget YTD. '+
+        'Click a row to see its sites.</div><div class="rolist">';
+  rows.forEach(function(r){
+    html+=roRowHtml(r,moneyMax);
+    if(NAV.expandedRo===r.ro) html+=siteTableHtml(r.list);
+  });
+  html+='</div>'+noticeBlock();
   $('view').innerHTML=html;
+  $('view').querySelectorAll('.ro-row[data-ro]').forEach(function(b){
+    b.onclick=function(){
+      var ro=b.getAttribute('data-ro');
+      NAV.expandedRo=(NAV.expandedRo===ro?null:ro);   // ikinci tiklama kapatir
+      render();
+    };
+  });
   $('view').querySelectorAll('tr[data-i]').forEach(function(tr){
-    tr.onclick=function(){ NAV.level='site'; NAV.siteIdx=parseInt(tr.getAttribute('data-i'),10); render(); };
+    tr.onclick=function(){
+      NAV.level='site'; NAV.ro=NAV.expandedRo; NAV.siteIdx=parseInt(tr.getAttribute('data-i'),10);
+      render();
+    };
   });
 }
+
+/* status pill re-used by the accordion's site table and the site-detail level */
 function statusPill(st){
   if(st==='ok') return '<span class="pill good">on track</span>';
   if(st==='behind-schedule') return '<span class="pill warn">reported late</span>';
@@ -323,7 +337,11 @@ function custTotals(s,c){
 function renderSiteLevel(){
   var list=sitesOfRo(NAV.ro), s=list[NAV.siteIdx];
   if(!s){ NAV.level='sites'; return render(); }
-  crumb([{t:'All ROs',go:'ro'},{t:NAV.ro,go:'sites'},{t:s.site}]);
+  crumb([
+    {t:'All ROs', action:function(){ NAV.level='ro'; }},                       // expandedRo dokunulmuyor, RO acik kalir
+    {t:NAV.ro+' — '+(BOOT.roLabels[NAV.ro]||''), action:function(){ NAV.level='ro'; NAV.expandedRo=NAV.ro; }},
+    {t:s.site}
+  ]);
   var m=siteMetrics(s);
   var ahead=(m.delta>=0), pctC=pct(m.realCount,m.budgetCount), pctM=pct(m.realTurnoverM,m.budgetTurnover);
 
