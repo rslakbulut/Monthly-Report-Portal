@@ -12,7 +12,7 @@ function parseIndicators_(grid, warnings) {
   for (var r = anchor.row; r < Math.min(anchor.row + 5, grid.length); r++) {
     if (findIn_(grid[r], 'TARGET') >= 0) { headerRow = r; break; }   // "TARGET 2026" / "TARGET 2024"
   }
-  if (headerRow < 0) { warnings.push('Bolum 1: TARGET sutunu bulunamadi'); return out; }
+  if (headerRow < 0) { warnings.push('Section 1: TARGET column not found'); return out; }
 
   var groups = mapHeaderGroups_(grid[headerRow], 0);
   var gTarget = pickGroup_(groups, 'TARGET');
@@ -31,7 +31,7 @@ function parseIndicators_(grid, warnings) {
       return { label: tc.label, value: n.ok ? n.value : null };
     });
     out[pair[1]] = {
-      target: gTarget ? cell_(grid, row, gTarget.start, warnings, 'B1 ' + pair[0] + ' target') : null,
+      target: gTarget ? cell_(grid, row, gTarget.start, warnings, 'S1 ' + pair[0] + ' target') : null,
       trail: trail
     };
   });
@@ -49,8 +49,8 @@ function parseSiteSheet_(sheet, reg, sheetMonth, reportYear) {
   try {
     grid = sheet.getDataRange().getValues();
   } catch (e) {
-    return { ro: reg.ro, site: reg.site, sheet: sheet.getName(), status: 'okunamadi',
-             warnings: ['Sayfa okunamadi: ' + e.message] };
+    return { ro: reg.ro, site: reg.site, sheet: sheet.getName(), status: 'unreadable',
+             warnings: ['Sheet could not be read: ' + e.message] };
   }
 
   var month = sheetMonth || reportPeriod_(grid, reportYear);
@@ -104,15 +104,15 @@ function parseSiteSheet_(sheet, reg, sheetMonth, reportYear) {
     var sheetVal = launch.crossCheck[t] ? launch.crossCheck[t].NEW : null;
     if (sheetVal === null || sheetVal === undefined) return;
     if (Math.round(sheetVal) !== Math.round(ytdByType[t])) {
-      mismatch.push(t + ': sayfa ' + sheetVal + ' / detay ' + ytdByType[t]);
+      mismatch.push(t + ': sheet ' + sheetVal + ' / detail ' + ytdByType[t]);
     }
   });
 
   var hasAnyData = detail.total.count > 0 ||
                    (launch.budgetYear.TOTAL && launch.budgetYear.TOTAL.NEW);
   var status = 'ok';
-  if (!hasAnyData) status = 'veri-yok';
-  else if (mismatch.length) status = 'veri-tutarsiz';
+  if (!hasAnyData) status = 'no-data';
+  else if (mismatch.length) status = 'inconsistent';
 
   return {
     ro: reg.ro, site: reg.site, sheet: sheet.getName(),

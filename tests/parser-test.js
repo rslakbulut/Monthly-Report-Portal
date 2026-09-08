@@ -169,7 +169,7 @@ eq(SITE_REGISTRY.length, 48, 'kayit defterinde 48 site');
 console.log('\n7) Dayaniklilik');
 eq(readNumber_('#REF!').ok, false, '#REF! sayi olarak okunmaz');
 eq(readNumber_('#DIV/0!').ok, false, '#DIV/0! sayi olarak okunmaz');
-eq(readNumber_('').reason, 'bos', 'bos hucre != 0');
+eq(readNumber_('').reason, 'empty', 'bos hucre != 0');
 eq(readNumber_(0).value, 0, 'gercek 0 okunur');
 eq(readNumber_('€ 1.234,56').value, 1234.56, 'TR bicimli para');
 eq(readNumber_('1,234.56').value, 1234.56, 'EN bicimli para');

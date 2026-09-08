@@ -45,31 +45,31 @@ function addMeasure_(target, src) {
 function parseOrderIntakeBudget_(grid, warnings) {
   var out = { TOTAL: {}, VS: {}, OES: {} };
   var anchor = findCell_(grid, 'ORDER INTAKE', 0);
-  if (!anchor) { warnings.push('Bolum 3 (ORDER INTAKE) bulunamadi'); return out; }
+  if (!anchor) { warnings.push('Section 3 (ORDER INTAKE) not found'); return out; }
 
   // Baslik satiri capanin hemen altinda; grup adlari orada.
   var headerRow = -1;
   for (var r = anchor.row; r < Math.min(anchor.row + 6, grid.length); r++) {
     if (findIn_(grid[r], 'BUDGET YEAR') >= 0) { headerRow = r; break; }
   }
-  if (headerRow < 0) { warnings.push('Bolum 3 basligi (Budget Year) bulunamadi'); return out; }
+  if (headerRow < 0) { warnings.push('Section 3 header (Budget Year) not found'); return out; }
 
   var groups = mapHeaderGroups_(grid[headerRow], 0);
   var g = pickGroup_(groups, 'BUDGET YEAR');
-  if (!g) { warnings.push('Bolum 3: Budget Year sutun grubu yok'); return out; }
+  if (!g) { warnings.push('Section 3: Budget Year column group missing'); return out; }
 
   var cols = findNewRemanCols_(grid, headerRow + 1, g);
   if (cols.NEW === null && cols.REMAN === null) {
-    warnings.push('Bolum 3: NEW/REMAN alt sutunlari bulunamadi');
+    warnings.push('Section 3: NEW/REMAN sub-columns not found');
     return out;
   }
 
   ['TOTAL', 'VS', 'OES'].forEach(function (label) {
     var row = findRowByLabel_(grid, headerRow + 1, headerRow + 12, [label], 8);
-    if (row < 0) { warnings.push('Bolum 3: "' + label + '" satiri yok'); return; }
+    if (row < 0) { warnings.push('Section 3: row "' + label + '" missing'); return; }
     out[label] = {
-      NEW:   cols.NEW   === null ? null : cell_(grid, row, cols.NEW, warnings, 'B3 ' + label + ' NEW'),
-      REMAN: cols.REMAN === null ? null : cell_(grid, row, cols.REMAN, warnings, 'B3 ' + label + ' REMAN')
+      NEW:   cols.NEW   === null ? null : cell_(grid, row, cols.NEW, warnings, 'S3 ' + label + ' NEW'),
+      REMAN: cols.REMAN === null ? null : cell_(grid, row, cols.REMAN, warnings, 'S3 ' + label + ' REMAN')
     };
   });
   return out;
@@ -82,13 +82,13 @@ function parseOrderIntakeBudget_(grid, warnings) {
 function parseProjectLaunchBudget_(grid, warnings) {
   var out = { budgetYear: {}, budgetYTD: {}, crossCheck: {} };
   var anchor = findCell_(grid, 'PROJECT LAUNCH', 0);
-  if (!anchor) { warnings.push('Bolum 4 (PROJECT LAUNCH) bulunamadi'); return out; }
+  if (!anchor) { warnings.push('Section 4 (PROJECT LAUNCH) not found'); return out; }
 
   var headerRow = -1;
   for (var r = anchor.row; r < Math.min(anchor.row + 6, grid.length); r++) {
     if (findIn_(grid[r], 'BUDGET YTD') >= 0) { headerRow = r; break; }
   }
-  if (headerRow < 0) { warnings.push('Bolum 4 basligi (Budget YTD) bulunamadi'); return out; }
+  if (headerRow < 0) { warnings.push('Section 4 header (Budget YTD) not found'); return out; }
 
   var groups = mapHeaderGroups_(grid[headerRow], 0);
   var gBudget = pickGroup_(groups, 'BUDGET YEAR');
@@ -109,10 +109,10 @@ function parseProjectLaunchBudget_(grid, warnings) {
 
   labels.forEach(function (L) {
     var row = findRowByLabel_(grid, headerRow + 1, headerRow + 14, L.names, 8);
-    if (row < 0) { warnings.push('Bolum 4: "' + L.key + '" satiri yok'); return; }
-    out.budgetYear[L.key] = pair_(grid, row, cBudget, warnings, 'B4 ' + L.key + ' budget');
-    out.budgetYTD[L.key]  = pair_(grid, row, cYTD,    warnings, 'B4 ' + L.key + ' ytd');
-    out.crossCheck[L.key] = pair_(grid, row, cReal,   warnings, 'B4 ' + L.key + ' real');
+    if (row < 0) { warnings.push('Section 4: row "' + L.key + '" missing'); return; }
+    out.budgetYear[L.key] = pair_(grid, row, cBudget, warnings, 'S4 ' + L.key + ' budget');
+    out.budgetYTD[L.key]  = pair_(grid, row, cYTD,    warnings, 'S4 ' + L.key + ' ytd');
+    out.crossCheck[L.key] = pair_(grid, row, cReal,   warnings, 'S4 ' + L.key + ' real');
   });
   return out;
 }
@@ -129,7 +129,7 @@ function cell_(grid, row, col, warnings, ctx) {
   if (row < 0 || row >= grid.length || col < 0 || col >= grid[row].length) return null;
   var n = readNumber_(grid[row][col]);
   if (n.ok) return n.value;
-  if (n.reason !== 'bos') warnings.push(ctx + ': ' + n.reason);
+  if (n.reason !== 'empty') warnings.push(ctx + ': ' + n.reason);
   return null;
 }
 
@@ -159,14 +159,14 @@ function parseDetailBlock_(grid, startRow, spec, year, reportMonth, warnings) {
       headerRow = r; break;
     }
   }
-  if (headerRow < 0) { warnings.push(spec.match + ': tablo basligi bulunamadi'); return res; }
+  if (headerRow < 0) { warnings.push(spec.match + ': table header not found'); return res; }
 
   var groups = mapHeaderGroups_(grid[headerRow], 0);
   var gType = pickGroup_(groups, 'TYPE');
   var gDate = pickGroup_(groups, 'LAUNCH SHEET');
   var gTurn = pickGroup_(groups, 'TURNOVER');
-  if (!gDate) warnings.push(spec.match + ': Launch Sheet Date sutunu yok');
-  if (!gTurn) warnings.push(spec.match + ': Turnover sutunu yok');
+  if (!gDate) warnings.push(spec.match + ': Launch Sheet Date column missing');
+  if (!gTurn) warnings.push(spec.match + ': Turnover column missing');
 
   // Tarih alani 1 veya 2 hucre: iki ise sol=Plan, sag=Real; tek ise o=Real.
   var planCol = null, realCol = null;
@@ -195,7 +195,7 @@ function parseDetailBlock_(grid, startRow, spec, year, reportMonth, warnings) {
   }
   res.typeColFound = (typeCol !== null);
   if (!res.typeColFound && !spec.forcedType) {
-    warnings.push(spec.match + ': proje tipi (P1/P10/PCO) sutunu bulunamadi, tip kirilimi 0 sayildi');
+    warnings.push(spec.match + ': project type column (P1/P10/PCO) not found — type breakdown counted as 0');
   }
 
   for (var r2 = headerRow + 1; r2 <= endRow && r2 < grid.length; r2++) {
@@ -227,8 +227,8 @@ function parseDetailBlock_(grid, startRow, spec, year, reportMonth, warnings) {
     if (plan.ok && periodIndex_(plan.year, plan.month) <= reportMonth.index) {
       m.planYtdCount = 1; m.planYtdTurnover = turnover;
     }
-    if (realCol !== null && !real.ok && real.reason && real.reason.indexOf('cozulemedi') === 0) {
-      warnings.push(spec.match + ': tarih cozulemedi -> "' + real.raw + '"');
+    if (realCol !== null && !real.ok && real.reason && real.reason.indexOf('unparsed') === 0) {
+      warnings.push(spec.match + ': unparsed date -> "' + real.raw + '"');
     }
 
     addMeasure_(res.total, m);

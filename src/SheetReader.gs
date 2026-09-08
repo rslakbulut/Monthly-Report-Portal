@@ -28,18 +28,18 @@ function isErrorCell_(v) {
  *   Bos hucre ve 0 AYRI seylerdir: bos -> {ok:false, reason:'bos'}.
  */
 function readNumber_(v) {
-  if (v === null || v === undefined || v === '') return { ok: false, reason: 'bos' };
-  if (isErrorCell_(v)) return { ok: false, reason: 'formul hatasi: ' + v };
+  if (v === null || v === undefined || v === '') return { ok: false, reason: 'empty' };
+  if (isErrorCell_(v)) return { ok: false, reason: 'formula error: ' + v };
   if (typeof v === 'number') return { ok: true, value: v };
   var s = String(v).trim()
     .replace(/[€$\s]/g, '')
     .replace(/%$/, '');
-  if (s === '' || s === '-') return { ok: false, reason: 'bos' };
+  if (s === '' || s === '-') return { ok: false, reason: 'empty' };
   // "1.234,56" (TR) ve "1,234.56" (EN) ikisini de anla
   if (/,\d{1,2}$/.test(s) && s.indexOf('.') !== -1) s = s.replace(/\./g, '').replace(',', '.');
   else s = s.replace(/,/g, '');
   var n = parseFloat(s);
-  if (isNaN(n)) return { ok: false, reason: 'sayi degil: ' + v };
+  if (isNaN(n)) return { ok: false, reason: 'not a number: ' + v };
   return { ok: true, value: n };
 }
 

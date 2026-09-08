@@ -61,22 +61,22 @@ function registerSpreadsheetId_(id, source) {
   try {
     ss = SpreadsheetApp.openById(id);
   } catch (e) {
-    return { ok: false, reason: 'dosya acilamadi (erisim yok olabilir): ' + id };
+    return { ok: false, reason: 'File could not be opened (access may be missing): ' + id };
   }
   var name = ss.getName();
   var p = parsePeriodFromTitle_(name);
-  if (!p.year) return { ok: false, reason: 'dosya adinda yil yok: ' + name };
+  if (!p.year) return { ok: false, reason: 'No year in file name: ' + name };
 
   var month = p.month;
   if (!month) month = dominantSheetMonth_(ss);
-  if (!month) return { ok: false, reason: 'dosya adinda ve sayfalarda ay bulunamadi: ' + name };
+  if (!month) return { ok: false, reason: 'No month in file name or sheet names: ' + name };
 
   var key = periodKey_(p.year, month);
   var periods = readPeriods_();
   var isNew = !periods[key];
   periods[key] = {
     id: id, name: name, year: p.year, month: month,
-    addedAt: new Date().toISOString(), source: source || 'manuel'
+    addedAt: new Date().toISOString(), source: source || 'manual'
   };
   writePeriods_(periods);
   return { ok: true, key: key, name: name, isNew: isNew };
@@ -101,11 +101,11 @@ function dominantSheetMonth_(ss) {
 function addPeriodByUrl(url) {
   var id = extractSpreadsheetId_(url) || String(url || '').trim();
   if (!/^[a-zA-Z0-9_-]{20,}$/.test(id)) {
-    return { error: 'Gecerli bir Google Sheets linki veya dosya ID\'si degil.' };
+    return { error: 'Not a valid Google Sheets link or file ID.' };
   }
-  var r = registerSpreadsheetId_(id, 'manuel');
+  var r = registerSpreadsheetId_(id, 'manual');
   if (!r.ok) return { error: r.reason };
-  return { ok: true, message: r.name + ' -> ' + r.key + (r.isNew ? ' (eklendi)' : ' (guncellendi)') };
+  return { ok: true, message: r.name + ' -> ' + r.key + (r.isNew ? ' (added)' : ' (updated)') };
 }
 
 /**
@@ -120,7 +120,7 @@ function scanGmailForPeriods() {
   try {
     threads = GmailApp.search(query, 0, 50);
   } catch (e) {
-    return { error: 'Gmail aramasi basarisiz: ' + e.message, query: query };
+    return { error: 'Gmail search failed: ' + e.message, query: query };
   }
 
   for (var t = 0; t < threads.length; t++) {
@@ -151,7 +151,7 @@ function installDailyScanTrigger() {
     }
   }
   ScriptApp.newTrigger('scanGmailForPeriods').timeBased().everyDays(1).atHour(6).create();
-  return 'Gunluk tarama tetikleyicisi kuruldu (06:00).';
+  return 'Daily scan trigger installed (06:00).';
 }
 
 /** Kayitli donemler, en yeniden eskiye. */
@@ -167,7 +167,7 @@ function listPeriods_() {
 /** Bir donemi kayittan siler (yanlis dosya eklenirse). */
 function removePeriod(key) {
   var periods = readPeriods_();
-  if (!periods[key]) return { error: 'Kayitta yok: ' + key };
+  if (!periods[key]) return { error: 'Not in registry: ' + key };
   delete periods[key];
   writePeriods_(periods);
   return { ok: true };

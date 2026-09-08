@@ -13,7 +13,7 @@ var CACHE_TTL_SECONDS = 900;   // 15 dk
 function doGet() {
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
-    .setTitle('Valeo RO Aylık Rapor')
+    .setTitle('Valeo RO Monthly Report')
     // HtmlService <head> icindeki meta viewport'u siler; sunucu tarafinda verilmeli.
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -30,7 +30,7 @@ function getBootstrap() {
     return {
       periods: listPeriods_().map(function (p) {
         return { key: periodKey_(p.year, p.month), year: p.year, month: p.month,
-                 label: MONTH_LABELS_TR[p.month] + ' ' + p.year, name: p.name };
+                 label: MONTH_LABELS[p.month] + ' ' + p.year, name: p.name };
       }),
       roLabels: RO_LABELS,
       roOrder: RO_ORDER,
@@ -38,7 +38,7 @@ function getBootstrap() {
       gmailQuery: getGmailQuery_()
     };
   } catch (e) {
-    return { error: 'Acilis verisi alinamadi: ' + e.message };
+    return { error: 'Could not load start-up data: ' + e.message };
   }
 }
 
@@ -62,11 +62,11 @@ function getDashboardData(key, forceRefresh) {
 
     var periods = readPeriods_();
     var period = periods[key];
-    if (!period) return { error: 'Donem kayitli degil: ' + key };
+    if (!period) return { error: 'Period is not registered: ' + key };
 
     var ss;
     try { ss = SpreadsheetApp.openById(period.id); }
-    catch (e) { return { error: 'Donem dosyasi acilamadi (erisim yok olabilir): ' + period.name }; }
+    catch (e) { return { error: 'Period file could not be opened (access may be missing): ' + period.name }; }
 
     var byKey = registryByKey_();
     var sheets = ss.getSheets();
@@ -88,7 +88,7 @@ function getDashboardData(key, forceRefresh) {
     var missing = [];
     for (var s = 0; s < SITE_REGISTRY.length; s++) {
       if (!seen[SITE_REGISTRY[s].key]) {
-        missing.push({ ro: SITE_REGISTRY[s].ro, site: SITE_REGISTRY[s].site, status: 'veri-yok' });
+        missing.push({ ro: SITE_REGISTRY[s].ro, site: SITE_REGISTRY[s].site, status: 'no-data' });
       }
     }
 
@@ -96,12 +96,12 @@ function getDashboardData(key, forceRefresh) {
     var maxMonth = 0;
     sites.forEach(function (s) { if (s.month > maxMonth) maxMonth = s.month; });
     sites.forEach(function (s) {
-      if (s.month && s.month < maxMonth && s.status === 'ok') s.status = 'raporlama-geride';
+      if (s.month && s.month < maxMonth && s.status === 'ok') s.status = 'behind-schedule';
     });
 
     var payload = {
       period: { key: key, year: period.year, month: period.month,
-                label: MONTH_LABELS_TR[period.month] + ' ' + period.year, name: period.name },
+                label: MONTH_LABELS[period.month] + ' ' + period.year, name: period.name },
       reportMonth: maxMonth,
       sites: sites,
       missingSites: missing,
@@ -114,7 +114,7 @@ function getDashboardData(key, forceRefresh) {
 
     return payload;
   } catch (e) {
-    return { error: 'Veri okunamadi: ' + e.message };
+    return { error: 'Could not read data: ' + e.message };
   }
 }
 

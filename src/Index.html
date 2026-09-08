@@ -1,63 +1,63 @@
-<!-- Valeo RO Aylık Rapor Dashboard'u — Sinoptik görünüm (docs/jenerik-desenler.md) -->
+<!-- Valeo RO Monthly Report dashboard — synoptic view (docs/jenerik-desenler.md) -->
 <?!= include('Stylesheet'); ?>
 
 <header class="topbar">
-  <h1>Valeo RO Aylık Rapor</h1>
+  <h1>Valeo RO Monthly Report</h1>
   <span class="spacer"></span>
   <button class="icon-btn" id="btnTheme" type="button" aria-pressed="false"
-          title="Koyu mod" aria-label="Koyu modu aç/kapa">◐</button>
+          title="Dark mode" aria-label="Toggle dark mode">◐</button>
   <button class="icon-btn" id="btnSettings" type="button"
-          title="Ayarlar" aria-label="Ayarlar">⚙</button>
+          title="Settings" aria-label="Settings">⚙</button>
 </header>
 
 <div class="filters" id="filters" hidden>
   <div class="fgroup">
-    <label for="selPeriod">Dönem</label>
+    <label for="selPeriod">Period</label>
     <select class="ctl" id="selPeriod"></select>
   </div>
   <div class="fgroup">
-    <span id="lblStatus">Ürün durumu</span>
+    <span id="lblStatus">Product status</span>
     <div class="seg" role="group" aria-labelledby="lblStatus" id="segStatus"></div>
   </div>
   <div class="fgroup">
-    <span id="lblType">Proje tipi</span>
+    <span id="lblType">Project type</span>
     <div class="seg" role="group" aria-labelledby="lblType" id="segType"></div>
   </div>
   <div class="fgroup">
-    <span id="lblCustomer">Müşteri</span>
+    <span id="lblCustomer">Customer</span>
     <div class="seg" role="group" aria-labelledby="lblCustomer" id="segCustomer"></div>
   </div>
 </div>
 
 <main>
-  <nav class="crumb" id="crumb" aria-label="Konum"></nav>
-  <div id="view"><div class="spinner" role="status">Yükleniyor…</div></div>
+  <nav class="crumb" id="crumb" aria-label="Breadcrumb"></nav>
+  <div id="view"><div class="spinner" role="status">Loading…</div></div>
 </main>
 
 <dialog class="panel" id="dlgSettings" aria-labelledby="settingsTitle">
   <div class="panel-head">
-    <h2 id="settingsTitle">Ayarlar — dönem kaynakları</h2>
-    <button class="icon-btn" id="btnCloseSettings" type="button" aria-label="Kapat">✕</button>
+    <h2 id="settingsTitle">Settings — period sources</h2>
+    <button class="icon-btn" id="btnCloseSettings" type="button" aria-label="Close">✕</button>
   </div>
   <div class="panel-body">
     <p style="margin:0;font-size:13px;color:var(--text-dim)">
-      Aylık rapor her ay yeni bir spreadsheet olarak geliyor. Gmail taraması yeni
-      dosyayı otomatik bulur; bulamazsa linki elle ekleyebilirsiniz.
+      The monthly report arrives as a new spreadsheet each month. The Gmail scan finds
+      it automatically; if it doesn't, add the link manually.
     </p>
     <div class="fgroup">
-      <label for="inpQuery">Gmail arama sorgusu</label>
+      <label for="inpQuery">Gmail search query</label>
       <input type="text" id="inpQuery" spellcheck="false">
     </div>
     <div class="btn-row">
-      <button class="btn" id="btnScan" type="button">Şimdi tara</button>
-      <button class="btn ghost" id="btnSaveQuery" type="button">Sorguyu kaydet</button>
-      <button class="btn ghost" id="btnTrigger" type="button">Günlük taramayı kur</button>
+      <button class="btn" id="btnScan" type="button">Scan now</button>
+      <button class="btn ghost" id="btnSaveQuery" type="button">Save query</button>
+      <button class="btn ghost" id="btnTrigger" type="button">Install daily scan</button>
     </div>
     <div class="fgroup">
-      <label for="inpUrl">Elle dönem ekle (Sheets linki)</label>
+      <label for="inpUrl">Add a period manually (Sheets link)</label>
       <input type="text" id="inpUrl" placeholder="https://docs.google.com/spreadsheets/d/…" spellcheck="false">
     </div>
-    <div class="btn-row"><button class="btn" id="btnAdd" type="button">Ekle</button></div>
+    <div class="btn-row"><button class="btn" id="btnAdd" type="button">Add</button></div>
     <div class="log" id="settingsLog" aria-live="polite"></div>
   </div>
 </dialog>

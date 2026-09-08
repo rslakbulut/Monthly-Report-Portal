@@ -11,7 +11,7 @@ var NAV = { level:'ro', ro:null, siteIdx:null };
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-function nf(n,d){ return (n==null||isNaN(n))?'—':Number(n).toLocaleString('tr-TR',
+function nf(n,d){ return (n==null||isNaN(n))?'—':Number(n).toLocaleString('en-US',
   {minimumFractionDigits:d||0,maximumFractionDigits:d||0}); }
 function money(mEur){ return mEur==null?'—':nf(mEur,2)+' M€'; }
 function signed(n){ return n==null?'—':(n>0?'+':'')+nf(n,0); }
@@ -68,7 +68,7 @@ function sumMetrics(list){
     ['budgetCount','budgetYTD','budgetTurnover','realCount','realTurnoverM','planTurnoverM','portfolioTurnoverM']
       .forEach(function(k){ if(m[k]!=null) acc[k]+=m[k]; });
     if(m.delta!=null && m.delta<0) acc.behind++;
-    if(s.status!=='veri-yok') acc.reported++;
+    if(s.status!=='no-data') acc.reported++;
   });
   acc.delta = acc.budgetYTD ? (acc.realCount-acc.budgetYTD) : (acc.realCount||0)-(acc.budgetYTD||0);
   return acc;
@@ -110,28 +110,28 @@ function kpiRow(a, label){
   var pctMoney = a.budgetTurnover ? Math.round(a.realTurnoverM/a.budgetTurnover*100) : null;
   var deltaCls = a.delta==null?'':(a.delta<0?'bad':'good');
   return '<div class="kpis">'+
-    '<div class="kpi"><div class="kpi-label">Yıllık taahhüt</div>'+
+    '<div class="kpi"><div class="kpi-label">Annual commitment</div>'+
       '<div class="kpi-value">'+nf(a.budgetCount)+'</div>'+
-      '<div class="kpi-sub">proje · '+money(a.budgetTurnover)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Bugüne kadar plan</div>'+
+      '<div class="kpi-sub">projects · '+money(a.budgetTurnover)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Plan to date</div>'+
       '<div class="kpi-value">'+nf(a.budgetYTD)+'</div>'+
-      '<div class="kpi-sub">proje (Budget YTD)</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Gerçekleşen</div>'+
+      '<div class="kpi-sub">projects (Budget YTD)</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Achieved</div>'+
       '<div class="kpi-value">'+nf(a.realCount)+'</div>'+
-      '<div class="kpi-sub">proje · '+money(a.realTurnoverM)+
-      (pctCount!=null?' · yılın %'+pctCount+'’i':'')+'</div></div>'+
-    '<div class="kpi '+deltaCls+'"><div class="kpi-label">Plana göre sapma</div>'+
+      '<div class="kpi-sub">projects · '+money(a.realTurnoverM)+
+      (pctCount!=null?' · '+pctCount+'% of the year':'')+'</div></div>'+
+    '<div class="kpi '+deltaCls+'"><div class="kpi-label">Variance vs plan</div>'+
       '<div class="kpi-value">'+signed(a.delta)+'</div>'+
-      '<div class="kpi-sub">'+(a.behind?a.behind+' site geride':'geride site yok')+'</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Raporlayan site</div>'+
+      '<div class="kpi-sub">'+(a.behind?a.behind+' site'+(a.behind>1?'s':'')+' behind':'no site behind')+'</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Reporting sites</div>'+
       '<div class="kpi-value">'+a.reported+'<span style="font-size:.55em;color:var(--text-dim)"> / '+
         BOOT.siteCount+'</span></div>'+
-      '<div class="kpi-sub">'+(pctMoney!=null?'ciro gerçekleşme %'+pctMoney:'&nbsp;')+'</div></div>'+
+      '<div class="kpi-sub">'+(pctMoney!=null?pctMoney+'% of budgeted turnover':'&nbsp;')+'</div></div>'+
   '</div>';
 }
 
 function renderRoLevel(){
-  crumb([{t:'Tüm RO’lar'}]);
+  crumb([{t:'All ROs'}]);
   var all = DATA.sites||[];
   var html = kpiRow(sumMetrics(all));
   html += '<div class="cards">';
@@ -141,15 +141,15 @@ function renderRoLevel(){
     var cls = a.delta<0?'bad':'good';
     html += '<button class="card" type="button" data-ro="'+ro+'">'+
       '<h3>'+esc(ro)+' <span class="badge '+cls+'">'+signed(a.delta)+'</span></h3>'+
-      '<div class="sub">'+esc(BOOT.roLabels[ro]||'')+' · '+list.length+' site</div>'+
-      '<div class="rowline"><span>Gerçekleşen / plan</span><span class="v">'+nf(a.realCount)+' / '+nf(a.budgetYTD)+'</span></div>'+
-      '<div class="rowline"><span>Yıllık taahhüt</span><span class="v">'+nf(a.budgetCount)+' proje</span></div>'+
-      '<div class="rowline"><span>Ciro (gerçekleşen)</span><span class="v">'+money(a.realTurnoverM)+'</span></div>'+
-      '<div class="rowline"><span>Raporlayan</span><span class="v">'+a.reported+' / '+list.length+'</span></div>'+
+      '<div class="sub">'+esc(BOOT.roLabels[ro]||'')+' · '+list.length+' sites</div>'+
+      '<div class="rowline"><span>Achieved / plan</span><span class="v">'+nf(a.realCount)+' / '+nf(a.budgetYTD)+'</span></div>'+
+      '<div class="rowline"><span>Annual commitment</span><span class="v">'+nf(a.budgetCount)+' projects</span></div>'+
+      '<div class="rowline"><span>Turnover (achieved)</span><span class="v">'+money(a.realTurnoverM)+'</span></div>'+
+      '<div class="rowline"><span>Reporting</span><span class="v">'+a.reported+' / '+list.length+'</span></div>'+
       '</button>';
   });
   html += '</div>';
-  html += '<div class="chartcard"><h3 style="margin:0 0 10px;font-size:15px">Plan vs gerçekleşen (RO bazında)</h3>'+
+  html += '<div class="chartcard"><h3 style="margin:0 0 10px;font-size:15px">Plan vs achieved by RO</h3>'+
           '<div class="chart-canvas-wrap"><canvas id="roChart"></canvas></div></div>';
   html += noticeBlock();
   $('view').innerHTML = html;
@@ -160,7 +160,7 @@ function renderRoLevel(){
 }
 
 function renderSitesLevel(){
-  crumb([{t:'Tüm RO’lar',go:'ro'},{t:NAV.ro+' — '+(BOOT.roLabels[NAV.ro]||'')}]);
+  crumb([{t:'All ROs',go:'ro'},{t:NAV.ro+' — '+(BOOT.roLabels[NAV.ro]||'')}]);
   var list = sitesOfRo(NAV.ro);
   var html = kpiRow(sumMetrics(list));
   var rows = list.map(function(s,i){ return {s:s,m:siteMetrics(s),i:i}; });
@@ -169,19 +169,19 @@ function renderSitesLevel(){
     return av-bv;
   });
   html += '<div class="tablewrap"><table><thead><tr>'+
-    '<th>Site</th><th class="num">Yıllık</th><th class="num">Plan (YTD)</th>'+
-    '<th class="num">Gerçekleşen</th><th class="num">Sapma</th><th class="num">Ciro</th><th>Durum</th>'+
+    '<th>Site</th><th class="num">Annual</th><th class="num">Plan (YTD)</th>'+
+    '<th class="num">Achieved</th><th class="num">Variance</th><th class="num">Turnover</th><th>Status</th>'+
     '</tr></thead><tbody>';
   rows.forEach(function(r){
     html += '<tr data-i="'+r.i+'">'+
       '<td data-label="Site">'+esc(r.s.site)+'</td>'+
-      '<td class="num" data-label="Yıllık">'+nf(r.m.budgetCount)+'</td>'+
+      '<td class="num" data-label="Annual">'+nf(r.m.budgetCount)+'</td>'+
       '<td class="num" data-label="Plan (YTD)">'+nf(r.m.budgetYTD)+'</td>'+
-      '<td class="num" data-label="Gerçekleşen">'+nf(r.m.realCount)+'</td>'+
-      '<td class="num" data-label="Sapma"><span class="badge '+(r.m.delta==null?'mute':(r.m.delta<0?'bad':'good'))+'">'+
+      '<td class="num" data-label="Achieved">'+nf(r.m.realCount)+'</td>'+
+      '<td class="num" data-label="Variance"><span class="badge '+(r.m.delta==null?'mute':(r.m.delta<0?'bad':'good'))+'">'+
         signed(r.m.delta)+'</span></td>'+
-      '<td class="num" data-label="Ciro">'+money(r.m.realTurnoverM)+'</td>'+
-      '<td data-label="Durum">'+statusBadge(r.s.status)+'</td></tr>';
+      '<td class="num" data-label="Turnover">'+money(r.m.realTurnoverM)+'</td>'+
+      '<td data-label="Status">'+statusBadge(r.s.status)+'</td></tr>';
   });
   html += '</tbody></table></div>'+noticeBlock();
   $('view').innerHTML = html;
@@ -191,84 +191,84 @@ function renderSitesLevel(){
 }
 
 function statusBadge(st){
-  if(st==='ok') return '<span class="badge good">tamam</span>';
-  if(st==='raporlama-geride') return '<span class="badge warn">raporlama geride</span>';
-  if(st==='veri-tutarsiz') return '<span class="badge warn">veri tutarsız</span>';
-  if(st==='veri-yok') return '<span class="badge mute">veri yok</span>';
+  if(st==='ok') return '<span class="badge good">OK</span>';
+  if(st==='behind-schedule') return '<span class="badge warn">behind schedule</span>';
+  if(st==='inconsistent') return '<span class="badge warn">inconsistent data</span>';
+  if(st==='no-data') return '<span class="badge mute">no data</span>';
   return '<span class="badge mute">'+esc(st)+'</span>';
 }
 
 function renderSiteLevel(){
   var list = sitesOfRo(NAV.ro), s = list[NAV.siteIdx];
   if(!s){ NAV.level='sites'; return render(); }
-  crumb([{t:'Tüm RO’lar',go:'ro'},{t:NAV.ro,go:'sites'},{t:s.site}]);
+  crumb([{t:'All ROs',go:'ro'},{t:NAV.ro,go:'sites'},{t:s.site}]);
   var m = siteMetrics(s);
   var html = '<div class="kpis">'+
-    '<div class="kpi"><div class="kpi-label">Yıllık taahhüt</div><div class="kpi-value">'+nf(m.budgetCount)+
+    '<div class="kpi"><div class="kpi-label">Annual commitment</div><div class="kpi-value">'+nf(m.budgetCount)+
       '</div><div class="kpi-sub">'+money(m.budgetTurnover)+'</div></div>'+
     '<div class="kpi"><div class="kpi-label">Plan (YTD)</div><div class="kpi-value">'+nf(m.budgetYTD)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Gerçekleşen</div><div class="kpi-value">'+nf(m.realCount)+
+    '<div class="kpi"><div class="kpi-label">Achieved</div><div class="kpi-value">'+nf(m.realCount)+
       '</div><div class="kpi-sub">'+money(m.realTurnoverM)+'</div></div>'+
-    '<div class="kpi '+(m.delta<0?'bad':'good')+'"><div class="kpi-label">Sapma</div><div class="kpi-value">'+
+    '<div class="kpi '+(m.delta<0?'bad':'good')+'"><div class="kpi-label">Variance</div><div class="kpi-value">'+
       signed(m.delta)+'</div><div class="kpi-sub">'+
-      (m.deltaTurnoverM!=null?money(m.deltaTurnoverM)+' ciro farkı':'ciro planı yok')+'</div></div></div>';
+      (m.deltaTurnoverM!=null?money(m.deltaTurnoverM)+' turnover gap':'no turnover plan')+'</div></div></div>';
 
-  // Tip x musteri matrisi (kaynak veriyle ayni sekilde: iki bagimsiz eksen)
-  html += '<div class="tablewrap"><table><thead><tr><th>Kırılım</th><th class="num">Portföy adet</th>'+
-          '<th class="num">Gerçekleşen adet</th><th class="num">Gerçekleşen ciro</th></tr></thead><tbody>';
-  [['P1','Proje tipi P1'],['P10','Proje tipi P10'],['TTM','Proje tipi TTM']].forEach(function(t){
+  // Type x customer matrix (two independent axes, exactly as in the source sheet)
+  html += '<div class="tablewrap"><table><thead><tr><th>Breakdown</th><th class="num">Portfolio count</th>'+
+          '<th class="num">Achieved count</th><th class="num">Achieved turnover</th></tr></thead><tbody>';
+  [['P1','Project type P1'],['P10','Project type P10'],['TTM','Project type TTM']].forEach(function(t){
     var acc=emptyM();
     (s.detail.blocks||[]).forEach(function(b){
       if(b.status!==F.status) return;
       if(b.byType&&b.byType[t[0]]) addM(acc,b.byType[t[0]]);
     });
-    html+='<tr><td data-label="Kırılım">'+t[1]+'</td><td class="num" data-label="Portföy">'+nf(acc.count)+
-      '</td><td class="num" data-label="Gerçekleşen">'+nf(acc.ytdCount)+
-      '</td><td class="num" data-label="Ciro">'+money(acc.ytdTurnover/1000)+'</td></tr>';
+    html+='<tr><td data-label="Breakdown">'+t[1]+'</td><td class="num" data-label="Portfolio">'+nf(acc.count)+
+      '</td><td class="num" data-label="Achieved">'+nf(acc.ytdCount)+
+      '</td><td class="num" data-label="Turnover">'+money(acc.ytdTurnover/1000)+'</td></tr>';
   });
   ['VS','OES'].forEach(function(c){
     var acc=emptyM();
     (s.detail.blocks||[]).forEach(function(b){
       if(b.status!==F.status || b.customer!==c) return; addM(acc,b.total);
     });
-    html+='<tr><td data-label="Kırılım">Müşteri '+c+'</td><td class="num" data-label="Portföy">'+nf(acc.count)+
-      '</td><td class="num" data-label="Gerçekleşen">'+nf(acc.ytdCount)+
-      '</td><td class="num" data-label="Ciro">'+money(acc.ytdTurnover/1000)+'</td></tr>';
+    html+='<tr><td data-label="Breakdown">Customer '+c+'</td><td class="num" data-label="Portfolio">'+nf(acc.count)+
+      '</td><td class="num" data-label="Achieved">'+nf(acc.ytdCount)+
+      '</td><td class="num" data-label="Turnover">'+money(acc.ytdTurnover/1000)+'</td></tr>';
   });
   html+='</tbody></table></div>';
 
   var ind = s.indicators||{};
   if(ind.EMI||ind.DAP||ind.RED){
-    html += '<div class="chartcard"><h3 style="margin:0 0 8px;font-size:15px">Göstergeler</h3>';
+    html += '<div class="chartcard"><h3 style="margin:0 0 8px;font-size:15px">Indicators</h3>';
     [['EMI','EMI'],['DAP','DAP'],['RED','RED LAUNCHES']].forEach(function(p){
       var d=ind[p[0]]; if(!d) return;
       var trail=(d.trail||[]).filter(function(x){return x.value!=null;})
                  .map(function(x){return x.label+': '+nf(x.value,2);}).join(' · ');
-      html += '<div class="rowline"><span>'+p[1]+' <span style="color:var(--text-dim)">(hedef '+
+      html += '<div class="rowline"><span>'+p[1]+' <span style="color:var(--text-dim)">(target '+
               (d.target==null?'—':nf(d.target,2))+')</span></span><span class="v">'+(trail||'—')+'</span></div>';
     });
     html += '</div>';
   }
 
   if(s.mismatch&&s.mismatch.length)
-    html += '<div class="notice">Çapraz doğrulama farkı — detaydan sayılan ile sayfanın özet satırı uyuşmuyor: '+
+    html += '<div class="notice">Cross-check mismatch — counted from detail rows vs the sheet\'s summary row: '+
             esc(s.mismatch.join(' | '))+'</div>';
   if(s.warnings&&s.warnings.length)
-    html += '<div class="notice">Okuma notları ('+s.warnings.length+'): '+esc(s.warnings.slice(0,8).join(' | '))+'</div>';
-  html += '<div class="notice">Kaynak sayfa: <b>'+esc(s.sheet)+'</b></div>';
+    html += '<div class="notice">Parsing notes ('+s.warnings.length+'): '+esc(s.warnings.slice(0,8).join(' | '))+'</div>';
+  html += '<div class="notice">Source sheet: <b>'+esc(s.sheet)+'</b></div>';
   $('view').innerHTML = html;
 }
 
 function noticeBlock(){
   var out='';
   if(F.customer!=='ALL'&&F.type!=='ALL')
-    out += '<div class="notice">Bütçe rakamları müşteri satırından alındı: kaynak tabloda proje tipi ve '+
-           'müşteri kırılımı çaprazlanmıyor (ikisi ayrı satır ekseni). Gerçekleşen rakamlar çaprazlanmış durumda.</div>';
+    out += '<div class="notice">Budget figures come from the customer row: the source sheet does not cross '+
+           'project type with customer (they are two separate row axes). Achieved figures are crossed.</div>';
   var miss=(DATA.missingSites||[]).length, unk=(DATA.unknownSheets||[]).length;
   if(miss||unk){
     out += '<div class="notice">'+
-      (miss?miss+' site için bu dönemde sayfa yok. ':'')+
-      (unk?unk+' sayfa eşleme tablosunda olmadığı için kapsam dışı bırakıldı ('+esc(DATA.unknownSheets.slice(0,4).join(', '))+').':'')+
+      (miss?'No sheet in this period for '+miss+' site'+(miss>1?'s':'')+'. ':'')+
+      (unk?unk+' sheet'+(unk>1?'s':'')+' left out — not in the mapping table ('+esc(DATA.unknownSheets.slice(0,4).join(', '))+').':'')+
       '</div>';
   }
   return out;
@@ -286,7 +286,7 @@ function drawRoChart(){
     type:'bar',
     data:{labels:labels,datasets:[
       {label:'Plan (Budget YTD)',data:plan,backgroundColor:'#0057A8'},
-      {label:'Gerçekleşen',data:real,backgroundColor:'#78BE20'}]},
+      {label:'Achieved',data:real,backgroundColor:'#78BE20'}]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{position:'bottom'}},
       scales:{y:{beginAtZero:true,ticks:{precision:0}}},
@@ -311,23 +311,23 @@ function buildStatusSeg(){
 }
 function buildFilters(){
   buildStatusSeg();
-  seg($('segType'),[{v:'ALL',t:'Tümü'},{v:'P1',t:'P1'},{v:'P10',t:'P10'},{v:'TTM',t:'TTM'}],F.type,
+  seg($('segType'),[{v:'ALL',t:'All'},{v:'P1',t:'P1'},{v:'P10',t:'P10'},{v:'TTM',t:'TTM'}],F.type,
       function(v){ F.type=v; render(); });
-  seg($('segCustomer'),[{v:'ALL',t:'Tümü'},{v:'VS',t:'VS'},{v:'OES',t:'OES'}],F.customer,
+  seg($('segCustomer'),[{v:'ALL',t:'All'},{v:'VS',t:'VS'},{v:'OES',t:'OES'}],F.customer,
       function(v){ F.customer=v; render(); });
   $('filters').hidden=false;
 }
 
 /* ---------- yukleme ---------- */
 function loadPeriod(key){
-  $('view').innerHTML='<div class="spinner" role="status">'+esc(key)+' okunuyor… 48 sayfa taranıyor, ilk açılış biraz sürebilir.</div>';
+  $('view').innerHTML='<div class="spinner" role="status">Reading '+esc(key)+'… scanning 48 sheets, the first load may take a moment.</div>';
   google.script.run
     .withSuccessHandler(function(res){
-      if(!res||res.error){ $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Bilinmeyen hata')+'</div>'; return; }
+      if(!res||res.error){ $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Unknown error')+'</div>'; return; }
       DATA=res; NAV={level:'ro',ro:null,siteIdx:null}; buildFilters(); render();
     })
     .withFailureHandler(function(err){
-      $('view').innerHTML='<div class="notice err">Sunucu hatası: '+esc(err&&err.message||err)+'</div>';
+      $('view').innerHTML='<div class="notice err">Server error: '+esc(err&&err.message||err)+'</div>';
     })
     .getDashboardData(key,false);
 }
@@ -335,12 +335,12 @@ function loadPeriod(key){
 function boot(){
   google.script.run
     .withSuccessHandler(function(res){
-      if(!res||res.error){ $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Açılış verisi alınamadı')+'</div>'; return; }
+      if(!res||res.error){ $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Could not load start-up data')+'</div>'; return; }
       BOOT=res;
       $('inpQuery').value=res.gmailQuery||'';
       if(!res.periods.length){
-        $('view').innerHTML='<div class="notice">Henüz kayıtlı dönem yok. <b>Ayarlar</b>’dan Gmail taramasını '+
-          'çalıştırın ya da bu ayın spreadsheet linkini elle ekleyin.</div>';
+        $('view').innerHTML='<div class="notice">No period registered yet. Open <b>Settings</b> and run the '+
+          'Gmail scan, or add this month\'s spreadsheet link manually.</div>';
         return;
       }
       $('selPeriod').innerHTML=res.periods.map(function(p){
@@ -349,7 +349,7 @@ function boot(){
       loadPeriod(res.periods[0].key);
     })
     .withFailureHandler(function(err){
-      $('view').innerHTML='<div class="notice err">Sunucu hatası: '+esc(err&&err.message||err)+'</div>';
+      $('view').innerHTML='<div class="notice err">Server error: '+esc(err&&err.message||err)+'</div>';
     })
     .getBootstrap();
 }
@@ -376,37 +376,37 @@ function initSettings(){
   $('btnSettings').onclick=function(){ $('dlgSettings').showModal(); };
   $('btnCloseSettings').onclick=function(){ $('dlgSettings').close(); };
   $('btnScan').onclick=function(){
-    logS('Gmail taranıyor…');
+    logS('Scanning Gmail…');
     google.script.run
       .withSuccessHandler(function(r){
-        if(!r||r.error){ logS('Hata: '+(r&&r.error||'bilinmiyor')); return; }
-        var lines=(r.found||[]).map(function(f){ return (f.isNew?'YENİ  ':'var   ')+f.key+'  '+f.name; });
-        logS(r.threadCount+' e-posta dizisi tarandı.\n'+
-             (lines.length?lines.join('\n'):'Yeni dönem bulunamadı.')+
-             ((r.errors||[]).length?'\n\nAtlananlar:\n'+r.errors.join('\n'):''));
+        if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); return; }
+        var lines=(r.found||[]).map(function(f){ return (f.isNew?'NEW      ':'existing ')+f.key+'  '+f.name; });
+        logS(r.threadCount+' email threads scanned.\n'+
+             (lines.length?lines.join('\n'):'No new period found.')+
+             ((r.errors||[]).length?'\n\nSkipped:\n'+r.errors.join('\n'):''));
         boot();
       })
-      .withFailureHandler(function(e){ logS('Sunucu hatası: '+(e&&e.message||e)); })
+      .withFailureHandler(function(e){ logS('Server error: '+(e&&e.message||e)); })
       .uiScanGmail();
   };
   $('btnSaveQuery').onclick=function(){
-    google.script.run.withSuccessHandler(function(r){ logS('Sorgu kaydedildi: '+r.query); })
-      .withFailureHandler(function(e){ logS('Hata: '+(e&&e.message||e)); })
+    google.script.run.withSuccessHandler(function(r){ logS('Query saved: '+r.query); })
+      .withFailureHandler(function(e){ logS('Error: '+(e&&e.message||e)); })
       .uiSetGmailQuery($('inpQuery').value);
   };
   $('btnTrigger').onclick=function(){
     google.script.run.withSuccessHandler(function(r){ logS(r.message); })
-      .withFailureHandler(function(e){ logS('Hata: '+(e&&e.message||e)); })
+      .withFailureHandler(function(e){ logS('Error: '+(e&&e.message||e)); })
       .uiInstallTrigger();
   };
   $('btnAdd').onclick=function(){
-    logS('Ekleniyor…');
+    logS('Adding…');
     google.script.run
       .withSuccessHandler(function(r){
-        if(!r||r.error){ logS('Hata: '+(r&&r.error||'bilinmiyor')); return; }
+        if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); return; }
         logS(r.message); $('inpUrl').value=''; boot();
       })
-      .withFailureHandler(function(e){ logS('Sunucu hatası: '+(e&&e.message||e)); })
+      .withFailureHandler(function(e){ logS('Server error: '+(e&&e.message||e)); })
       .uiAddPeriod($('inpUrl').value);
   };
 }

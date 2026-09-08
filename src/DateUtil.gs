@@ -24,8 +24,8 @@ var MONTH_NAMES = {
   DEC: 12, DECEMBER: 12, ARA: 12, ARALIK: 12
 };
 
-var MONTH_LABELS_TR = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-                       'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+var MONTH_LABELS = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'];
 
 /**
  * ISO hafta -> ay. Haftanin PERSEMBE'si hangi aya dusuyorsa o ay kabul edilir
@@ -49,7 +49,7 @@ function isoWeekToMonth_(year, week) {
  */
 function parsePeriodCell_(cell, defaultYear) {
   var raw = (cell === null || cell === undefined) ? '' : String(cell).trim();
-  if (raw === '') return { ok: false, reason: 'bos', raw: raw };
+  if (raw === '') return { ok: false, reason: 'empty', raw: raw };
 
   if (Object.prototype.toString.call(cell) === '[object Date]' && !isNaN(cell)) {
     return { ok: true, year: cell.getFullYear(), month: cell.getMonth() + 1, raw: raw };
@@ -63,7 +63,7 @@ function parsePeriodCell_(cell, defaultYear) {
   if (mm) {
     var mo = parseInt(mm[1], 10);
     if (mo >= 1 && mo <= 12) return { ok: true, year: parseInt(mm[2], 10), month: mo, raw: raw };
-    return { ok: false, reason: 'gecersiz ay', raw: raw };
+    return { ok: false, reason: 'invalid month', raw: raw };
   }
 
   // ISO hafta -> W23, W 4.  "W41/23" gibi ikili gosterim BELIRSIZ sayilir.
@@ -71,9 +71,9 @@ function parsePeriodCell_(cell, defaultYear) {
     var wk = parseInt(s.replace(/[^0-9]/g, ''), 10);
     var r = isoWeekToMonth_(defaultYear, wk);
     if (r) return { ok: true, year: r.year, month: r.month, raw: raw };
-    return { ok: false, reason: 'gecersiz hafta', raw: raw };
+    return { ok: false, reason: 'invalid week', raw: raw };
   }
-  if (/^W/.test(s)) return { ok: false, reason: 'belirsiz hafta gosterimi', raw: raw };
+  if (/^W/.test(s)) return { ok: false, reason: 'ambiguous week format', raw: raw };
 
   // Ay adi -> April, JUL, Jan
   var word = s.replace(/[^A-Z]/g, '');
@@ -82,9 +82,9 @@ function parsePeriodCell_(cell, defaultYear) {
   }
 
   // Yalniz yil ("2026") -> ay bilgisi yok, YTD'ye katilamaz.
-  if (/^\d{4}$/.test(s)) return { ok: false, reason: 'yalniz yil, ay yok', raw: raw };
+  if (/^\d{4}$/.test(s)) return { ok: false, reason: 'year only, no month', raw: raw };
 
-  return { ok: false, reason: 'cozulemedi', raw: raw };
+  return { ok: false, reason: 'unparsed', raw: raw };
 }
 
 /** (yil, ay) ikilisini siralanabilir tam sayiya cevirir: 2026-06 -> 202606 */
