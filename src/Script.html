@@ -1,0 +1,416 @@
+<script>
+/* Valeo RO Dashboard — istemci.
+   Veri sozlesmesi: docs/veri-listeleme.md — success VE failure handler zorunlu,
+   success icinde result.error MUTLAKA denetlenir. */
+
+var BOOT = null, DATA = null, CHART = null;
+var F = { status:'NEW', type:'ALL', customer:'ALL' };
+var NAV = { level:'ro', ro:null, siteIdx:null };
+
+/* ---------- yardimcilar ---------- */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function nf(n,d){ return (n==null||isNaN(n))?'—':Number(n).toLocaleString('tr-TR',
+  {minimumFractionDigits:d||0,maximumFractionDigits:d||0}); }
+function money(mEur){ return mEur==null?'—':nf(mEur,2)+' M€'; }
+function signed(n){ return n==null?'—':(n>0?'+':'')+nf(n,0); }
+
+function emptyM(){ return {count:0,turnover:0,ytdCount:0,ytdTurnover:0,planYtdCount:0,planYtdTurnover:0}; }
+function addM(a,b){ for(var k in a){ a[k]+=b[k]||0; } return a; }
+
+/* ---------- toplama ---------- */
+/** Bir site'in secili filtrelere gore gerceklesen olcumu (detay bloklarindan). */
+function realizedOf(site){
+  var out = emptyM();
+  if(!site.detail || !site.detail.blocks) return out;
+  site.detail.blocks.forEach(function(b){
+    if(b.status !== F.status) return;
+    if(F.customer !== 'ALL' && b.customer !== F.customer) return;
+    if(F.type === 'ALL'){ addM(out, b.total); }
+    else if(b.byType && b.byType[F.type]){ addM(out, b.byType[F.type]); }
+  });
+  return out;
+}
+/** Ozet bloklardan butce satiri. Tip ve musteri ayni anda caprazlanamaz. */
+function budgetRowKey(){
+  if(F.customer !== 'ALL') return F.customer;
+  if(F.type !== 'ALL') return F.type;
+  return 'TOTAL';
+}
+function budgetOf(site){
+  var k = budgetRowKey();
+  var bc = site.budgetCount && site.budgetCount[k];
+  var by = site.budgetYTDCount && site.budgetYTDCount[k];
+  var bt = site.budgetTurnover && site.budgetTurnover[k];
+  return {
+    count:    bc ? bc[F.status] : null,
+    ytdCount: by ? by[F.status] : null,
+    turnover: bt ? bt[F.status] : null      // M€ — yalniz TOTAL/VS/OES satirlari var
+  };
+}
+function siteMetrics(site){
+  var b = budgetOf(site), r = realizedOf(site);
+  return {
+    budgetCount:b.count, budgetYTD:b.ytdCount, budgetTurnover:b.turnover,
+    realCount:r.ytdCount, realTurnoverM:r.ytdTurnover/1000,
+    planTurnoverM:r.planYtdTurnover/1000,
+    portfolioCount:r.count, portfolioTurnoverM:r.turnover/1000,
+    delta:(b.ytdCount==null)?null:(r.ytdCount-b.ytdCount),
+    deltaTurnoverM:(r.planYtdTurnover?(r.ytdTurnover-r.planYtdTurnover)/1000:null)
+  };
+}
+function sumMetrics(list){
+  var acc={budgetCount:0,budgetYTD:0,budgetTurnover:0,realCount:0,realTurnoverM:0,
+           planTurnoverM:0,portfolioTurnoverM:0,behind:0,reported:0};
+  list.forEach(function(s){
+    var m=siteMetrics(s);
+    ['budgetCount','budgetYTD','budgetTurnover','realCount','realTurnoverM','planTurnoverM','portfolioTurnoverM']
+      .forEach(function(k){ if(m[k]!=null) acc[k]+=m[k]; });
+    if(m.delta!=null && m.delta<0) acc.behind++;
+    if(s.status!=='veri-yok') acc.reported++;
+  });
+  acc.delta = acc.budgetYTD ? (acc.realCount-acc.budgetYTD) : (acc.realCount||0)-(acc.budgetYTD||0);
+  return acc;
+}
+function sitesOfRo(ro){ return (DATA.sites||[]).filter(function(s){ return s.ro===ro; }); }
+function hasReman(){
+  return (DATA.sites||[]).some(function(s){
+    return (s.detail&&s.detail.blocks||[]).some(function(b){ return b.status==='REMAN' && b.total.count>0; });
+  });
+}
+
+/* ---------- cizim ---------- */
+function render(){
+  if(!DATA){ return; }
+  if(DATA.error){ $('view').innerHTML='<div class="notice err">'+esc(DATA.error)+'</div>'; return; }
+  buildStatusSeg();
+  if(NAV.level==='ro') renderRoLevel();
+  else if(NAV.level==='sites') renderSitesLevel();
+  else renderSiteLevel();
+  if(window.innerWidth<=768) document.querySelectorAll('table').forEach(function(t){ t.classList.add('m-cards'); });
+}
+
+function crumb(parts){
+  $('crumb').innerHTML = parts.map(function(p,i){
+    if(p.go) return '<button type="button" data-go="'+p.go+'">'+esc(p.t)+'</button>'+
+                    (i<parts.length-1?'<span aria-hidden="true">›</span>':'');
+    return '<b>'+esc(p.t)+'</b>';
+  }).join('');
+  $('crumb').querySelectorAll('button').forEach(function(b){
+    b.onclick=function(){ var g=b.getAttribute('data-go');
+      if(g==='ro'){ NAV={level:'ro',ro:null,siteIdx:null}; }
+      else if(g==='sites'){ NAV.level='sites'; NAV.siteIdx=null; }
+      render(); };
+  });
+}
+
+function kpiRow(a, label){
+  var pctCount = a.budgetCount ? Math.round(a.realCount/a.budgetCount*100) : null;
+  var pctMoney = a.budgetTurnover ? Math.round(a.realTurnoverM/a.budgetTurnover*100) : null;
+  var deltaCls = a.delta==null?'':(a.delta<0?'bad':'good');
+  return '<div class="kpis">'+
+    '<div class="kpi"><div class="kpi-label">Yıllık taahhüt</div>'+
+      '<div class="kpi-value">'+nf(a.budgetCount)+'</div>'+
+      '<div class="kpi-sub">proje · '+money(a.budgetTurnover)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Bugüne kadar plan</div>'+
+      '<div class="kpi-value">'+nf(a.budgetYTD)+'</div>'+
+      '<div class="kpi-sub">proje (Budget YTD)</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Gerçekleşen</div>'+
+      '<div class="kpi-value">'+nf(a.realCount)+'</div>'+
+      '<div class="kpi-sub">proje · '+money(a.realTurnoverM)+
+      (pctCount!=null?' · yılın %'+pctCount+'’i':'')+'</div></div>'+
+    '<div class="kpi '+deltaCls+'"><div class="kpi-label">Plana göre sapma</div>'+
+      '<div class="kpi-value">'+signed(a.delta)+'</div>'+
+      '<div class="kpi-sub">'+(a.behind?a.behind+' site geride':'geride site yok')+'</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Raporlayan site</div>'+
+      '<div class="kpi-value">'+a.reported+'<span style="font-size:.55em;color:var(--text-dim)"> / '+
+        BOOT.siteCount+'</span></div>'+
+      '<div class="kpi-sub">'+(pctMoney!=null?'ciro gerçekleşme %'+pctMoney:'&nbsp;')+'</div></div>'+
+  '</div>';
+}
+
+function renderRoLevel(){
+  crumb([{t:'Tüm RO’lar'}]);
+  var all = DATA.sites||[];
+  var html = kpiRow(sumMetrics(all));
+  html += '<div class="cards">';
+  BOOT.roOrder.forEach(function(ro){
+    var list = sitesOfRo(ro); if(!list.length) return;
+    var a = sumMetrics(list);
+    var cls = a.delta<0?'bad':'good';
+    html += '<button class="card" type="button" data-ro="'+ro+'">'+
+      '<h3>'+esc(ro)+' <span class="badge '+cls+'">'+signed(a.delta)+'</span></h3>'+
+      '<div class="sub">'+esc(BOOT.roLabels[ro]||'')+' · '+list.length+' site</div>'+
+      '<div class="rowline"><span>Gerçekleşen / plan</span><span class="v">'+nf(a.realCount)+' / '+nf(a.budgetYTD)+'</span></div>'+
+      '<div class="rowline"><span>Yıllık taahhüt</span><span class="v">'+nf(a.budgetCount)+' proje</span></div>'+
+      '<div class="rowline"><span>Ciro (gerçekleşen)</span><span class="v">'+money(a.realTurnoverM)+'</span></div>'+
+      '<div class="rowline"><span>Raporlayan</span><span class="v">'+a.reported+' / '+list.length+'</span></div>'+
+      '</button>';
+  });
+  html += '</div>';
+  html += '<div class="chartcard"><h3 style="margin:0 0 10px;font-size:15px">Plan vs gerçekleşen (RO bazında)</h3>'+
+          '<div class="chart-canvas-wrap"><canvas id="roChart"></canvas></div></div>';
+  html += noticeBlock();
+  $('view').innerHTML = html;
+  $('view').querySelectorAll('[data-ro]').forEach(function(b){
+    b.onclick=function(){ NAV={level:'sites',ro:b.getAttribute('data-ro'),siteIdx:null}; render(); };
+  });
+  drawRoChart();
+}
+
+function renderSitesLevel(){
+  crumb([{t:'Tüm RO’lar',go:'ro'},{t:NAV.ro+' — '+(BOOT.roLabels[NAV.ro]||'')}]);
+  var list = sitesOfRo(NAV.ro);
+  var html = kpiRow(sumMetrics(list));
+  var rows = list.map(function(s,i){ return {s:s,m:siteMetrics(s),i:i}; });
+  rows.sort(function(a,b){                       // en geride olan en ustte
+    var av=(a.m.delta==null?9999:a.m.delta), bv=(b.m.delta==null?9999:b.m.delta);
+    return av-bv;
+  });
+  html += '<div class="tablewrap"><table><thead><tr>'+
+    '<th>Site</th><th class="num">Yıllık</th><th class="num">Plan (YTD)</th>'+
+    '<th class="num">Gerçekleşen</th><th class="num">Sapma</th><th class="num">Ciro</th><th>Durum</th>'+
+    '</tr></thead><tbody>';
+  rows.forEach(function(r){
+    html += '<tr data-i="'+r.i+'">'+
+      '<td data-label="Site">'+esc(r.s.site)+'</td>'+
+      '<td class="num" data-label="Yıllık">'+nf(r.m.budgetCount)+'</td>'+
+      '<td class="num" data-label="Plan (YTD)">'+nf(r.m.budgetYTD)+'</td>'+
+      '<td class="num" data-label="Gerçekleşen">'+nf(r.m.realCount)+'</td>'+
+      '<td class="num" data-label="Sapma"><span class="badge '+(r.m.delta==null?'mute':(r.m.delta<0?'bad':'good'))+'">'+
+        signed(r.m.delta)+'</span></td>'+
+      '<td class="num" data-label="Ciro">'+money(r.m.realTurnoverM)+'</td>'+
+      '<td data-label="Durum">'+statusBadge(r.s.status)+'</td></tr>';
+  });
+  html += '</tbody></table></div>'+noticeBlock();
+  $('view').innerHTML = html;
+  $('view').querySelectorAll('tr[data-i]').forEach(function(tr){
+    tr.onclick=function(){ NAV.level='site'; NAV.siteIdx=parseInt(tr.getAttribute('data-i'),10); render(); };
+  });
+}
+
+function statusBadge(st){
+  if(st==='ok') return '<span class="badge good">tamam</span>';
+  if(st==='raporlama-geride') return '<span class="badge warn">raporlama geride</span>';
+  if(st==='veri-tutarsiz') return '<span class="badge warn">veri tutarsız</span>';
+  if(st==='veri-yok') return '<span class="badge mute">veri yok</span>';
+  return '<span class="badge mute">'+esc(st)+'</span>';
+}
+
+function renderSiteLevel(){
+  var list = sitesOfRo(NAV.ro), s = list[NAV.siteIdx];
+  if(!s){ NAV.level='sites'; return render(); }
+  crumb([{t:'Tüm RO’lar',go:'ro'},{t:NAV.ro,go:'sites'},{t:s.site}]);
+  var m = siteMetrics(s);
+  var html = '<div class="kpis">'+
+    '<div class="kpi"><div class="kpi-label">Yıllık taahhüt</div><div class="kpi-value">'+nf(m.budgetCount)+
+      '</div><div class="kpi-sub">'+money(m.budgetTurnover)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Plan (YTD)</div><div class="kpi-value">'+nf(m.budgetYTD)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Gerçekleşen</div><div class="kpi-value">'+nf(m.realCount)+
+      '</div><div class="kpi-sub">'+money(m.realTurnoverM)+'</div></div>'+
+    '<div class="kpi '+(m.delta<0?'bad':'good')+'"><div class="kpi-label">Sapma</div><div class="kpi-value">'+
+      signed(m.delta)+'</div><div class="kpi-sub">'+
+      (m.deltaTurnoverM!=null?money(m.deltaTurnoverM)+' ciro farkı':'ciro planı yok')+'</div></div></div>';
+
+  // Tip x musteri matrisi (kaynak veriyle ayni sekilde: iki bagimsiz eksen)
+  html += '<div class="tablewrap"><table><thead><tr><th>Kırılım</th><th class="num">Portföy adet</th>'+
+          '<th class="num">Gerçekleşen adet</th><th class="num">Gerçekleşen ciro</th></tr></thead><tbody>';
+  [['P1','Proje tipi P1'],['P10','Proje tipi P10'],['TTM','Proje tipi TTM']].forEach(function(t){
+    var acc=emptyM();
+    (s.detail.blocks||[]).forEach(function(b){
+      if(b.status!==F.status) return;
+      if(b.byType&&b.byType[t[0]]) addM(acc,b.byType[t[0]]);
+    });
+    html+='<tr><td data-label="Kırılım">'+t[1]+'</td><td class="num" data-label="Portföy">'+nf(acc.count)+
+      '</td><td class="num" data-label="Gerçekleşen">'+nf(acc.ytdCount)+
+      '</td><td class="num" data-label="Ciro">'+money(acc.ytdTurnover/1000)+'</td></tr>';
+  });
+  ['VS','OES'].forEach(function(c){
+    var acc=emptyM();
+    (s.detail.blocks||[]).forEach(function(b){
+      if(b.status!==F.status || b.customer!==c) return; addM(acc,b.total);
+    });
+    html+='<tr><td data-label="Kırılım">Müşteri '+c+'</td><td class="num" data-label="Portföy">'+nf(acc.count)+
+      '</td><td class="num" data-label="Gerçekleşen">'+nf(acc.ytdCount)+
+      '</td><td class="num" data-label="Ciro">'+money(acc.ytdTurnover/1000)+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+
+  var ind = s.indicators||{};
+  if(ind.EMI||ind.DAP||ind.RED){
+    html += '<div class="chartcard"><h3 style="margin:0 0 8px;font-size:15px">Göstergeler</h3>';
+    [['EMI','EMI'],['DAP','DAP'],['RED','RED LAUNCHES']].forEach(function(p){
+      var d=ind[p[0]]; if(!d) return;
+      var trail=(d.trail||[]).filter(function(x){return x.value!=null;})
+                 .map(function(x){return x.label+': '+nf(x.value,2);}).join(' · ');
+      html += '<div class="rowline"><span>'+p[1]+' <span style="color:var(--text-dim)">(hedef '+
+              (d.target==null?'—':nf(d.target,2))+')</span></span><span class="v">'+(trail||'—')+'</span></div>';
+    });
+    html += '</div>';
+  }
+
+  if(s.mismatch&&s.mismatch.length)
+    html += '<div class="notice">Çapraz doğrulama farkı — detaydan sayılan ile sayfanın özet satırı uyuşmuyor: '+
+            esc(s.mismatch.join(' | '))+'</div>';
+  if(s.warnings&&s.warnings.length)
+    html += '<div class="notice">Okuma notları ('+s.warnings.length+'): '+esc(s.warnings.slice(0,8).join(' | '))+'</div>';
+  html += '<div class="notice">Kaynak sayfa: <b>'+esc(s.sheet)+'</b></div>';
+  $('view').innerHTML = html;
+}
+
+function noticeBlock(){
+  var out='';
+  if(F.customer!=='ALL'&&F.type!=='ALL')
+    out += '<div class="notice">Bütçe rakamları müşteri satırından alındı: kaynak tabloda proje tipi ve '+
+           'müşteri kırılımı çaprazlanmıyor (ikisi ayrı satır ekseni). Gerçekleşen rakamlar çaprazlanmış durumda.</div>';
+  var miss=(DATA.missingSites||[]).length, unk=(DATA.unknownSheets||[]).length;
+  if(miss||unk){
+    out += '<div class="notice">'+
+      (miss?miss+' site için bu dönemde sayfa yok. ':'')+
+      (unk?unk+' sayfa eşleme tablosunda olmadığı için kapsam dışı bırakıldı ('+esc(DATA.unknownSheets.slice(0,4).join(', '))+').':'')+
+      '</div>';
+  }
+  return out;
+}
+
+function drawRoChart(){
+  var el=$('roChart'); if(!el||typeof Chart==='undefined') return;
+  var labels=[],plan=[],real=[];
+  BOOT.roOrder.forEach(function(ro){
+    var list=sitesOfRo(ro); if(!list.length) return;
+    var a=sumMetrics(list); labels.push(ro); plan.push(a.budgetYTD); real.push(a.realCount);
+  });
+  if(CHART) CHART.destroy();
+  CHART=new Chart(el.getContext('2d'),{
+    type:'bar',
+    data:{labels:labels,datasets:[
+      {label:'Plan (Budget YTD)',data:plan,backgroundColor:'#0057A8'},
+      {label:'Gerçekleşen',data:real,backgroundColor:'#78BE20'}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom'}},
+      scales:{y:{beginAtZero:true,ticks:{precision:0}}},
+      onClick:function(e,els){ if(els.length){ NAV={level:'sites',ro:labels[els[0].index],siteIdx:null}; render(); } }}
+  });
+}
+
+/* ---------- filtreler ---------- */
+function seg(container,items,current,onPick){
+  container.innerHTML=items.map(function(it){
+    return '<button type="button" data-v="'+it.v+'" aria-pressed="'+(it.v===current)+'">'+esc(it.t)+'</button>';
+  }).join('');
+  container.querySelectorAll('button').forEach(function(b){
+    b.onclick=function(){ onPick(b.getAttribute('data-v')); };
+  });
+}
+function buildStatusSeg(){
+  var items=[{v:'NEW',t:'NEW'}];
+  if(hasReman()) items.push({v:'REMAN',t:'REMAN'});   // yalniz veri varsa
+  if(F.status==='REMAN'&&items.length===1) F.status='NEW';
+  seg($('segStatus'),items,F.status,function(v){ F.status=v; render(); });
+}
+function buildFilters(){
+  buildStatusSeg();
+  seg($('segType'),[{v:'ALL',t:'Tümü'},{v:'P1',t:'P1'},{v:'P10',t:'P10'},{v:'TTM',t:'TTM'}],F.type,
+      function(v){ F.type=v; render(); });
+  seg($('segCustomer'),[{v:'ALL',t:'Tümü'},{v:'VS',t:'VS'},{v:'OES',t:'OES'}],F.customer,
+      function(v){ F.customer=v; render(); });
+  $('filters').hidden=false;
+}
+
+/* ---------- yukleme ---------- */
+function loadPeriod(key){
+  $('view').innerHTML='<div class="spinner" role="status">'+esc(key)+' okunuyor… 48 sayfa taranıyor, ilk açılış biraz sürebilir.</div>';
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(!res||res.error){ $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Bilinmeyen hata')+'</div>'; return; }
+      DATA=res; NAV={level:'ro',ro:null,siteIdx:null}; buildFilters(); render();
+    })
+    .withFailureHandler(function(err){
+      $('view').innerHTML='<div class="notice err">Sunucu hatası: '+esc(err&&err.message||err)+'</div>';
+    })
+    .getDashboardData(key,false);
+}
+
+function boot(){
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(!res||res.error){ $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Açılış verisi alınamadı')+'</div>'; return; }
+      BOOT=res;
+      $('inpQuery').value=res.gmailQuery||'';
+      if(!res.periods.length){
+        $('view').innerHTML='<div class="notice">Henüz kayıtlı dönem yok. <b>Ayarlar</b>’dan Gmail taramasını '+
+          'çalıştırın ya da bu ayın spreadsheet linkini elle ekleyin.</div>';
+        return;
+      }
+      $('selPeriod').innerHTML=res.periods.map(function(p){
+        return '<option value="'+p.key+'">'+esc(p.label)+'</option>'; }).join('');
+      $('selPeriod').onchange=function(){ loadPeriod(this.value); };
+      loadPeriod(res.periods[0].key);
+    })
+    .withFailureHandler(function(err){
+      $('view').innerHTML='<div class="notice err">Sunucu hatası: '+esc(err&&err.message||err)+'</div>';
+    })
+    .getBootstrap();
+}
+
+/* ---------- koyu mod (docs/koyu-mod.md) ---------- */
+function applyTheme(dark){
+  document.body.classList.toggle('dark-mode',dark);
+  $('btnTheme').setAttribute('aria-pressed',String(dark));
+  try{ localStorage.setItem('roDashTheme',dark?'dark':'light'); }catch(e){}
+  if(CHART) drawRoChart();
+}
+function initTheme(){
+  var saved=null;
+  try{ saved=localStorage.getItem('roDashTheme'); }catch(e){}
+  var dark = saved ? saved==='dark'
+    : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  applyTheme(!!dark);
+  $('btnTheme').onclick=function(){ applyTheme(!document.body.classList.contains('dark-mode')); };
+}
+
+/* ---------- ayarlar ---------- */
+function logS(msg){ $('settingsLog').textContent = msg; }
+function initSettings(){
+  $('btnSettings').onclick=function(){ $('dlgSettings').showModal(); };
+  $('btnCloseSettings').onclick=function(){ $('dlgSettings').close(); };
+  $('btnScan').onclick=function(){
+    logS('Gmail taranıyor…');
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.error){ logS('Hata: '+(r&&r.error||'bilinmiyor')); return; }
+        var lines=(r.found||[]).map(function(f){ return (f.isNew?'YENİ  ':'var   ')+f.key+'  '+f.name; });
+        logS(r.threadCount+' e-posta dizisi tarandı.\n'+
+             (lines.length?lines.join('\n'):'Yeni dönem bulunamadı.')+
+             ((r.errors||[]).length?'\n\nAtlananlar:\n'+r.errors.join('\n'):''));
+        boot();
+      })
+      .withFailureHandler(function(e){ logS('Sunucu hatası: '+(e&&e.message||e)); })
+      .uiScanGmail();
+  };
+  $('btnSaveQuery').onclick=function(){
+    google.script.run.withSuccessHandler(function(r){ logS('Sorgu kaydedildi: '+r.query); })
+      .withFailureHandler(function(e){ logS('Hata: '+(e&&e.message||e)); })
+      .uiSetGmailQuery($('inpQuery').value);
+  };
+  $('btnTrigger').onclick=function(){
+    google.script.run.withSuccessHandler(function(r){ logS(r.message); })
+      .withFailureHandler(function(e){ logS('Hata: '+(e&&e.message||e)); })
+      .uiInstallTrigger();
+  };
+  $('btnAdd').onclick=function(){
+    logS('Ekleniyor…');
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.error){ logS('Hata: '+(r&&r.error||'bilinmiyor')); return; }
+        logS(r.message); $('inpUrl').value=''; boot();
+      })
+      .withFailureHandler(function(e){ logS('Sunucu hatası: '+(e&&e.message||e)); })
+      .uiAddPeriod($('inpUrl').value);
+  };
+}
+
+window.addEventListener('resize',function(){ if(DATA) render(); });
+initTheme(); initSettings(); boot();
+</script>
