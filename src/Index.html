@@ -1,32 +1,31 @@
-<!-- Valeo RO Monthly Report dashboard — synoptic view (docs/jenerik-desenler.md) -->
+<!-- Valeo RO Monthly Report — synoptic dashboard (docs/jenerik-desenler.md) -->
 <?!= include('Stylesheet'); ?>
 
 <header class="topbar">
-  <h1>Valeo RO Monthly Report</h1>
+  <!-- docs/logo.md: dark ground -> white logo, max 28px, no text beside it -->
+  <img class="logo" alt="Valeo" src="data:image/png;base64,<?!= include('LogoBase64'); ?>">
+  <span class="title">RO Monthly Report</span>
   <span class="spacer"></span>
-  <button class="icon-btn" id="btnTheme" type="button" aria-pressed="false"
+  <button class="tbtn" id="btnGloss" type="button">
+    <span aria-hidden="true">?</span> What am I looking at
+  </button>
+  <button class="tbtn icon" id="btnTheme" type="button" aria-pressed="false"
           title="Dark mode" aria-label="Toggle dark mode">◐</button>
-  <button class="icon-btn" id="btnSettings" type="button"
+  <button class="tbtn icon" id="btnSettings" type="button"
           title="Settings" aria-label="Settings">⚙</button>
 </header>
 
 <div class="filters" id="filters" hidden>
   <div class="fgroup">
-    <label for="selPeriod">Period</label>
-    <select class="ctl" id="selPeriod"></select>
+    <span class="flabel" id="lblPeriod">Period</span>
+    <select class="ctl" id="selPeriod" aria-labelledby="lblPeriod"></select>
   </div>
-  <div class="fgroup">
-    <span id="lblStatus">Product status</span>
-    <div class="seg" role="group" aria-labelledby="lblStatus" id="segStatus"></div>
-  </div>
-  <div class="fgroup">
-    <span id="lblType">Project type</span>
-    <div class="seg" role="group" aria-labelledby="lblType" id="segType"></div>
-  </div>
-  <div class="fgroup">
-    <span id="lblCustomer">Customer</span>
-    <div class="seg" role="group" aria-labelledby="lblCustomer" id="segCustomer"></div>
-  </div>
+  <div class="fgroup"><span class="flabel" id="lblProduct">Product type</span>
+    <div class="seg" role="group" aria-labelledby="lblProduct" id="segStatus"></div></div>
+  <div class="fgroup"><span class="flabel" id="lblType">Project type</span>
+    <div class="seg" role="group" aria-labelledby="lblType" id="segType"></div></div>
+  <div class="fgroup"><span class="flabel" id="lblCustomer">Customer</span>
+    <div class="seg" role="group" aria-labelledby="lblCustomer" id="segCustomer"></div></div>
 </div>
 
 <main>
@@ -34,10 +33,20 @@
   <div id="view"><div class="spinner" role="status">Loading…</div></div>
 </main>
 
-<dialog class="panel" id="dlgSettings" aria-labelledby="settingsTitle">
+<dialog class="panelx" id="dlgGloss" aria-labelledby="glossTitle">
+  <div class="panel-head">
+    <h2 id="glossTitle">What am I looking at</h2>
+    <button class="tbtn icon" id="btnCloseGloss" type="button" aria-label="Close">✕</button>
+  </div>
+  <div class="panel-body">
+    <dl class="gloss" id="glossList"></dl>
+  </div>
+</dialog>
+
+<dialog class="panelx" id="dlgSettings" aria-labelledby="settingsTitle">
   <div class="panel-head">
     <h2 id="settingsTitle">Settings — period sources</h2>
-    <button class="icon-btn" id="btnCloseSettings" type="button" aria-label="Close">✕</button>
+    <button class="tbtn icon" id="btnCloseSettings" type="button" aria-label="Close">✕</button>
   </div>
   <div class="panel-body">
     <p style="margin:0;font-size:13px;color:var(--text-dim)">
@@ -45,7 +54,7 @@
       it automatically; if it doesn't, add the link manually.
     </p>
     <div class="fgroup">
-      <label for="inpQuery">Gmail search query</label>
+      <label class="flabel" for="inpQuery">Gmail search query</label>
       <input type="text" id="inpQuery" spellcheck="false">
     </div>
     <div class="btn-row">
@@ -54,7 +63,7 @@
       <button class="btn ghost" id="btnTrigger" type="button">Install daily scan</button>
     </div>
     <div class="fgroup">
-      <label for="inpUrl">Add a period manually (Sheets link)</label>
+      <label class="flabel" for="inpUrl">Add a period manually (Sheets link)</label>
       <input type="text" id="inpUrl" placeholder="https://docs.google.com/spreadsheets/d/…" spellcheck="false">
     </div>
     <div class="btn-row"><button class="btn" id="btnAdd" type="button">Add</button></div>
@@ -62,5 +71,4 @@
   </div>
 </dialog>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <?!= include('Script'); ?>

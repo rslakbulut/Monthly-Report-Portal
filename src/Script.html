@@ -1,56 +1,76 @@
 <script>
-/* Valeo RO Dashboard — istemci.
-   Veri sozlesmesi: docs/veri-listeleme.md — success VE failure handler zorunlu,
-   success icinde result.error MUTLAKA denetlenir. */
+/* Valeo RO Monthly Report — client.
+   Data contract: docs/veri-listeleme.md — BOTH success and failure handlers are
+   mandatory, and result.error is always checked inside the success handler. */
 
-var BOOT = null, DATA = null, CHART = null;
-var F = { status:'NEW', type:'ALL', customer:'ALL' };
-var NAV = { level:'ro', ro:null, siteIdx:null };
+var BOOT=null, DATA=null;
+var F={status:'NEW',type:'ALL',customer:'ALL'};
+var NAV={level:'ro',ro:null,siteIdx:null};
 
-/* ---------- yardimcilar ---------- */
+/* ---------- helpers ---------- */
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function nf(n,d){ return (n==null||isNaN(n))?'—':Number(n).toLocaleString('en-US',
   {minimumFractionDigits:d||0,maximumFractionDigits:d||0}); }
-function money(mEur){ return mEur==null?'—':nf(mEur,2)+' M€'; }
+function money(m){ return m==null?'—':'€'+nf(m,2)+'M'; }
 function signed(n){ return n==null?'—':(n>0?'+':'')+nf(n,0); }
+function pct(a,b){ return (b&&b>0)?Math.round(a/b*100):null; }
+function clamp01(x){ return Math.max(0,Math.min(1,x)); }
+function monthName(){ return (DATA&&DATA.period&&DATA.period.label)?DATA.period.label.split(' ')[0]:'now'; }
 
 function emptyM(){ return {count:0,turnover:0,ytdCount:0,ytdTurnover:0,planYtdCount:0,planYtdTurnover:0}; }
 function addM(a,b){ for(var k in a){ a[k]+=b[k]||0; } return a; }
 
-/* ---------- toplama ---------- */
-/** Bir site'in secili filtrelere gore gerceklesen olcumu (detay bloklarindan). */
+/* ---------- glossary ---------- */
+var GLOSSARY=[
+ ['Annual target','What the site committed at the start of the year — the number of projects to launch and the turnover they bring. Unchanged all year, so it is the yardstick everything else is measured against.','Section 3 “ORDER INTAKE → Budget Year” (turnover) and Section 4 “PROJECT LAUNCH → Budget Year” (count).'],
+ ['Plan by <month>','The annual target spread across the months — where the site should be by the reporting month. Not a forecast: it is the commitment, phased.','Section 4 “Budget YTD [CUMUL Number]”.'],
+ ['Launched so far','Projects actually launched since 1 January, and the turnover they carry. A project counts only if its real launch date is on or before the reporting month.','Counted row by row from the VS / OES Current Portfolio and TTM Launch tables — the right-hand “Real” date and the Turnover (k€) column.'],
+ ['Ahead / behind plan','Launched so far minus Plan by month. Positive means the site is running ahead of its phased commitment, negative means it is behind.','Same as the sheet’s “Launch Delay Number” column, which is exactly Real Launches − Budget YTD.'],
+ ['Sites reported','How many of the 48 sites have a sheet with data in this period. A low number means the picture is incomplete, not that performance is bad.','Sheet presence per site in the selected month’s spreadsheet.'],
+ ['Signed portfolio','Projects whose commercial agreement is signed and that are planned to launch this year — work already secured, launched or not.','Section 3 “Current Portfolio (C.A signed)”.'],
+ ['NEW / REMAN','NEW covers new product projects. REMAN covers remanufacturing — used parts restored and sold again. They are reported separately.','Column pair repeated across Sections 3 and 4.'],
+ ['P1 / P10 / TTM','P1 = projects with development work. P10 (written PCO in some sheets) = projects without development. TTM = an OEM product taken straight to the aftermarket.','Row labels in Section 4; the “Type” column in the detail tables.'],
+ ['VS / OES','VS = Valeo Service customers. OES = the OEM’s service arm. Both axes add up to the same total, from different angles.','Row labels in Sections 3 and 4; block names in the detail tables.']
+];
+function fillGlossary(hi){
+  var m=monthName();
+  $('glossList').innerHTML=GLOSSARY.map(function(g){
+    var term=g[0].replace('<month>',m);
+    var cls=(hi&&hi===g[0])?' class="hit"':'';
+    return '<div'+cls+'><dt>'+esc(term)+'</dt><dd>'+esc(g[1])+
+           '<span class="src">Source: '+esc(g[2])+'</span></dd></div>';
+  }).join('');
+}
+function openGloss(term){ fillGlossary(term); $('dlgGloss').showModal(); }
+
+/* ---------- aggregation ---------- */
 function realizedOf(site){
-  var out = emptyM();
-  if(!site.detail || !site.detail.blocks) return out;
+  var out=emptyM();
+  if(!site.detail||!site.detail.blocks) return out;
   site.detail.blocks.forEach(function(b){
-    if(b.status !== F.status) return;
-    if(F.customer !== 'ALL' && b.customer !== F.customer) return;
-    if(F.type === 'ALL'){ addM(out, b.total); }
-    else if(b.byType && b.byType[F.type]){ addM(out, b.byType[F.type]); }
+    if(b.status!==F.status) return;
+    if(F.customer!=='ALL' && b.customer!==F.customer) return;
+    if(F.type==='ALL'){ addM(out,b.total); }
+    else if(b.byType&&b.byType[F.type]){ addM(out,b.byType[F.type]); }
   });
   return out;
 }
-/** Ozet bloklardan butce satiri. Tip ve musteri ayni anda caprazlanamaz. */
 function budgetRowKey(){
-  if(F.customer !== 'ALL') return F.customer;
-  if(F.type !== 'ALL') return F.type;
+  if(F.customer!=='ALL') return F.customer;
+  if(F.type!=='ALL') return F.type;
   return 'TOTAL';
 }
 function budgetOf(site){
-  var k = budgetRowKey();
-  var bc = site.budgetCount && site.budgetCount[k];
-  var by = site.budgetYTDCount && site.budgetYTDCount[k];
-  var bt = site.budgetTurnover && site.budgetTurnover[k];
-  return {
-    count:    bc ? bc[F.status] : null,
-    ytdCount: by ? by[F.status] : null,
-    turnover: bt ? bt[F.status] : null      // M€ — yalniz TOTAL/VS/OES satirlari var
-  };
+  var k=budgetRowKey();
+  var bc=site.budgetCount&&site.budgetCount[k];
+  var by=site.budgetYTDCount&&site.budgetYTDCount[k];
+  var bt=site.budgetTurnover&&site.budgetTurnover[k];
+  return { count:bc?bc[F.status]:null, ytdCount:by?by[F.status]:null, turnover:bt?bt[F.status]:null };
 }
 function siteMetrics(site){
-  var b = budgetOf(site), r = realizedOf(site);
+  var b=budgetOf(site), r=realizedOf(site);
   return {
     budgetCount:b.count, budgetYTD:b.ytdCount, budgetTurnover:b.turnover,
     realCount:r.ytdCount, realTurnoverM:r.ytdTurnover/1000,
@@ -67,234 +87,339 @@ function sumMetrics(list){
     var m=siteMetrics(s);
     ['budgetCount','budgetYTD','budgetTurnover','realCount','realTurnoverM','planTurnoverM','portfolioTurnoverM']
       .forEach(function(k){ if(m[k]!=null) acc[k]+=m[k]; });
-    if(m.delta!=null && m.delta<0) acc.behind++;
+    if(m.delta!=null&&m.delta<0) acc.behind++;
     if(s.status!=='no-data') acc.reported++;
   });
-  acc.delta = acc.budgetYTD ? (acc.realCount-acc.budgetYTD) : (acc.realCount||0)-(acc.budgetYTD||0);
+  acc.delta=(acc.realCount||0)-(acc.budgetYTD||0);
   return acc;
 }
 function sitesOfRo(ro){ return (DATA.sites||[]).filter(function(s){ return s.ro===ro; }); }
 function hasReman(){
   return (DATA.sites||[]).some(function(s){
-    return (s.detail&&s.detail.blocks||[]).some(function(b){ return b.status==='REMAN' && b.total.count>0; });
+    return (s.detail&&s.detail.blocks||[]).some(function(b){ return b.status==='REMAN'&&b.total.count>0; });
   });
 }
 
-/* ---------- cizim ---------- */
+/* ---------- small SVG charts ---------- */
+function bulletBar(actual, plan, max){
+  var w=max>0?clamp01(actual/max)*100:0;
+  var p=max>0?clamp01(plan/max)*100:0;
+  var behind=(plan!=null&&actual<plan);
+  return '<div class="bar">'+
+    '<div class="bar-fill'+(behind?' behind':'')+'" style="width:'+w.toFixed(1)+'%"></div>'+
+    (plan!=null?'<div class="bar-plan" style="left:'+p.toFixed(1)+'%"></div>':'')+
+  '</div>';
+}
+function donut(pctCount, pctMoney){
+  var R1=52,R2=36,C1=2*Math.PI*R1,C2=2*Math.PI*R2;
+  var a=clamp01((pctCount||0)/100)*C1, b=clamp01((pctMoney||0)/100)*C2;
+  return '<svg viewBox="0 0 130 130" width="132" height="132" role="img" '+
+    'aria-label="'+(pctCount||0)+'% of projects and '+(pctMoney||0)+'% of turnover delivered">'+
+    '<g transform="rotate(-90 65 65)" fill="none" stroke-linecap="round">'+
+      '<circle cx="65" cy="65" r="'+R1+'" stroke="var(--track)" stroke-width="11"/>'+
+      '<circle cx="65" cy="65" r="'+R1+'" stroke="var(--valeo-mid)" stroke-width="11" '+
+        'stroke-dasharray="'+a.toFixed(1)+' '+C1.toFixed(1)+'"/>'+
+      '<circle cx="65" cy="65" r="'+R2+'" stroke="var(--track)" stroke-width="9"/>'+
+      '<circle cx="65" cy="65" r="'+R2+'" stroke="var(--good-line)" stroke-width="9" '+
+        'stroke-dasharray="'+b.toFixed(1)+' '+C2.toFixed(1)+'"/>'+
+    '</g>'+
+    '<text x="65" y="63" text-anchor="middle" font-size="25" font-weight="700" '+
+      'fill="var(--text)" font-family="Inter,sans-serif">'+(pctCount==null?'—':pctCount+'%')+'</text>'+
+    '<text x="65" y="80" text-anchor="middle" font-size="10.5" fill="var(--text-mute)" '+
+      'font-family="Inter,sans-serif" letter-spacing=".06em">OF TARGET</text>'+
+  '</svg>';
+}
+function sparkline(vals, target){
+  var pts=vals.filter(function(v){ return v!=null; });
+  if(pts.length<2) return '<span style="color:var(--text-mute);font-size:13px">not enough history</span>';
+  var W=150,H=40,P=4;
+  var all=pts.concat(target!=null?[target]:[]);
+  var mn=Math.min.apply(null,all), mx=Math.max.apply(null,all);
+  if(mx===mn){ mx=mn+1; }
+  var x=function(i){ return P+i*(W-2*P)/(pts.length-1); };
+  var y=function(v){ return H-P-(v-mn)/(mx-mn)*(H-2*P); };
+  var d=pts.map(function(v,i){ return (i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1); }).join(' ');
+  var last=pts[pts.length-1];
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" '+
+    'aria-label="last '+pts.length+' months, latest '+nf(last,2)+'">'+
+    (target!=null?'<line x1="'+P+'" x2="'+(W-P)+'" y1="'+y(target).toFixed(1)+'" y2="'+y(target).toFixed(1)+
+      '" stroke="var(--text-mute)" stroke-width="1" stroke-dasharray="3 3"/>':'')+
+    '<path d="'+d+'" fill="none" stroke="var(--valeo-mid)" stroke-width="2" '+
+      'stroke-linecap="round" stroke-linejoin="round"/>'+
+    '<circle cx="'+x(pts.length-1).toFixed(1)+'" cy="'+y(last).toFixed(1)+'" r="3.2" fill="var(--valeo-mid)"/>'+
+  '</svg>';
+}
+
+/* ---------- shell ---------- */
 function render(){
-  if(!DATA){ return; }
+  if(!DATA) return;
   if(DATA.error){ $('view').innerHTML='<div class="notice err">'+esc(DATA.error)+'</div>'; return; }
   buildStatusSeg();
   if(NAV.level==='ro') renderRoLevel();
   else if(NAV.level==='sites') renderSitesLevel();
   else renderSiteLevel();
-  if(window.innerWidth<=768) document.querySelectorAll('table').forEach(function(t){ t.classList.add('m-cards'); });
-}
-
-function crumb(parts){
-  $('crumb').innerHTML = parts.map(function(p,i){
-    if(p.go) return '<button type="button" data-go="'+p.go+'">'+esc(p.t)+'</button>'+
-                    (i<parts.length-1?'<span aria-hidden="true">›</span>':'');
-    return '<b>'+esc(p.t)+'</b>';
-  }).join('');
-  $('crumb').querySelectorAll('button').forEach(function(b){
-    b.onclick=function(){ var g=b.getAttribute('data-go');
-      if(g==='ro'){ NAV={level:'ro',ro:null,siteIdx:null}; }
-      else if(g==='sites'){ NAV.level='sites'; NAV.siteIdx=null; }
-      render(); };
+  if(window.innerWidth<=768)
+    document.querySelectorAll('table').forEach(function(t){ t.classList.add('m-cards'); });
+  $('view').querySelectorAll('[data-gloss]').forEach(function(b){
+    b.onclick=function(e){ e.stopPropagation(); openGloss(b.getAttribute('data-gloss')); };
   });
 }
-
-function kpiRow(a, label){
-  var pctCount = a.budgetCount ? Math.round(a.realCount/a.budgetCount*100) : null;
-  var pctMoney = a.budgetTurnover ? Math.round(a.realTurnoverM/a.budgetTurnover*100) : null;
-  var deltaCls = a.delta==null?'':(a.delta<0?'bad':'good');
+function crumb(parts){
+  $('crumb').innerHTML=parts.map(function(p,i){
+    var sep=(i<parts.length-1)?'<span class="sep" aria-hidden="true">›</span>':'';
+    return (p.go?'<button type="button" data-go="'+p.go+'">'+esc(p.t)+'</button>':'<b>'+esc(p.t)+'</b>')+sep;
+  }).join('');
+  $('crumb').querySelectorAll('button').forEach(function(b){
+    b.onclick=function(){
+      var g=b.getAttribute('data-go');
+      if(g==='ro') NAV={level:'ro',ro:null,siteIdx:null}; else { NAV.level='sites'; NAV.siteIdx=null; }
+      render();
+    };
+  });
+}
+function kpi(label, value, unit, sub, cls, gloss){
+  return '<div class="kpi'+(cls?' '+cls:'')+'">'+
+    '<div class="kpi-head"><span class="kpi-label">'+esc(label)+'</span>'+
+      (gloss?'<button class="kpi-info" type="button" data-gloss="'+esc(gloss)+'" '+
+             'aria-label="What is '+esc(label)+'?">ⓘ</button>':'')+'</div>'+
+    '<div class="kpi-value">'+value+(unit?'<span class="unit">'+esc(unit)+'</span>':'')+'</div>'+
+    '<div class="kpi-sub">'+sub+'</div></div>';
+}
+function kpiRow(a){
+  var pctC=pct(a.realCount,a.budgetCount), pctM=pct(a.realTurnoverM,a.budgetTurnover);
+  var ahead=(a.delta>=0);
   return '<div class="kpis">'+
-    '<div class="kpi"><div class="kpi-label">Annual commitment</div>'+
-      '<div class="kpi-value">'+nf(a.budgetCount)+'</div>'+
-      '<div class="kpi-sub">projects · '+money(a.budgetTurnover)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Plan to date</div>'+
-      '<div class="kpi-value">'+nf(a.budgetYTD)+'</div>'+
-      '<div class="kpi-sub">projects (Budget YTD)</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Achieved</div>'+
-      '<div class="kpi-value">'+nf(a.realCount)+'</div>'+
-      '<div class="kpi-sub">projects · '+money(a.realTurnoverM)+
-      (pctCount!=null?' · '+pctCount+'% of the year':'')+'</div></div>'+
-    '<div class="kpi '+deltaCls+'"><div class="kpi-label">Variance vs plan</div>'+
-      '<div class="kpi-value">'+signed(a.delta)+'</div>'+
-      '<div class="kpi-sub">'+(a.behind?a.behind+' site'+(a.behind>1?'s':'')+' behind':'no site behind')+'</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Reporting sites</div>'+
-      '<div class="kpi-value">'+a.reported+'<span style="font-size:.55em;color:var(--text-dim)"> / '+
-        BOOT.siteCount+'</span></div>'+
-      '<div class="kpi-sub">'+(pctMoney!=null?pctMoney+'% of budgeted turnover':'&nbsp;')+'</div></div>'+
+    kpi('Annual target', nf(a.budgetCount), 'projects', money(a.budgetTurnover)+' committed', '', 'Annual target')+
+    kpi('Plan by '+monthName(), nf(a.budgetYTD), 'projects', 'where we should be now', '', 'Plan by <month>')+
+    kpi('Launched so far', nf(a.realCount), 'projects',
+        money(a.realTurnoverM)+(pctC!=null?' · '+pctC+'% of target':''), '', 'Launched so far')+
+    kpi(ahead?'Ahead of plan':'Behind plan', signed(a.delta), 'projects',
+        a.behind?a.behind+' site'+(a.behind>1?'s':'')+' behind':'no site behind',
+        ahead?'good':'bad', 'Ahead / behind plan')+
+    kpi('Sites reported', a.reported+'<span class="unit">/ '+BOOT.siteCount+'</span>', '',
+        (pctM!=null?pctM+'% of budgeted turnover':'&nbsp;'), '', 'Sites reported')+
   '</div>';
 }
 
+/* ---------- level 1: RO comparison strip ---------- */
 function renderRoLevel(){
   crumb([{t:'All ROs'}]);
-  var all = DATA.sites||[];
-  var html = kpiRow(sumMetrics(all));
-  html += '<div class="cards">';
+  var all=DATA.sites||[];
+  var rows=[];
   BOOT.roOrder.forEach(function(ro){
-    var list = sitesOfRo(ro); if(!list.length) return;
-    var a = sumMetrics(list);
-    var cls = a.delta<0?'bad':'good';
-    html += '<button class="card" type="button" data-ro="'+ro+'">'+
-      '<h3>'+esc(ro)+' <span class="badge '+cls+'">'+signed(a.delta)+'</span></h3>'+
-      '<div class="sub">'+esc(BOOT.roLabels[ro]||'')+' · '+list.length+' sites</div>'+
-      '<div class="rowline"><span>Achieved / plan</span><span class="v">'+nf(a.realCount)+' / '+nf(a.budgetYTD)+'</span></div>'+
-      '<div class="rowline"><span>Annual commitment</span><span class="v">'+nf(a.budgetCount)+' projects</span></div>'+
-      '<div class="rowline"><span>Turnover (achieved)</span><span class="v">'+money(a.realTurnoverM)+'</span></div>'+
-      '<div class="rowline"><span>Reporting</span><span class="v">'+a.reported+' / '+list.length+'</span></div>'+
-      '</button>';
+    var list=sitesOfRo(ro); if(!list.length) return;
+    rows.push({ro:ro,list:list,a:sumMetrics(list)});
   });
-  html += '</div>';
-  html += '<div class="chartcard"><h3 style="margin:0 0 10px;font-size:15px">Plan vs achieved by RO</h3>'+
-          '<div class="chart-canvas-wrap"><canvas id="roChart"></canvas></div></div>';
-  html += noticeBlock();
-  $('view').innerHTML = html;
+  var max=0;
+  rows.forEach(function(r){ max=Math.max(max,r.a.budgetCount||0,r.a.realCount||0); });
+  rows.sort(function(x,y){ return (x.a.delta||0)-(y.a.delta||0); });   // worst first
+
+  var html=kpiRow(sumMetrics(all));
+  html+='<div class="section-title">By RO — bar shows launched, marker shows plan</div><div class="rolist">';
+  rows.forEach(function(r){
+    var a=r.a, ahead=(a.delta>=0);
+    html+='<button class="ro-row" type="button" data-ro="'+r.ro+'">'+
+      '<span class="ro-id"><span class="ro-code">'+esc(r.ro)+'</span>'+
+        '<span class="ro-name">'+esc(BOOT.roLabels[r.ro]||'')+' · '+r.list.length+' sites</span></span>'+
+      '<span class="bar-wrap">'+bulletBar(a.realCount,a.budgetYTD,max)+
+        '<span class="bar-figs"><span><b>'+nf(a.realCount)+'</b> launched</span>'+
+        '<span>plan <b>'+nf(a.budgetYTD)+'</b></span>'+
+        '<span>target <b>'+nf(a.budgetCount)+'</b></span></span></span>'+
+      '<span class="ro-metrics">'+
+        '<span class="metric"><span class="m-v">'+money(a.realTurnoverM)+'</span><span class="m-l">turnover</span></span>'+
+        '<span class="pill '+(ahead?'good':'bad')+'">'+signed(a.delta)+'</span>'+
+      '</span>'+
+      '<span class="chev" aria-hidden="true">›</span>'+
+    '</button>';
+  });
+  html+='</div>'+noticeBlock();
+  $('view').innerHTML=html;
   $('view').querySelectorAll('[data-ro]').forEach(function(b){
     b.onclick=function(){ NAV={level:'sites',ro:b.getAttribute('data-ro'),siteIdx:null}; render(); };
   });
-  drawRoChart();
 }
 
+/* ---------- level 2: sites of one RO ---------- */
 function renderSitesLevel(){
   crumb([{t:'All ROs',go:'ro'},{t:NAV.ro+' — '+(BOOT.roLabels[NAV.ro]||'')}]);
-  var list = sitesOfRo(NAV.ro);
-  var html = kpiRow(sumMetrics(list));
-  var rows = list.map(function(s,i){ return {s:s,m:siteMetrics(s),i:i}; });
-  rows.sort(function(a,b){                       // en geride olan en ustte
+  var list=sitesOfRo(NAV.ro);
+  var rows=list.map(function(s,i){ return {s:s,m:siteMetrics(s),i:i}; });
+  rows.sort(function(a,b){
     var av=(a.m.delta==null?9999:a.m.delta), bv=(b.m.delta==null?9999:b.m.delta);
     return av-bv;
   });
-  html += '<div class="tablewrap"><table><thead><tr>'+
-    '<th>Site</th><th class="num">Annual</th><th class="num">Plan (YTD)</th>'+
-    '<th class="num">Achieved</th><th class="num">Variance</th><th class="num">Turnover</th><th>Status</th>'+
+  var html=kpiRow(sumMetrics(list));
+  html+='<div class="section-title">Sites — furthest behind first</div>';
+  html+='<div class="tablewrap"><table><thead><tr>'+
+    '<th>Site</th><th class="num">Target</th><th class="num">Plan</th>'+
+    '<th class="num">Launched</th><th class="num">vs plan</th><th class="num">Turnover</th><th>Status</th>'+
     '</tr></thead><tbody>';
   rows.forEach(function(r){
-    html += '<tr data-i="'+r.i+'">'+
-      '<td data-label="Site">'+esc(r.s.site)+'</td>'+
-      '<td class="num" data-label="Annual">'+nf(r.m.budgetCount)+'</td>'+
-      '<td class="num" data-label="Plan (YTD)">'+nf(r.m.budgetYTD)+'</td>'+
-      '<td class="num" data-label="Achieved">'+nf(r.m.realCount)+'</td>'+
-      '<td class="num" data-label="Variance"><span class="badge '+(r.m.delta==null?'mute':(r.m.delta<0?'bad':'good'))+'">'+
-        signed(r.m.delta)+'</span></td>'+
+    html+='<tr data-i="'+r.i+'">'+
+      '<td class="site-name" data-label="Site">'+esc(r.s.site)+'</td>'+
+      '<td class="num" data-label="Target">'+nf(r.m.budgetCount)+'</td>'+
+      '<td class="num" data-label="Plan">'+nf(r.m.budgetYTD)+'</td>'+
+      '<td class="num" data-label="Launched">'+nf(r.m.realCount)+'</td>'+
+      '<td class="num" data-label="vs plan"><span class="pill '+
+        (r.m.delta==null?'mute':(r.m.delta<0?'bad':'good'))+'">'+signed(r.m.delta)+'</span></td>'+
       '<td class="num" data-label="Turnover">'+money(r.m.realTurnoverM)+'</td>'+
-      '<td data-label="Status">'+statusBadge(r.s.status)+'</td></tr>';
+      '<td data-label="Status">'+statusPill(r.s.status)+'</td></tr>';
   });
-  html += '</tbody></table></div>'+noticeBlock();
-  $('view').innerHTML = html;
+  html+='</tbody></table></div>'+noticeBlock();
+  $('view').innerHTML=html;
   $('view').querySelectorAll('tr[data-i]').forEach(function(tr){
     tr.onclick=function(){ NAV.level='site'; NAV.siteIdx=parseInt(tr.getAttribute('data-i'),10); render(); };
   });
 }
-
-function statusBadge(st){
-  if(st==='ok') return '<span class="badge good">OK</span>';
-  if(st==='behind-schedule') return '<span class="badge warn">behind schedule</span>';
-  if(st==='inconsistent') return '<span class="badge warn">inconsistent data</span>';
-  if(st==='no-data') return '<span class="badge mute">no data</span>';
-  return '<span class="badge mute">'+esc(st)+'</span>';
+function statusPill(st){
+  if(st==='ok') return '<span class="pill good">on track</span>';
+  if(st==='behind-schedule') return '<span class="pill warn">reported late</span>';
+  if(st==='inconsistent') return '<span class="pill warn">check data</span>';
+  if(st==='no-data') return '<span class="pill mute">no data</span>';
+  return '<span class="pill mute">'+esc(st)+'</span>';
 }
 
+/* ---------- level 3: one site ---------- */
+function typeTotals(s,t){
+  var acc=emptyM();
+  (s.detail.blocks||[]).forEach(function(b){
+    if(b.status!==F.status) return;
+    if(b.byType&&b.byType[t]) addM(acc,b.byType[t]);
+  });
+  return acc;
+}
+function custTotals(s,c){
+  var acc=emptyM();
+  (s.detail.blocks||[]).forEach(function(b){
+    if(b.status!==F.status||b.customer!==c) return; addM(acc,b.total);
+  });
+  return acc;
+}
 function renderSiteLevel(){
-  var list = sitesOfRo(NAV.ro), s = list[NAV.siteIdx];
+  var list=sitesOfRo(NAV.ro), s=list[NAV.siteIdx];
   if(!s){ NAV.level='sites'; return render(); }
   crumb([{t:'All ROs',go:'ro'},{t:NAV.ro,go:'sites'},{t:s.site}]);
-  var m = siteMetrics(s);
-  var html = '<div class="kpis">'+
-    '<div class="kpi"><div class="kpi-label">Annual commitment</div><div class="kpi-value">'+nf(m.budgetCount)+
-      '</div><div class="kpi-sub">'+money(m.budgetTurnover)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Plan (YTD)</div><div class="kpi-value">'+nf(m.budgetYTD)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Achieved</div><div class="kpi-value">'+nf(m.realCount)+
-      '</div><div class="kpi-sub">'+money(m.realTurnoverM)+'</div></div>'+
-    '<div class="kpi '+(m.delta<0?'bad':'good')+'"><div class="kpi-label">Variance</div><div class="kpi-value">'+
-      signed(m.delta)+'</div><div class="kpi-sub">'+
-      (m.deltaTurnoverM!=null?money(m.deltaTurnoverM)+' turnover gap':'no turnover plan')+'</div></div></div>';
+  var m=siteMetrics(s);
+  var ahead=(m.delta>=0), pctC=pct(m.realCount,m.budgetCount), pctM=pct(m.realTurnoverM,m.budgetTurnover);
 
-  // Type x customer matrix (two independent axes, exactly as in the source sheet)
-  html += '<div class="tablewrap"><table><thead><tr><th>Breakdown</th><th class="num">Portfolio count</th>'+
-          '<th class="num">Achieved count</th><th class="num">Achieved turnover</th></tr></thead><tbody>';
-  [['P1','Project type P1'],['P10','Project type P10'],['TTM','Project type TTM']].forEach(function(t){
-    var acc=emptyM();
-    (s.detail.blocks||[]).forEach(function(b){
-      if(b.status!==F.status) return;
-      if(b.byType&&b.byType[t[0]]) addM(acc,b.byType[t[0]]);
-    });
-    html+='<tr><td data-label="Breakdown">'+t[1]+'</td><td class="num" data-label="Portfolio">'+nf(acc.count)+
-      '</td><td class="num" data-label="Achieved">'+nf(acc.ytdCount)+
-      '</td><td class="num" data-label="Turnover">'+money(acc.ytdTurnover/1000)+'</td></tr>';
+  /* 1 — one sentence */
+  var head='<div class="headline">'+esc(s.site)+' is '+
+    (m.delta==null?'<b>not reporting</b> this period'
+      :'<b class="'+(ahead?'up':'down')+'">'+Math.abs(m.delta)+' project'+(Math.abs(m.delta)===1?'':'s')+' '+
+       (ahead?'ahead of':'behind')+'</b> plan')+
+    ' — <b>'+nf(m.realCount)+'</b> of '+nf(m.budgetCount)+' launched, '+
+    '<b>'+money(m.realTurnoverM)+'</b> of '+money(m.budgetTurnover)+'.</div>';
+
+  /* 2 — progress + 3 type breakdown */
+  var maxT=0;
+  ['P1','P10','TTM'].forEach(function(t){ var a=typeTotals(s,t); maxT=Math.max(maxT,a.count,a.ytdCount); });
+  var brk='';
+  ['P1','P10','TTM'].forEach(function(t){
+    var a=typeTotals(s,t);
+    brk+='<div class="brk-row"><span class="brk-name">'+t+'</span>'+
+      bulletBar(a.ytdCount,null,maxT||1)+
+      '<span class="num" style="font-weight:600">'+nf(a.ytdCount)+' / '+nf(a.count)+'</span></div>';
+  });
+
+  /* 4 — customer split */
+  var vs=custTotals(s,'VS'), oes=custTotals(s,'OES');
+  var tot=(vs.ytdTurnover+oes.ytdTurnover)||1;
+  var vsp=Math.round(vs.ytdTurnover/tot*100), oesp=100-vsp;
+  var stack='<div class="stack">'+
+    (vsp>0?'<span style="width:'+vsp+'%;background:var(--valeo-mid)">'+(vsp>13?'VS '+vsp+'%':'')+'</span>':'')+
+    (oesp>0?'<span style="width:'+oesp+'%;background:var(--valeo-dark)">'+(oesp>13?'OES '+oesp+'%':'')+'</span>':'')+
+    '</div>'+
+    '<div class="bar-figs" style="margin-top:8px"><span>VS <b>'+money(vs.ytdTurnover/1000)+'</b></span>'+
+    '<span>OES <b>'+money(oes.ytdTurnover/1000)+'</b></span></div>';
+
+  /* 5 — funnel */
+  var f1=m.budgetTurnover||0, f2=m.portfolioTurnoverM||0, f3=m.realTurnoverM||0;
+  var fmax=Math.max(f1,f2,f3)||1;
+  var funnel='<div class="funnel">'+
+    fnRow('Annual target',f1,fmax,'')+
+    fnRow('In portfolio',f2,fmax,'b2')+
+    fnRow('Launched',f3,fmax,'b3')+'</div>';
+
+  /* 6 — indicators */
+  var ind=s.indicators||{}, indHtml='';
+  [['EMI','EMI'],['DAP','DAP'],['RED','Red launches']].forEach(function(p){
+    var d=ind[p[0]]; if(!d) return;
+    var vals=(d.trail||[]).map(function(x){ return x.value; });
+    var last=null; for(var i=vals.length-1;i>=0;i--){ if(vals[i]!=null){ last=vals[i]; break; } }
+    var okPill='';
+    if(last!=null&&d.target!=null)
+      okPill='<span class="pill '+(last>=d.target?'good':'bad')+'">'+nf(last,2)+'</span>';
+    else if(last!=null) okPill='<span class="pill mute">'+nf(last,2)+'</span>';
+    indHtml+='<div class="ind-row"><span class="ind-name">'+p[1]+'</span>'+
+      sparkline(vals,d.target)+okPill+'</div>';
+  });
+
+  var html=head+'<div class="panels">'+
+    '<div class="panel"><h3>Progress against annual target</h3><div class="donut-row">'+
+      donut(pctC,pctM)+
+      '<div class="donut-legend">'+
+        '<span class="lg-item"><span class="lg-dot" style="background:var(--valeo-mid)"></span>'+
+          'Projects <span class="lg-val">'+nf(m.realCount)+' / '+nf(m.budgetCount)+'</span></span>'+
+        '<span class="lg-item"><span class="lg-dot" style="background:var(--good-line)"></span>'+
+          'Turnover <span class="lg-val">'+money(m.realTurnoverM)+'</span></span>'+
+        '<span class="lg-item"><span class="lg-dot" style="background:var(--track)"></span>'+
+          'Plan by '+monthName()+' <span class="lg-val">'+nf(m.budgetYTD)+'</span></span>'+
+      '</div></div></div>'+
+    '<div class="panel"><h3>By project type — launched of portfolio</h3><div class="brk">'+brk+'</div></div>'+
+    '<div class="panel"><h3>By customer — launched turnover</h3>'+stack+'</div>'+
+    '<div class="panel"><h3>From target to launched</h3>'+funnel+'</div>'+
+    (indHtml?'<div class="panel" style="grid-column:1/-1"><h3>Indicators — last months</h3>'+indHtml+'</div>':'')+
+  '</div>';
+
+  html+='<details class="raw"><summary>Show raw numbers</summary>'+
+    '<div class="tablewrap"><table><thead><tr><th>Breakdown</th><th class="num">Portfolio</th>'+
+    '<th class="num">Launched</th><th class="num">Turnover</th></tr></thead><tbody>';
+  ['P1','P10','TTM'].forEach(function(t){
+    var a=typeTotals(s,t);
+    html+='<tr><td data-label="Breakdown">Project type '+t+'</td>'+
+      '<td class="num" data-label="Portfolio">'+nf(a.count)+'</td>'+
+      '<td class="num" data-label="Launched">'+nf(a.ytdCount)+'</td>'+
+      '<td class="num" data-label="Turnover">'+money(a.ytdTurnover/1000)+'</td></tr>';
   });
   ['VS','OES'].forEach(function(c){
-    var acc=emptyM();
-    (s.detail.blocks||[]).forEach(function(b){
-      if(b.status!==F.status || b.customer!==c) return; addM(acc,b.total);
-    });
-    html+='<tr><td data-label="Breakdown">Customer '+c+'</td><td class="num" data-label="Portfolio">'+nf(acc.count)+
-      '</td><td class="num" data-label="Achieved">'+nf(acc.ytdCount)+
-      '</td><td class="num" data-label="Turnover">'+money(acc.ytdTurnover/1000)+'</td></tr>';
+    var a=custTotals(s,c);
+    html+='<tr><td data-label="Breakdown">Customer '+c+'</td>'+
+      '<td class="num" data-label="Portfolio">'+nf(a.count)+'</td>'+
+      '<td class="num" data-label="Launched">'+nf(a.ytdCount)+'</td>'+
+      '<td class="num" data-label="Turnover">'+money(a.ytdTurnover/1000)+'</td></tr>';
   });
-  html+='</tbody></table></div>';
-
-  var ind = s.indicators||{};
-  if(ind.EMI||ind.DAP||ind.RED){
-    html += '<div class="chartcard"><h3 style="margin:0 0 8px;font-size:15px">Indicators</h3>';
-    [['EMI','EMI'],['DAP','DAP'],['RED','RED LAUNCHES']].forEach(function(p){
-      var d=ind[p[0]]; if(!d) return;
-      var trail=(d.trail||[]).filter(function(x){return x.value!=null;})
-                 .map(function(x){return x.label+': '+nf(x.value,2);}).join(' · ');
-      html += '<div class="rowline"><span>'+p[1]+' <span style="color:var(--text-dim)">(target '+
-              (d.target==null?'—':nf(d.target,2))+')</span></span><span class="v">'+(trail||'—')+'</span></div>';
-    });
-    html += '</div>';
-  }
+  html+='</tbody></table></div></details>';
 
   if(s.mismatch&&s.mismatch.length)
-    html += '<div class="notice">Cross-check mismatch — counted from detail rows vs the sheet\'s summary row: '+
-            esc(s.mismatch.join(' | '))+'</div>';
+    html+='<div class="notice">Cross-check mismatch — counted from detail rows vs the sheet\'s summary row: '+
+          esc(s.mismatch.join(' | '))+'</div>';
   if(s.warnings&&s.warnings.length)
-    html += '<div class="notice">Parsing notes ('+s.warnings.length+'): '+esc(s.warnings.slice(0,8).join(' | '))+'</div>';
-  html += '<div class="notice">Source sheet: <b>'+esc(s.sheet)+'</b></div>';
-  $('view').innerHTML = html;
+    html+='<div class="notice">Parsing notes ('+s.warnings.length+'): '+esc(s.warnings.slice(0,8).join(' | '))+'</div>';
+  html+='<div class="notice">Source sheet: <b>'+esc(s.sheet)+'</b></div>';
+  $('view').innerHTML=html;
+}
+function fnRow(label,val,max,cls){
+  return '<div class="fn-row"><div><div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">'+
+    esc(label)+'</div><div class="fn-bar '+cls+'" style="width:'+
+    (clamp01(val/max)*100).toFixed(1)+'%;min-width:3px"></div></div>'+
+    '<span class="num" style="font-weight:600">'+money(val)+'</span></div>';
 }
 
 function noticeBlock(){
   var out='';
   if(F.customer!=='ALL'&&F.type!=='ALL')
-    out += '<div class="notice">Budget figures come from the customer row: the source sheet does not cross '+
-           'project type with customer (they are two separate row axes). Achieved figures are crossed.</div>';
+    out+='<div class="notice">Target and plan figures come from the customer row: the source sheet does not '+
+         'cross project type with customer (they are two separate row axes). Launched figures are crossed.</div>';
   var miss=(DATA.missingSites||[]).length, unk=(DATA.unknownSheets||[]).length;
-  if(miss||unk){
-    out += '<div class="notice">'+
+  if(miss||unk)
+    out+='<div class="notice">'+
       (miss?'No sheet in this period for '+miss+' site'+(miss>1?'s':'')+'. ':'')+
-      (unk?unk+' sheet'+(unk>1?'s':'')+' left out — not in the mapping table ('+esc(DATA.unknownSheets.slice(0,4).join(', '))+').':'')+
-      '</div>';
-  }
+      (unk?unk+' sheet'+(unk>1?'s':'')+' left out — not in the mapping table ('+
+        esc(DATA.unknownSheets.slice(0,4).join(', '))+').':'')+'</div>';
   return out;
 }
 
-function drawRoChart(){
-  var el=$('roChart'); if(!el||typeof Chart==='undefined') return;
-  var labels=[],plan=[],real=[];
-  BOOT.roOrder.forEach(function(ro){
-    var list=sitesOfRo(ro); if(!list.length) return;
-    var a=sumMetrics(list); labels.push(ro); plan.push(a.budgetYTD); real.push(a.realCount);
-  });
-  if(CHART) CHART.destroy();
-  CHART=new Chart(el.getContext('2d'),{
-    type:'bar',
-    data:{labels:labels,datasets:[
-      {label:'Plan (Budget YTD)',data:plan,backgroundColor:'#0057A8'},
-      {label:'Achieved',data:real,backgroundColor:'#78BE20'}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:'bottom'}},
-      scales:{y:{beginAtZero:true,ticks:{precision:0}}},
-      onClick:function(e,els){ if(els.length){ NAV={level:'sites',ro:labels[els[0].index],siteIdx:null}; render(); } }}
-  });
-}
-
-/* ---------- filtreler ---------- */
+/* ---------- filters ---------- */
 function seg(container,items,current,onPick){
   container.innerHTML=items.map(function(it){
     return '<button type="button" data-v="'+it.v+'" aria-pressed="'+(it.v===current)+'">'+esc(it.t)+'</button>';
@@ -305,7 +430,7 @@ function seg(container,items,current,onPick){
 }
 function buildStatusSeg(){
   var items=[{v:'NEW',t:'NEW'}];
-  if(hasReman()) items.push({v:'REMAN',t:'REMAN'});   // yalniz veri varsa
+  if(hasReman()) items.push({v:'REMAN',t:'REMAN'});
   if(F.status==='REMAN'&&items.length===1) F.status='NEW';
   seg($('segStatus'),items,F.status,function(v){ F.status=v; render(); });
 }
@@ -318,9 +443,10 @@ function buildFilters(){
   $('filters').hidden=false;
 }
 
-/* ---------- yukleme ---------- */
+/* ---------- loading ---------- */
 function loadPeriod(key){
-  $('view').innerHTML='<div class="spinner" role="status">Reading '+esc(key)+'… scanning 48 sheets, the first load may take a moment.</div>';
+  $('view').innerHTML='<div class="spinner" role="status">Reading '+esc(key)+
+    '… scanning 48 sheets, the first load may take a moment.</div>';
   google.script.run
     .withSuccessHandler(function(res){
       if(!res||res.error){ $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Unknown error')+'</div>'; return; }
@@ -331,13 +457,11 @@ function loadPeriod(key){
     })
     .getDashboardData(key,false);
 }
-
 function boot(){
   google.script.run
     .withSuccessHandler(function(res){
       if(!res||res.error){ $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Could not load start-up data')+'</div>'; return; }
-      BOOT=res;
-      $('inpQuery').value=res.gmailQuery||'';
+      BOOT=res; $('inpQuery').value=res.gmailQuery||'';
       if(!res.periods.length){
         $('view').innerHTML='<div class="notice">No period registered yet. Open <b>Settings</b> and run the '+
           'Gmail scan, or add this month\'s spreadsheet link manually.</div>';
@@ -354,25 +478,25 @@ function boot(){
     .getBootstrap();
 }
 
-/* ---------- koyu mod (docs/koyu-mod.md) ---------- */
+/* ---------- theme (docs/koyu-mod.md) ---------- */
 function applyTheme(dark){
   document.body.classList.toggle('dark-mode',dark);
   $('btnTheme').setAttribute('aria-pressed',String(dark));
   try{ localStorage.setItem('roDashTheme',dark?'dark':'light'); }catch(e){}
-  if(CHART) drawRoChart();
 }
 function initTheme(){
-  var saved=null;
-  try{ saved=localStorage.getItem('roDashTheme'); }catch(e){}
-  var dark = saved ? saved==='dark'
-    : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  var saved=null; try{ saved=localStorage.getItem('roDashTheme'); }catch(e){}
+  var dark=saved?saved==='dark'
+    :(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);
   applyTheme(!!dark);
   $('btnTheme').onclick=function(){ applyTheme(!document.body.classList.contains('dark-mode')); };
 }
 
-/* ---------- ayarlar ---------- */
-function logS(msg){ $('settingsLog').textContent = msg; }
-function initSettings(){
+/* ---------- panels ---------- */
+function logS(m){ $('settingsLog').textContent=m; }
+function initPanels(){
+  $('btnGloss').onclick=function(){ openGloss(null); };
+  $('btnCloseGloss').onclick=function(){ $('dlgGloss').close(); };
   $('btnSettings').onclick=function(){ $('dlgSettings').showModal(); };
   $('btnCloseSettings').onclick=function(){ $('dlgSettings').close(); };
   $('btnScan').onclick=function(){
@@ -412,5 +536,5 @@ function initSettings(){
 }
 
 window.addEventListener('resize',function(){ if(DATA) render(); });
-initTheme(); initSettings(); boot();
+initTheme(); initPanels(); fillGlossary(null); boot();
 </script>
