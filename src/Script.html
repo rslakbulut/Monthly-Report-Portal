@@ -25,14 +25,14 @@ function addM(a,b){ for(var k in a){ a[k]+=b[k]||0; } return a; }
 
 /* ---------- glossary ---------- */
 var GLOSSARY=[
- ['Budget Year','What the site committed at the start of the year: the projects to launch by year-end and the turnover they bring, in M€. Unchanged all year, so everything else is measured against it. Shown as launched / committed.','Section 3 “ORDER INTAKE → Budget Year” (M€) and Section 4 “PROJECT LAUNCH → Budget Year” (project count).'],
- ['Budget YTD','The same yearly commitment phased across the months — where the site should stand by the reporting month. Shown as launched / due by now, so the gap is visible without a second figure.','Section 4 “Budget YTD [CUMUL Number]” for the count; for M€, the projects whose planned launch date falls on or before the reporting month.'],
+ ['Budget Year','What the site committed at the start of the year: the projects to launch by year-end and the turnover they bring, in M€. Fixed once the year starts — shown as a single number, not compared against progress.','Section 3 “ORDER INTAKE → Budget Year” (M€) and Section 4 “PROJECT LAUNCH → Budget Year” (project count).'],
+ ['Budget YTD','The same yearly commitment phased across the months — where the site should stand by the reporting month. This is the one figure Real Launches is actually compared against: the card shows what has been realized, with the Budget YTD plan named alongside it.','Section 4 “Budget YTD [CUMUL Number]” for the count; for M€, the projects whose planned launch date falls on or before the reporting month.'],
  ['Real Launches','Projects actually launched since 1 January. A project counts only if its real launch date is on or before the reporting month.','Counted row by row from the VS / OES Current Portfolio and TTM Launch tables — the right-hand “Real” date column.'],
  ['Launch Done (L.S sent)','The turnover carried by those launched projects, in M€.','The Turnover (k€) column of the same detail rows, converted to M€.'],
  ['Launch Delay Number','Real Launches minus Budget YTD. Positive means the site is running ahead of its phased commitment, negative means it is behind. Shown as a coloured chip next to Budget YTD.','The sheet’s own “Launch Delay Number” column carries exactly this figure.'],
  ['Current Portfolio','Projects planned to launch this year, launched or not — the work already in the book.','Counted from the VS / OES Current Portfolio and TTM Launch tables (all rows, regardless of launch date).'],
  ['Sites reported','How many of the 48 sites have a sheet with data in this period. A low number means the picture is incomplete, not that performance is bad.','Sheet presence per site in the selected month’s spreadsheet.'],
- ['NEW / REMAN','NEW covers new product projects. REMAN covers remanufacturing — used parts restored and sold again. They are reported separately.','Column pair repeated across Sections 3 and 4.'],
+ ['NEW / REMAN','NEW covers new product projects. REMAN covers remanufacturing — used parts restored and sold again. The All filter adds both together; NEW and REMAN show each on its own.','Column pair repeated across Sections 3 and 4.'],
  ['P1 / P10 / TTM','P1 = projects with development work. P10 (written PCO in some sheets) = projects without development. TTM = an OEM product taken straight to the aftermarket.','Row labels in Section 4; the “Type” column in the detail tables.'],
  ['VS / OES','VS = Valeo Service customers. OES = the OEM’s service arm. Both axes add up to the same total, from different angles.','Row labels in Sections 3 and 4; block names in the detail tables.']
 ];
@@ -48,11 +48,12 @@ function fillGlossary(hi){
 function openGloss(term){ fillGlossary(term); $('dlgGloss').showModal(); }
 
 /* ---------- aggregation ---------- */
+function statusMatches_(blockStatus){ return F.status==='ALL' || blockStatus===F.status; }
 function realizedOf(site){
   var out=emptyM();
   if(!site.detail||!site.detail.blocks) return out;
   site.detail.blocks.forEach(function(b){
-    if(b.status!==F.status) return;
+    if(!statusMatches_(b.status)) return;
     if(F.customer!=='ALL' && b.customer!==F.customer) return;
     if(F.type==='ALL'){ addM(out,b.total); }
     else if(b.byType&&b.byType[F.type]){ addM(out,b.byType[F.type]); }
@@ -64,12 +65,17 @@ function budgetRowKey(){
   if(F.type!=='ALL') return F.type;
   return 'TOTAL';
 }
+function pickStatus_(obj){
+  if(!obj) return null;
+  if(F.status==='ALL') return (typeof obj.NEW==='number'?obj.NEW:0)+(typeof obj.REMAN==='number'?obj.REMAN:0);
+  return (obj[F.status]!=null?obj[F.status]:null);
+}
 function budgetOf(site){
   var k=budgetRowKey();
   var bc=site.budgetCount&&site.budgetCount[k];
   var by=site.budgetYTDCount&&site.budgetYTDCount[k];
   var bt=site.budgetTurnover&&site.budgetTurnover[k];
-  return { count:bc?bc[F.status]:null, ytdCount:by?by[F.status]:null, turnover:bt?bt[F.status]:null };
+  return { count:pickStatus_(bc), ytdCount:pickStatus_(by), turnover:pickStatus_(bt) };
 }
 function siteMetrics(site){
   var b=budgetOf(site), r=realizedOf(site);
@@ -189,25 +195,29 @@ function kpi(label, value, unit, sub, cls, gloss, chip){
     '<div class="kpi-value">'+value+(unit?'<span class="unit">'+esc(unit)+'</span>':'')+'</div>'+
     '<div class="kpi-sub">'+sub+'</div></div>';
 }
-/* Butun etiketler sayfanin kendi terminolojisi. "Gerceklesen / plan" ayri kart
-   degil, ayni kartta kesir olarak gosterilir; ciro her yerde M€. */
+/* Butun etiketler sayfanin kendi terminolojisi.
+   Budget Year sabit bir hedeftir (yil basinda belirlenir) — burada karsilastirma
+   YAPILMAZ, tek bir deger olarak gosterilir. Karsilastirma yalniz Budget YTD
+   kartinda ve orada da "realized" / "plan" AYRI AYRI etiketlenir, cift anlami
+   olan bir "X / Y" kesri kullanilmaz. */
 function kpiRow(a){
   var ahead=(a.delta>=0);
-  var chip='<span class="pill '+(ahead?'good':'bad')+'" title="Launch Delay Number">'+signed(a.delta)+'</span>';
-  var ytdMoney=(a.planTurnoverM>0)
-      ? m2(a.realTurnoverM)+' / '+m2(a.planTurnoverM)
-      : m2(a.realTurnoverM)+' / —';
+  var chip='<span class="pill '+(ahead?'good':'bad')+'" title="Launch Delay Number = Real Launches − Budget YTD">'+
+    signed(a.delta)+'</span>';
+  var planKnown=a.planTurnoverM>0;
+
   return '<div class="kpis">'+
     kpi('Budget Year',
-        m2(a.realTurnoverM)+' / '+m2(a.budgetTurnover), 'M€',
-        nf(a.realCount)+' / '+nf(a.budgetCount)+' projects', '', 'Budget Year')+
+        m2(a.budgetTurnover), 'M€ committed',
+        nf(a.budgetCount)+' projects committed for the year', '', 'Budget Year')+
     kpi('Budget YTD',
-        ytdMoney, 'M€',
-        nf(a.realCount)+' / '+nf(a.budgetYTD)+' projects',
+        m2(a.realTurnoverM), 'M€ realized',
+        'Budget YTD (plan): '+(planKnown?m2(a.planTurnoverM)+' M€ · ':'')+
+          nf(a.realCount)+' of '+nf(a.budgetYTD)+' projects',
         ahead?'good':'bad', 'Budget YTD', chip)+
     kpi('Current Portfolio',
-        m2(a.portfolioTurnoverM), 'M€',
-        nf(a.portfolioCount)+' projects in the book', '', 'Current Portfolio')+
+        m2(a.portfolioTurnoverM), 'M€ booked',
+        nf(a.portfolioCount)+' projects booked this year — launched or not', '', 'Current Portfolio')+
     kpi('Sites reported', a.reported+'<span class="unit">/ '+BOOT.siteCount+'</span>', '',
         (a.behind?a.behind+' site'+(a.behind>1?'s':'')+' behind Budget YTD':'no site behind Budget YTD'),
         '', 'Sites reported')+
@@ -298,7 +308,7 @@ function statusPill(st){
 function typeTotals(s,t){
   var acc=emptyM();
   (s.detail.blocks||[]).forEach(function(b){
-    if(b.status!==F.status) return;
+    if(!statusMatches_(b.status)) return;
     if(b.byType&&b.byType[t]) addM(acc,b.byType[t]);
   });
   return acc;
@@ -306,7 +316,7 @@ function typeTotals(s,t){
 function custTotals(s,c){
   var acc=emptyM();
   (s.detail.blocks||[]).forEach(function(b){
-    if(b.status!==F.status||b.customer!==c) return; addM(acc,b.total);
+    if(!statusMatches_(b.status)||b.customer!==c) return; addM(acc,b.total);
   });
   return acc;
 }
@@ -444,9 +454,9 @@ function seg(container,items,current,onPick){
   });
 }
 function buildStatusSeg(){
-  var items=[{v:'NEW',t:'NEW'}];
+  var items=[{v:'ALL',t:'All'},{v:'NEW',t:'NEW'}];
   if(hasReman()) items.push({v:'REMAN',t:'REMAN'});
-  if(F.status==='REMAN'&&items.length===1) F.status='NEW';
+  if(F.status==='REMAN'&&items.length===2) F.status='ALL';
   seg($('segStatus'),items,F.status,function(v){ F.status=v; render(); });
 }
 function buildFilters(){
