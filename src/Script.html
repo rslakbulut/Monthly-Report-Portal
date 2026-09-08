@@ -199,9 +199,6 @@ function kpi(label, value, unit, sub, cls, gloss, chip){
    Portfolio karti kaldirildi — kullanici "ne oldugu anlasilmiyor" dedi; ayni
    bilgi site detayindaki huni diyagraminda zaten baglaminda duruyor. */
 function kpiRow(a){
-  var ahead=(a.delta>=0);
-  var chip='<span class="pill '+(ahead?'good':'bad')+'" title="Launch Delay Number = Real Launches − Budget YTD">'+
-    signed(a.delta)+'</span>';
   var planKnown=a.planTurnoverM>0;
   var ytdMoney=(planKnown?moneyTag(a.planTurnoverM):'—')+'<span class="slash">/</span>'+moneyTag(a.realTurnoverM);
 
@@ -210,9 +207,9 @@ function kpiRow(a){
     '<div class="kpi">'+
       '<div class="kpi-head"><span class="kpi-label">Budget YTD / Launched</span>'+
         '<button class="kpi-info" type="button" data-gloss="Budget YTD" aria-label="What is Budget YTD?">ⓘ</button>'+
-        '<span class="spacer-x"></span>'+chip+'</div>'+
+      '</div>'+
       '<div class="kpi-value kpi-phrase">'+ytdMoney+'</div>'+
-      '<div class="kpi-sub">'+nf(a.budgetYTD)+' / '+nf(a.realCount)+'</div>'+
+      '<div class="kpi-sub">'+nf(a.budgetYTD)+' / '+nf(a.realCount)+' projects</div>'+
     '</div>'+
     kpi('Sites reported', a.reported+'<span class="unit">/ '+BOOT.siteCount+'</span>', '',
         (a.behind?a.behind+' site'+(a.behind>1?'s':'')+' behind Budget YTD':'no site behind Budget YTD'),
@@ -228,7 +225,7 @@ function kpiRow(a){
  * Budget Year yerine Budget YTD ile eslesiyor — delta cipiyle ayni eksende.
  */
 function roRowHtml(r,moneyMax){
-  var a=r.a, ahead=(a.delta>=0), open=(NAV.expandedRo===r.ro);
+  var a=r.a, open=(NAV.expandedRo===r.ro);
   return '<button class="ro-row'+(open?' open':'')+'" type="button" data-ro="'+r.ro+'" '+
     'aria-expanded="'+open+'">'+
     '<span class="ro-id"><span class="ro-code">'+esc(r.ro)+'</span>'+
@@ -239,9 +236,6 @@ function roRowHtml(r,moneyMax){
       '<span>Budget YTD '+moneyTag(a.planTurnoverM)+' <i>· '+nf(a.budgetYTD)+'</i></span>'+
       '<span>Budget Year '+moneyTag(a.budgetTurnover)+' <i>· '+nf(a.budgetCount)+'</i></span>'+
       '</span></span>'+
-    '<span class="ro-metrics">'+
-      '<span class="pill '+(ahead?'good':'bad')+'" title="Launch Delay Number">'+signed(a.delta)+'</span>'+
-    '</span>'+
     '<span class="chev" aria-hidden="true">›</span>'+
   '</button>';
 }
@@ -535,6 +529,47 @@ function loadPeriod(key){
     })
     .getDashboardData(key,false);
 }
+/** "June 2026" -> "June". Period label her zaman "<MonthName> <Year>". */
+function monthNameOf(p){ return p.label.split(' ')[0]; }
+
+/**
+ * Period seciciyi Year + Month olarak ikiye ayirir (kullanici karari — tek
+ * "June 2026" dropdown yerine). BOOT.periods'i yila gore gruplar; sadece
+ * gercekten var olan (yil, ay) kombinasyonlari secilebilir.
+ */
+function buildPeriodSelects(defaultKey){
+  var byYear={};
+  BOOT.periods.forEach(function(p){ (byYear[p.year]=byYear[p.year]||[]).push(p); });
+  var years=Object.keys(byYear).map(Number).sort(function(a,b){ return b-a; });
+  var def=BOOT.periods.filter(function(p){ return p.key===defaultKey; })[0]||BOOT.periods[0];
+
+  $('selYear').innerHTML=years.map(function(y){
+    return '<option value="'+y+'"'+(y===def.year?' selected':'')+'>'+y+'</option>';
+  }).join('');
+
+  function renderMonths(year,selMonth){
+    var months=byYear[year].slice().sort(function(a,b){ return a.month-b.month; });
+    $('selMonth').innerHTML=months.map(function(p){
+      return '<option value="'+p.month+'"'+(p.month===selMonth?' selected':'')+'>'+esc(monthNameOf(p))+'</option>';
+    }).join('');
+  }
+  renderMonths(def.year,def.month);
+
+  $('selYear').onchange=function(){
+    var y=parseInt(this.value,10);
+    var months=byYear[y].slice().sort(function(a,b){ return b.month-a.month; });   // en guncel ay once
+    var pick=months[0];
+    renderMonths(y,pick.month);
+    loadPeriod(pick.key);
+  };
+  $('selMonth').onchange=function(){
+    var y=parseInt($('selYear').value,10);
+    var m=parseInt(this.value,10);
+    var p=byYear[y].filter(function(x){ return x.month===m; })[0];
+    if(p) loadPeriod(p.key);
+  };
+}
+
 function boot(){
   google.script.run
     .withSuccessHandler(function(res){
@@ -545,9 +580,7 @@ function boot(){
           'Gmail scan, or add this month\'s spreadsheet link manually.</div>';
         return;
       }
-      $('selPeriod').innerHTML=res.periods.map(function(p){
-        return '<option value="'+p.key+'">'+esc(p.label)+'</option>'; }).join('');
-      $('selPeriod').onchange=function(){ loadPeriod(this.value); };
+      buildPeriodSelects(res.periods[0].key);
       loadPeriod(res.periods[0].key);
     })
     .withFailureHandler(function(err){
