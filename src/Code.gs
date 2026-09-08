@@ -9,6 +9,41 @@
  */
 
 var CACHE_TTL_SECONDS = 900;   // 15 dk
+var CACHE_CHUNK_SIZE = 90000;  // CacheService tek deger basina 100KB siniriyor; guvenli pay birakildi
+
+/**
+ * CacheService'in 100KB/anahtar sinirini asmak icin buyuk objeleri parcalayip
+ * yazar/okur. 48 site'in tum parse edilmis verisi kolayca 100KB'i asiyor;
+ * eskiden tek parca yazilmaya calisilip sessizce basarisiz oluyordu (cache
+ * hicbir zaman tutmuyordu, her acilista 48 sayfa yeniden taraniyordu).
+ */
+function cachePut_(cache, key, obj, ttlSeconds) {
+  var json = JSON.stringify(obj);
+  var chunks = [];
+  for (var i = 0; i < json.length; i += CACHE_CHUNK_SIZE) {
+    chunks.push(json.slice(i, i + CACHE_CHUNK_SIZE));
+  }
+  var toPut = {};
+  toPut[key + '_meta'] = JSON.stringify({ n: chunks.length });
+  for (var c = 0; c < chunks.length; c++) toPut[key + '_c' + c] = chunks[c];
+  cache.putAll(toPut, ttlSeconds);
+}
+
+function cacheGet_(cache, key) {
+  var metaRaw = cache.get(key + '_meta');
+  if (!metaRaw) return null;
+  var n = JSON.parse(metaRaw).n;
+  var keys = [];
+  for (var c = 0; c < n; c++) keys.push(key + '_c' + c);
+  var all = cache.getAll(keys);
+  var parts = [];
+  for (var c = 0; c < n; c++) {
+    var part = all[key + '_c' + c];
+    if (part == null) return null;   // parca suresi dolmus/eksik -> cache miss say
+    parts.push(part);
+  }
+  return JSON.parse(parts.join(''));
+}
 
 function doGet() {
   return HtmlService.createTemplateFromFile('Index')
@@ -52,11 +87,10 @@ function getDashboardData(key, forceRefresh) {
     var cache = CacheService.getScriptCache();
     var cacheKey = 'dash_' + key;
     if (!forceRefresh) {
-      var hit = cache.get(cacheKey);
+      var hit = cacheGet_(cache, cacheKey);
       if (hit) {
-        var parsed = JSON.parse(hit);
-        parsed.fromCache = true;
-        return parsed;
+        hit.fromCache = true;
+        return hit;
       }
     }
 
@@ -109,8 +143,8 @@ function getDashboardData(key, forceRefresh) {
       generatedAt: new Date().toISOString()
     };
 
-    try { cache.put(cacheKey, JSON.stringify(payload), CACHE_TTL_SECONDS); }
-    catch (e) { /* 100KB siniri asilabilir; cache'siz devam */ }
+    try { cachePut_(cache, cacheKey, payload, CACHE_TTL_SECONDS); }
+    catch (e) { /* cache yazilamadi (kota vb.); cache'siz devam */ }
 
     return payload;
   } catch (e) {
