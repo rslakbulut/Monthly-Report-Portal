@@ -4,7 +4,7 @@
    mandatory, and result.error is always checked inside the success handler. */
 
 var BOOT=null, DATA=null;
-var F={status:'NEW',type:'ALL',customer:'ALL'};
+var F={status:'NEW',type:'ALL',customer:'ALL',tableView:'count'};   // tableView: 'count' | 'money' (site tablosu)
 var NAV={level:'ro',expandedRo:null,ro:null,siteIdx:null};   // 'ro' | 'site'; expandedRo = acik accordion
 
 /* ---------- helpers ---------- */
@@ -164,7 +164,7 @@ function sparkline(vals, target){
 function render(){
   if(!DATA) return;
   if(DATA.error){ $('view').innerHTML='<div class="notice err">'+esc(DATA.error)+'</div>'; return; }
-  buildStatusSeg();
+  buildFilterSegs();
   if(NAV.level==='ro') renderRoLevel();
   else renderSiteLevel();
   if(window.innerWidth<=768)
@@ -203,16 +203,16 @@ function kpiRow(a){
   var chip='<span class="pill '+(ahead?'good':'bad')+'" title="Launch Delay Number = Real Launches − Budget YTD">'+
     signed(a.delta)+'</span>';
   var planKnown=a.planTurnoverM>0;
-  var ytdMoney=(planKnown?moneyTag(a.planTurnoverM)+' budget / ':'n/a budget / ')+moneyTag(a.realTurnoverM)+' launched';
+  var ytdMoney=(planKnown?moneyTag(a.planTurnoverM):'—')+'<span class="slash">/</span>'+moneyTag(a.realTurnoverM);
 
   return '<div class="kpis">'+
     kpi('Budget Year', moneyTag(a.budgetTurnover), '', nf(a.budgetCount)+' projects', '', 'Budget Year')+
     '<div class="kpi">'+
-      '<div class="kpi-head"><span class="kpi-label">Budget YTD</span>'+
+      '<div class="kpi-head"><span class="kpi-label">Budget YTD / Launched</span>'+
         '<button class="kpi-info" type="button" data-gloss="Budget YTD" aria-label="What is Budget YTD?">ⓘ</button>'+
         '<span class="spacer-x"></span>'+chip+'</div>'+
       '<div class="kpi-value kpi-phrase">'+ytdMoney+'</div>'+
-      '<div class="kpi-sub">'+nf(a.budgetYTD)+' budget / '+nf(a.realCount)+' launched</div>'+
+      '<div class="kpi-sub">'+nf(a.budgetYTD)+' / '+nf(a.realCount)+'</div>'+
     '</div>'+
     kpi('Sites reported', a.reported+'<span class="unit">/ '+BOOT.siteCount+'</span>', '',
         (a.behind?a.behind+' site'+(a.behind>1?'s':'')+' behind Budget YTD':'no site behind Budget YTD'),
@@ -234,39 +234,60 @@ function roRowHtml(r,moneyMax){
     '<span class="ro-id"><span class="ro-code">'+esc(r.ro)+'</span>'+
       '<span class="ro-name">'+esc(BOOT.roLabels[r.ro]||'')+' · '+r.list.length+' sites</span></span>'+
     '<span class="bar-wrap">'+bulletBar(a.realTurnoverM,a.planTurnoverM>0?a.planTurnoverM:null,moneyMax)+
-      '<span class="bar-figs"><span>Launch Done '+moneyTag(a.realTurnoverM)+'</span>'+
-      '<span>Budget YTD '+moneyTag(a.planTurnoverM)+'</span>'+
-      '<span>Budget Year '+moneyTag(a.budgetTurnover)+'</span></span></span>'+
+      '<span class="bar-figs">'+
+      '<span>Launch Done '+moneyTag(a.realTurnoverM)+' <i>· '+nf(a.realCount)+'</i></span>'+
+      '<span>Budget YTD '+moneyTag(a.planTurnoverM)+' <i>· '+nf(a.budgetYTD)+'</i></span>'+
+      '<span>Budget Year '+moneyTag(a.budgetTurnover)+' <i>· '+nf(a.budgetCount)+'</i></span>'+
+      '</span></span>'+
     '<span class="ro-metrics">'+
-      '<span class="metric"><span class="m-v">'+m2(a.realTurnoverM)+' / '+m2(a.planTurnoverM)+
-        '</span><span class="m-l">M€ launched / Budget YTD</span></span>'+
       '<span class="pill '+(ahead?'good':'bad')+'" title="Launch Delay Number">'+signed(a.delta)+'</span>'+
     '</span>'+
     '<span class="chev" aria-hidden="true">›</span>'+
   '</button>';
 }
 
-/** Bir RO'nun site tablosu — accordion'da RO satirinin hemen altina gomuluyor. */
+/** Delta hucresi: gorunum moduna gore adet farki ya da ciro farki (M€). */
+function deltaChip(m){
+  if(F.tableView==='money'){
+    if(m.deltaTurnoverM==null) return '<span class="pill mute">n/a</span>';
+    var cls=m.deltaTurnoverM<0?'bad':'good';
+    return '<span class="pill '+cls+'">'+(m.deltaTurnoverM>=0?'+':'')+nf(m.deltaTurnoverM,1)+' M€</span>';
+  }
+  if(m.delta==null) return '<span class="pill mute">—</span>';
+  return '<span class="pill '+(m.delta<0?'bad':'good')+'">'+signed(m.delta)+'</span>';
+}
+/** Adet/ciro ikisi de: F.tableView'a gore hangisi gosterilecek. */
+function tblCell(countVal,moneyVal){ return F.tableView==='money' ? money(moneyVal) : nf(countVal); }
+
+/**
+ * Bir RO'nun site tablosu — accordion'da RO satirinin hemen altina gomuluyor.
+ * Budget Year / Budget YTD / Real Launches / Launch Delay sutunlari, ustteki
+ * Projects/Turnover anahtarina gore adet veya M€ gosterir (ayni sutun, tek
+ * baslik) — ayri bir "Launch Done" sutununa artik gerek yok, Real Launches
+ * Turnover modunda zaten ayni bilgiyi veriyor.
+ */
 function siteTableHtml(list){
   var rows=list.map(function(s,i){ return {s:s,m:siteMetrics(s),i:i}; });
   rows.sort(function(a,b){
     var av=(a.m.delta==null?9999:a.m.delta), bv=(b.m.delta==null?9999:b.m.delta);
     return av-bv;   // furthest behind first
   });
-  var html='<div class="ro-expand"><div class="tablewrap"><table><thead><tr>'+
+  var html='<div class="ro-expand">'+
+    '<div class="tbl-toggle"><span class="flabel">Table shows</span><div class="seg seg-sm" id="segTblView">'+
+      '<button type="button" data-tv="count" aria-pressed="'+(F.tableView==='count')+'">Projects</button>'+
+      '<button type="button" data-tv="money" aria-pressed="'+(F.tableView==='money')+'">Turnover (M€)</button>'+
+    '</div></div>'+
+    '<div class="tablewrap"><table><thead><tr>'+
     '<th>Site</th><th class="num">Budget Year</th><th class="num">Budget YTD</th>'+
-    '<th class="num">Real Launches</th><th class="num">Launch Delay</th>'+
-    '<th class="num">Launch Done</th><th>Status</th>'+
+    '<th class="num">Real Launches</th><th class="num">Launch Delay</th><th>Status</th>'+
     '</tr></thead><tbody>';
   rows.forEach(function(r){
     html+='<tr data-i="'+r.i+'">'+
       '<td class="site-name" data-label="Site">'+esc(r.s.site)+'</td>'+
-      '<td class="num" data-label="Budget Year">'+nf(r.m.budgetCount)+'</td>'+
-      '<td class="num" data-label="Budget YTD">'+nf(r.m.budgetYTD)+'</td>'+
-      '<td class="num" data-label="Real Launches">'+nf(r.m.realCount)+'</td>'+
-      '<td class="num" data-label="Launch Delay"><span class="pill '+
-        (r.m.delta==null?'mute':(r.m.delta<0?'bad':'good'))+'">'+signed(r.m.delta)+'</span></td>'+
-      '<td class="num" data-label="Launch Done">'+money(r.m.realTurnoverM)+'</td>'+
+      '<td class="num" data-label="Budget Year">'+tblCell(r.m.budgetCount,r.m.budgetTurnover)+'</td>'+
+      '<td class="num" data-label="Budget YTD">'+tblCell(r.m.budgetYTD,r.m.planTurnoverM)+'</td>'+
+      '<td class="num" data-label="Real Launches">'+tblCell(r.m.realCount,r.m.realTurnoverM)+'</td>'+
+      '<td class="num" data-label="Launch Delay">'+deltaChip(r.m)+'</td>'+
       '<td data-label="Status">'+statusPill(r.s.status)+'</td></tr>';
   });
   html+='</tbody></table></div></div>';
@@ -304,6 +325,13 @@ function renderRoLevel(){
   $('view').querySelectorAll('tr[data-i]').forEach(function(tr){
     tr.onclick=function(){
       NAV.level='site'; NAV.ro=NAV.expandedRo; NAV.siteIdx=parseInt(tr.getAttribute('data-i'),10);
+      render();
+    };
+  });
+  $('view').querySelectorAll('#segTblView button').forEach(function(b){
+    b.onclick=function(e){
+      e.stopPropagation();
+      F.tableView=b.getAttribute('data-tv');
       render();
     };
   });
@@ -477,12 +505,19 @@ function buildStatusSeg(){
   if(F.status==='REMAN'&&items.length===2) F.status='ALL';
   seg($('segStatus'),items,F.status,function(v){ F.status=v; render(); });
 }
-function buildFilters(){
+/* buildStatusSeg() TEK BASINA render() icinde cagriliyordu; segType/segCustomer
+   hic yeniden cizilmiyordu, bu yuzden P1/P10/TTM ve VS/OES'e tiklaninca veri
+   dogru filtreleniyordu ama buton hicbir zaman mavi/secili gorunmuyordu.
+   Uc segmenti de tek yerden guncelleyen ortak fonksiyon: */
+function buildFilterSegs(){
   buildStatusSeg();
   seg($('segType'),[{v:'ALL',t:'All'},{v:'P1',t:'P1'},{v:'P10',t:'P10'},{v:'TTM',t:'TTM'}],F.type,
       function(v){ F.type=v; render(); });
   seg($('segCustomer'),[{v:'ALL',t:'All'},{v:'VS',t:'VS'},{v:'OES',t:'OES'}],F.customer,
       function(v){ F.customer=v; render(); });
+}
+function buildFilters(){
+  buildFilterSegs();
   $('filters').hidden=false;
 }
 
