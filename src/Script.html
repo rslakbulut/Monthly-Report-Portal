@@ -1,23 +1,29 @@
 <script>
 /* Valeo RO Monthly Report — client.
    Data contract: docs/veri-listeleme.md — BOTH success and failure handlers are
-   mandatory, and result.error is always checked inside the success handler. */
+   mandatory, and result.error is always checked inside the success handler.
+
+   Terminoloji notu: sayfanin kendi sozlugu (Budget Year, Budget YTD, Launch
+   Done, Real Launches, VS/OES, NEW/REMAN, P1/P10/TTM) HICBIR DILDE cevrilmez —
+   kaynak spreadsheet'in kendi terimleri, kullanici bunlarin birebir korunmasini
+   istedi. Yalniz arayuz kelimeleri (Year, Month, sites, back...) cevrilir. */
 
 var BOOT=null, DATA=null;
-var F={status:'ALL',type:'ALL',customer:'ALL',tableView:'count'};   // tableView: 'count' | 'money' (site tablosu)
-var NAV={level:'ro',expandedRo:null,ro:null,siteIdx:null};   // 'ro' | 'site'; expandedRo = acik accordion
+var F={status:'ALL',type:'ALL',customer:'ALL',tableView:'count'};   // tableView: 'count' | 'money'
+var NAV={level:'ro',expandedRo:null,ro:null,siteIdx:null};          // 'ro' | 'site'
 
 /* ---------- helpers ---------- */
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-function nf(n,d){ return (n==null||isNaN(n))?'—':Number(n).toLocaleString('en-US',
+function nf(n,d){ return (n==null||isNaN(n))?'—':Number(n).toLocaleString(LOCALE,
   {minimumFractionDigits:d||0,maximumFractionDigits:d||0}); }
-function money(m){ return m==null?'—':nf(m,1)+' M€'; }   // tek hane yuvarlama (kullanici karari)
-function m2(m){ return m==null?'—':nf(m,1); }   // birimsiz, tek hane, kesirde kullanilir
-function moneyTag(v){ return v==null?'—':'<b>'+nf(v,1)+'</b><span class="cur">M€</span>'; }
+function money(m){ return m==null?'—':nf(m,1)+' M€'; }
+function m2(m){ return m==null?'—':nf(m,1); }
+function moneyTag(v){ return v==null?'—':nf(v,1)+'<span class="cur">M€</span>'; }
 function signed(n){ return n==null?'—':(n>0?'+':'')+nf(n,0); }
 function pct(a,b){ return (b&&b>0)?Math.round(a/b*100):null; }
+function cap(s){ s=String(s||''); return s.charAt(0).toLocaleUpperCase(LOCALE)+s.slice(1); }
 function clamp01(x){ return Math.max(0,Math.min(1,x)); }
 function monthName(){ return (DATA&&DATA.period&&DATA.period.label)?DATA.period.label.split(' ')[0]:'now'; }
 
@@ -25,25 +31,433 @@ function emptyM(){ return {count:0,turnover:0,ytdCount:0,ytdTurnover:0,planYtdCo
 function addM(a,b){ for(var k in a){ a[k]+=b[k]||0; } return a; }
 
 /* ---------- icons (docs/ikonlar.md — Lucide, inline SVG, currentColor) ---------- */
-var ICON_INFO='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
-var ICON_CHEVRON_RIGHT='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
-var ICON_MOON='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
-var ICON_SUN='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';
+function svg(inner,size){ return '<svg viewBox="0 0 24 24" width="'+(size||16)+'" height="'+(size||16)+
+  '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '+
+  'aria-hidden="true">'+inner+'</svg>'; }
+var ICON_INFO=svg('<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',15);
+var ICON_CHEVRON=svg('<path d="m9 18 6-6-6-6"/>',18);
+var ICON_CHEVRON_SM=svg('<path d="m9 18 6-6-6-6"/>',14);
+var ICON_MOON=svg('<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>');
+var ICON_SUN=svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/>'+
+  '<path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/>'+
+  '<path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>');
+var ICON_BACK=svg('<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',17);
+var ICON_TARGET=svg('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',18);
+var ICON_TREND=svg('<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',18);
+var ICON_PLANT=svg('<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>'+
+  '<path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>'+
+  '<path d="M10 7h4"/><path d="M10 12h4"/><path d="M10 17h4"/>',18);
+var ICON_UP=svg('<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',13);
+var ICON_DOWN=svg('<polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/>',13);
+var ICON_CHECK=svg('<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',13);
+var ICON_ALERT=svg('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>'+
+  '<path d="M12 9v4"/><path d="M12 17h.01"/>',13);
+var ICON_MINUS=svg('<path d="M5 12h14"/>',13);
 
-/* ---------- glossary ---------- */
+/* ---------- i18n ---------- */
+/* Yalniz arayuz kelimeleri; sayfanin kendi terimleri (Budget Year, VS/OES, P1...)
+   her dilde ayni kalir — kullanici karari. */
+var LANGS=[
+ ['en','English','🇬🇧','en-US'], ['tr','Türkçe','🇹🇷','tr-TR'],
+ ['fr','Français','🇫🇷','fr-FR'], ['de','Deutsch','🇩🇪','de-DE'],
+ ['es','Español','🇪🇸','es-ES'], ['it','Italiano','🇮🇹','it-IT'],
+ ['pt','Português','🇵🇹','pt-PT'], ['nl','Nederlands','🇳🇱','nl-NL'],
+ ['pl','Polski','🇵🇱','pl-PL'], ['cs','Čeština','🇨🇿','cs-CZ'],
+ ['ro','Română','🇷🇴','ro-RO'], ['hu','Magyar','🇭🇺','hu-HU'],
+ ['ru','Русский','🇷🇺','ru-RU'], ['zh','中文','🇨🇳','zh-CN'],
+ ['ja','日本語','🇯🇵','ja-JP'], ['ko','한국어','🇰🇷','ko-KR'],
+ ['ar','العربية','🇸🇦','ar-SA']
+];
+var T={
+ en:{whatAmILookingAt:'What am I looking at',year:'Year',month:'Month',productType:'Product type',
+  projectType:'Project type',customer:'Customer',all:'All',allROs:'All ROs',sites:'sites',site:'Site',
+  projects:'projects',of:'of',byRO:'By regional organization',clickRow:'Click a row to open its sites',
+  ofBudgetYear:'of Budget Year',tableShows:'Table shows',turnover:'Turnover',back:'Back',
+  backToAllROs:'Back to all ROs',ahead:'ahead of plan',behind:'behind plan',onPlan:'on plan',
+  onTrack:'on track',reportedLate:'reported late',checkData:'check data',noData:'no data',
+  sitesBehind:'sites behind Budget YTD',noSiteBehind:'every site at or above Budget YTD',
+  committed:'committed for the year',launchedSoFar:'launched so far',reporting:'reporting this period',
+  againstBudgetYear:'Against Budget Year',byProjectType:'By project type',byCustomer:'By customer',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indicators — last months',
+  showRaw:'Show raw numbers',breakdown:'Breakdown',sourceSheet:'Source sheet',
+  parsingNotes:'Parsing notes',crossCheck:'Cross-check mismatch',notReporting:'not reporting',
+  settingsTitle:'Settings — period sources',gmailQuery:'Gmail search query',scanNow:'Scan now',
+  saveQuery:'Save query',installScan:'Install daily scan',addPeriodManually:'Add a period manually (Sheets link)',
+  add:'Add',searchTerms:'Search terms…',loadingData:'Loading data…',startingUp:'Starting up…',
+  readingPeriod:'Reading the monthly report…',rendering:'Preparing the dashboard…',ready:'Ready',
+  skipToContent:'Skip to content',language:'Language',noPeriodYet:'No period registered yet. Open Settings and run the Gmail scan, or add this month’s spreadsheet link manually.',
+  settingsIntro:'The monthly report arrives as a new spreadsheet each month. The Gmail scan finds it automatically; if it doesn’t, add the link manually.',
+  regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.'},
+ tr:{whatAmILookingAt:'Bu ekran ne anlatıyor',year:'Yıl',month:'Ay',productType:'Ürün tipi',
+  projectType:'Proje tipi',customer:'Müşteri',all:'Tümü',allROs:'Tüm RO’lar',sites:'site',site:'Site',
+  projects:'proje',of:'/',byRO:'Bölgesel organizasyona göre',clickRow:'Site’ları görmek için satıra tıklayın',
+  ofBudgetYear:'Budget Year’ın',tableShows:'Tabloda',turnover:'Ciro',back:'Geri',
+  backToAllROs:'Tüm RO’lara dön',ahead:'planın önünde',behind:'planın gerisinde',onPlan:'planında',
+  onTrack:'yolunda',reportedLate:'geç raporlandı',checkData:'veriyi kontrol et',noData:'veri yok',
+  sitesBehind:'site Budget YTD’nin gerisinde',noSiteBehind:'tüm site’lar Budget YTD’de veya üstünde',
+  committed:'yıl için taahhüt edildi',launchedSoFar:'bugüne kadar launch edildi',reporting:'bu dönem raporladı',
+  againstBudgetYear:'Budget Year’a karşı',byProjectType:'Proje tipine göre',byCustomer:'Müşteriye göre',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Göstergeler — son aylar',
+  showRaw:'Ham sayıları göster',breakdown:'Kırılım',sourceSheet:'Kaynak sayfa',
+  parsingNotes:'Ayrıştırma notları',crossCheck:'Çapraz doğrulama uyuşmazlığı',notReporting:'raporlamıyor',
+  settingsTitle:'Ayarlar — dönem kaynakları',gmailQuery:'Gmail arama sorgusu',scanNow:'Şimdi tara',
+  saveQuery:'Sorguyu kaydet',installScan:'Günlük taramayı kur',addPeriodManually:'Elle dönem ekle (Sheets linki)',
+  add:'Ekle',searchTerms:'Terim ara…',loadingData:'Veri yükleniyor…',startingUp:'Başlatılıyor…',
+  readingPeriod:'Aylık rapor okunuyor…',rendering:'Pano hazırlanıyor…',ready:'Hazır',
+  skipToContent:'İçeriğe geç',language:'Dil',noPeriodYet:'Henüz kayıtlı dönem yok. Ayarlar’ı açıp Gmail taramasını çalıştırın ya da bu ayın spreadsheet linkini elle ekleyin.',
+  settingsIntro:'Aylık rapor her ay yeni bir spreadsheet olarak geliyor. Gmail taraması onu otomatik buluyor; bulamazsa linki elle ekleyin.',
+  regionalOrgs:'bölgesel organizasyon',scanningSheets:'48 sayfa taranıyor, ilk yükleme biraz sürebilir.'},
+ fr:{whatAmILookingAt:'Que suis-je en train de voir',year:'Année',month:'Mois',productType:'Type de produit',
+  projectType:'Type de projet',customer:'Client',all:'Tous',allROs:'Tous les RO',sites:'sites',site:'Site',
+  projects:'projets',of:'sur',byRO:'Par organisation régionale',clickRow:'Cliquez sur une ligne pour voir ses sites',
+  ofBudgetYear:'du Budget Year',tableShows:'Le tableau affiche',turnover:'Chiffre d’affaires',back:'Retour',
+  backToAllROs:'Retour à tous les RO',ahead:'en avance sur le plan',behind:'en retard sur le plan',onPlan:'conforme au plan',
+  onTrack:'dans les temps',reportedLate:'rapporté en retard',checkData:'vérifier les données',noData:'aucune donnée',
+  sitesBehind:'sites en retard sur Budget YTD',noSiteBehind:'tous les sites au niveau du Budget YTD',
+  committed:'engagé pour l’année',launchedSoFar:'lancé à ce jour',reporting:'ont rapporté cette période',
+  againstBudgetYear:'Face au Budget Year',byProjectType:'Par type de projet',byCustomer:'Par client',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indicateurs — derniers mois',
+  showRaw:'Afficher les chiffres bruts',breakdown:'Répartition',sourceSheet:'Feuille source',
+  parsingNotes:'Notes d’analyse',crossCheck:'Écart de contrôle croisé',notReporting:'ne rapporte pas',
+  settingsTitle:'Paramètres — sources de période',gmailQuery:'Requête de recherche Gmail',scanNow:'Analyser',
+  saveQuery:'Enregistrer la requête',installScan:'Installer l’analyse quotidienne',addPeriodManually:'Ajouter une période manuellement (lien Sheets)',
+  add:'Ajouter',searchTerms:'Rechercher un terme…',loadingData:'Chargement des données…',startingUp:'Démarrage…',
+  readingPeriod:'Lecture du rapport mensuel…',rendering:'Préparation du tableau de bord…',ready:'Prêt',
+  skipToContent:'Aller au contenu',language:'Langue',noPeriodYet:'Aucune période enregistrée. Ouvrez Paramètres et lancez l’analyse Gmail, ou ajoutez le lien du fichier manuellement.',
+  settingsIntro:'Le rapport mensuel arrive chaque mois dans un nouveau fichier. L’analyse Gmail le trouve automatiquement ; sinon, ajoutez le lien manuellement.',
+  regionalOrgs:'organisations régionales',scanningSheets:'analyse de 48 feuilles, le premier chargement peut prendre un moment.'},
+ de:{whatAmILookingAt:'Was sehe ich hier',year:'Jahr',month:'Monat',productType:'Produkttyp',
+  projectType:'Projekttyp',customer:'Kunde',all:'Alle',allROs:'Alle ROs',sites:'Standorte',site:'Standort',
+  projects:'Projekte',of:'von',byRO:'Nach Regionalorganisation',clickRow:'Zeile anklicken, um Standorte zu sehen',
+  ofBudgetYear:'des Budget Year',tableShows:'Tabelle zeigt',turnover:'Umsatz',back:'Zurück',
+  backToAllROs:'Zurück zu allen ROs',ahead:'vor Plan',behind:'hinter Plan',onPlan:'im Plan',
+  onTrack:'im Zeitplan',reportedLate:'spät gemeldet',checkData:'Daten prüfen',noData:'keine Daten',
+  sitesBehind:'Standorte hinter Budget YTD',noSiteBehind:'alle Standorte auf oder über Budget YTD',
+  committed:'für das Jahr zugesagt',launchedSoFar:'bisher gelauncht',reporting:'melden in dieser Periode',
+  againstBudgetYear:'Gegen Budget Year',byProjectType:'Nach Projekttyp',byCustomer:'Nach Kunde',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indikatoren — letzte Monate',
+  showRaw:'Rohzahlen anzeigen',breakdown:'Aufschlüsselung',sourceSheet:'Quellblatt',
+  parsingNotes:'Parsing-Hinweise',crossCheck:'Abweichung im Abgleich',notReporting:'meldet nicht',
+  settingsTitle:'Einstellungen — Periodenquellen',gmailQuery:'Gmail-Suchanfrage',scanNow:'Jetzt scannen',
+  saveQuery:'Anfrage speichern',installScan:'Täglichen Scan einrichten',addPeriodManually:'Periode manuell hinzufügen (Sheets-Link)',
+  add:'Hinzufügen',searchTerms:'Begriffe suchen…',loadingData:'Daten werden geladen…',startingUp:'Wird gestartet…',
+  readingPeriod:'Monatsbericht wird gelesen…',rendering:'Dashboard wird vorbereitet…',ready:'Bereit',
+  skipToContent:'Zum Inhalt springen',language:'Sprache',noPeriodYet:'Noch keine Periode registriert. Öffnen Sie die Einstellungen und starten Sie den Gmail-Scan, oder fügen Sie den Link manuell hinzu.',
+  settingsIntro:'Der Monatsbericht kommt jeden Monat als neue Datei. Der Gmail-Scan findet sie automatisch; andernfalls den Link manuell hinzufügen.',
+  regionalOrgs:'Regionalorganisationen',scanningSheets:'48 Blätter werden gescannt, der erste Ladevorgang kann etwas dauern.'},
+ es:{whatAmILookingAt:'Qué estoy viendo',year:'Año',month:'Mes',productType:'Tipo de producto',
+  projectType:'Tipo de proyecto',customer:'Cliente',all:'Todos',allROs:'Todos los RO',sites:'plantas',site:'Planta',
+  projects:'proyectos',of:'de',byRO:'Por organización regional',clickRow:'Haz clic en una fila para ver sus plantas',
+  ofBudgetYear:'del Budget Year',tableShows:'La tabla muestra',turnover:'Facturación',back:'Volver',
+  backToAllROs:'Volver a todos los RO',ahead:'por delante del plan',behind:'por detrás del plan',onPlan:'en plan',
+  onTrack:'en curso',reportedLate:'reportado tarde',checkData:'revisar datos',noData:'sin datos',
+  sitesBehind:'plantas por detrás del Budget YTD',noSiteBehind:'todas las plantas en o sobre Budget YTD',
+  committed:'comprometido para el año',launchedSoFar:'lanzado hasta ahora',reporting:'reportan este período',
+  againstBudgetYear:'Frente al Budget Year',byProjectType:'Por tipo de proyecto',byCustomer:'Por cliente',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indicadores — últimos meses',
+  showRaw:'Mostrar cifras brutas',breakdown:'Desglose',sourceSheet:'Hoja de origen',
+  parsingNotes:'Notas de análisis',crossCheck:'Discrepancia en verificación',notReporting:'no reporta',
+  settingsTitle:'Ajustes — fuentes de período',gmailQuery:'Consulta de búsqueda de Gmail',scanNow:'Escanear ahora',
+  saveQuery:'Guardar consulta',installScan:'Instalar escaneo diario',addPeriodManually:'Añadir período manualmente (enlace de Sheets)',
+  add:'Añadir',searchTerms:'Buscar términos…',loadingData:'Cargando datos…',startingUp:'Iniciando…',
+  readingPeriod:'Leyendo el informe mensual…',rendering:'Preparando el panel…',ready:'Listo',
+  skipToContent:'Ir al contenido',language:'Idioma',noPeriodYet:'Aún no hay período registrado. Abre Ajustes y ejecuta el escaneo de Gmail, o añade el enlace manualmente.',
+  settingsIntro:'El informe mensual llega cada mes como un archivo nuevo. El escaneo de Gmail lo encuentra automáticamente; si no, añade el enlace manualmente.',
+  regionalOrgs:'organizaciones regionales',scanningSheets:'escaneando 48 hojas, la primera carga puede tardar un momento.'},
+ it:{whatAmILookingAt:'Cosa sto guardando',year:'Anno',month:'Mese',productType:'Tipo di prodotto',
+  projectType:'Tipo di progetto',customer:'Cliente',all:'Tutti',allROs:'Tutti i RO',sites:'siti',site:'Sito',
+  projects:'progetti',of:'su',byRO:'Per organizzazione regionale',clickRow:'Clicca una riga per vedere i siti',
+  ofBudgetYear:'del Budget Year',tableShows:'La tabella mostra',turnover:'Fatturato',back:'Indietro',
+  backToAllROs:'Torna a tutti i RO',ahead:'in anticipo sul piano',behind:'in ritardo sul piano',onPlan:'in linea',
+  onTrack:'in linea',reportedLate:'riportato in ritardo',checkData:'verifica i dati',noData:'nessun dato',
+  sitesBehind:'siti in ritardo sul Budget YTD',noSiteBehind:'tutti i siti al livello del Budget YTD',
+  committed:'impegnato per l’anno',launchedSoFar:'lanciato finora',reporting:'hanno riportato in questo periodo',
+  againstBudgetYear:'Rispetto al Budget Year',byProjectType:'Per tipo di progetto',byCustomer:'Per cliente',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indicatori — ultimi mesi',
+  showRaw:'Mostra i numeri grezzi',breakdown:'Ripartizione',sourceSheet:'Foglio di origine',
+  parsingNotes:'Note di analisi',crossCheck:'Discrepanza nel controllo incrociato',notReporting:'non riporta',
+  settingsTitle:'Impostazioni — fonti del periodo',gmailQuery:'Query di ricerca Gmail',scanNow:'Scansiona ora',
+  saveQuery:'Salva query',installScan:'Installa scansione giornaliera',addPeriodManually:'Aggiungi un periodo manualmente (link Sheets)',
+  add:'Aggiungi',searchTerms:'Cerca termini…',loadingData:'Caricamento dati…',startingUp:'Avvio…',
+  readingPeriod:'Lettura del report mensile…',rendering:'Preparazione della dashboard…',ready:'Pronto',
+  skipToContent:'Vai al contenuto',language:'Lingua',noPeriodYet:'Nessun periodo registrato. Apri Impostazioni ed esegui la scansione Gmail, oppure aggiungi il link manualmente.',
+  settingsIntro:'Il report mensile arriva ogni mese come nuovo file. La scansione Gmail lo trova automaticamente; altrimenti aggiungi il link manualmente.',
+  regionalOrgs:'organizzazioni regionali',scanningSheets:'scansione di 48 fogli, il primo caricamento può richiedere un momento.'},
+ pt:{whatAmILookingAt:'O que estou a ver',year:'Ano',month:'Mês',productType:'Tipo de produto',
+  projectType:'Tipo de projeto',customer:'Cliente',all:'Todos',allROs:'Todos os RO',sites:'unidades',site:'Unidade',
+  projects:'projetos',of:'de',byRO:'Por organização regional',clickRow:'Clique numa linha para ver as unidades',
+  ofBudgetYear:'do Budget Year',tableShows:'A tabela mostra',turnover:'Faturação',back:'Voltar',
+  backToAllROs:'Voltar a todos os RO',ahead:'à frente do plano',behind:'atrás do plano',onPlan:'em linha',
+  onTrack:'em dia',reportedLate:'reportado tarde',checkData:'verificar dados',noData:'sem dados',
+  sitesBehind:'unidades atrás do Budget YTD',noSiteBehind:'todas as unidades no nível do Budget YTD',
+  committed:'comprometido para o ano',launchedSoFar:'lançado até agora',reporting:'reportaram neste período',
+  againstBudgetYear:'Face ao Budget Year',byProjectType:'Por tipo de projeto',byCustomer:'Por cliente',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indicadores — últimos meses',
+  showRaw:'Mostrar números brutos',breakdown:'Detalhe',sourceSheet:'Folha de origem',
+  parsingNotes:'Notas de análise',crossCheck:'Divergência na verificação',notReporting:'não reporta',
+  settingsTitle:'Definições — fontes de período',gmailQuery:'Pesquisa do Gmail',scanNow:'Analisar agora',
+  saveQuery:'Guardar pesquisa',installScan:'Instalar análise diária',addPeriodManually:'Adicionar período manualmente (link Sheets)',
+  add:'Adicionar',searchTerms:'Procurar termos…',loadingData:'A carregar dados…',startingUp:'A iniciar…',
+  readingPeriod:'A ler o relatório mensal…',rendering:'A preparar o painel…',ready:'Pronto',
+  skipToContent:'Ir para o conteúdo',language:'Idioma',noPeriodYet:'Ainda não há período registado. Abra Definições e execute a análise do Gmail, ou adicione o link manualmente.',
+  settingsIntro:'O relatório mensal chega todos os meses como um novo ficheiro. A análise do Gmail encontra-o automaticamente; caso contrário, adicione o link manualmente.',
+  regionalOrgs:'organizações regionais',scanningSheets:'a analisar 48 folhas, o primeiro carregamento pode demorar um momento.'},
+ nl:{whatAmILookingAt:'Wat zie ik hier',year:'Jaar',month:'Maand',productType:'Producttype',
+  projectType:'Projecttype',customer:'Klant',all:'Alle',allROs:'Alle ROs',sites:'locaties',site:'Locatie',
+  projects:'projecten',of:'van',byRO:'Per regionale organisatie',clickRow:'Klik op een rij voor de locaties',
+  ofBudgetYear:'van Budget Year',tableShows:'Tabel toont',turnover:'Omzet',back:'Terug',
+  backToAllROs:'Terug naar alle ROs',ahead:'voor op plan',behind:'achter op plan',onPlan:'op plan',
+  onTrack:'op schema',reportedLate:'laat gerapporteerd',checkData:'controleer data',noData:'geen data',
+  sitesBehind:'locaties achter op Budget YTD',noSiteBehind:'alle locaties op of boven Budget YTD',
+  committed:'toegezegd voor het jaar',launchedSoFar:'tot nu toe gelanceerd',reporting:'rapporteren deze periode',
+  againstBudgetYear:'Tegen Budget Year',byProjectType:'Per projecttype',byCustomer:'Per klant',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indicatoren — laatste maanden',
+  showRaw:'Toon ruwe cijfers',breakdown:'Uitsplitsing',sourceSheet:'Bronblad',
+  parsingNotes:'Parsing-notities',crossCheck:'Afwijking bij controle',notReporting:'rapporteert niet',
+  settingsTitle:'Instellingen — periodebronnen',gmailQuery:'Gmail-zoekopdracht',scanNow:'Nu scannen',
+  saveQuery:'Zoekopdracht opslaan',installScan:'Dagelijkse scan instellen',addPeriodManually:'Periode handmatig toevoegen (Sheets-link)',
+  add:'Toevoegen',searchTerms:'Zoek termen…',loadingData:'Gegevens laden…',startingUp:'Opstarten…',
+  readingPeriod:'Maandrapport lezen…',rendering:'Dashboard voorbereiden…',ready:'Klaar',
+  skipToContent:'Naar inhoud',language:'Taal',noPeriodYet:'Nog geen periode geregistreerd. Open Instellingen en start de Gmail-scan, of voeg de link handmatig toe.',
+  settingsIntro:'Het maandrapport komt elke maand als een nieuw bestand. De Gmail-scan vindt het automatisch; zo niet, voeg de link handmatig toe.',
+  regionalOrgs:'regionale organisaties',scanningSheets:'48 bladen worden gescand, de eerste keer laden kan even duren.'},
+ pl:{whatAmILookingAt:'Na co patrzę',year:'Rok',month:'Miesiąc',productType:'Typ produktu',
+  projectType:'Typ projektu',customer:'Klient',all:'Wszystkie',allROs:'Wszystkie RO',sites:'zakłady',site:'Zakład',
+  projects:'projekty',of:'z',byRO:'Wg organizacji regionalnej',clickRow:'Kliknij wiersz, aby zobaczyć zakłady',
+  ofBudgetYear:'Budget Year',tableShows:'Tabela pokazuje',turnover:'Obrót',back:'Wstecz',
+  backToAllROs:'Powrót do wszystkich RO',ahead:'przed planem',behind:'za planem',onPlan:'zgodnie z planem',
+  onTrack:'zgodnie z planem',reportedLate:'zgłoszone z opóźnieniem',checkData:'sprawdź dane',noData:'brak danych',
+  sitesBehind:'zakłady poniżej Budget YTD',noSiteBehind:'wszystkie zakłady na poziomie Budget YTD',
+  committed:'zobowiązanie na rok',launchedSoFar:'dotychczas uruchomione',reporting:'raportuje w tym okresie',
+  againstBudgetYear:'Wobec Budget Year',byProjectType:'Wg typu projektu',byCustomer:'Wg klienta',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Wskaźniki — ostatnie miesiące',
+  showRaw:'Pokaż surowe liczby',breakdown:'Podział',sourceSheet:'Arkusz źródłowy',
+  parsingNotes:'Uwagi z parsowania',crossCheck:'Rozbieżność kontrolna',notReporting:'nie raportuje',
+  settingsTitle:'Ustawienia — źródła okresów',gmailQuery:'Zapytanie Gmail',scanNow:'Skanuj teraz',
+  saveQuery:'Zapisz zapytanie',installScan:'Zainstaluj skan dzienny',addPeriodManually:'Dodaj okres ręcznie (link Sheets)',
+  add:'Dodaj',searchTerms:'Szukaj terminów…',loadingData:'Ładowanie danych…',startingUp:'Uruchamianie…',
+  readingPeriod:'Odczyt raportu miesięcznego…',rendering:'Przygotowanie pulpitu…',ready:'Gotowe',
+  skipToContent:'Przejdź do treści',language:'Język',noPeriodYet:'Brak zarejestrowanego okresu. Otwórz Ustawienia i uruchom skan Gmail lub dodaj link ręcznie.',
+  settingsIntro:'Raport miesięczny przychodzi co miesiąc jako nowy plik. Skan Gmail znajduje go automatycznie; jeśli nie, dodaj link ręcznie.',
+  regionalOrgs:'organizacje regionalne',scanningSheets:'skanowanie 48 arkuszy, pierwsze ładowanie może chwilę potrwać.'},
+ cs:{whatAmILookingAt:'Na co se dívám',year:'Rok',month:'Měsíc',productType:'Typ produktu',
+  projectType:'Typ projektu',customer:'Zákazník',all:'Vše',allROs:'Všechny RO',sites:'závody',site:'Závod',
+  projects:'projekty',of:'z',byRO:'Podle regionální organizace',clickRow:'Kliknutím na řádek zobrazíte závody',
+  ofBudgetYear:'z Budget Year',tableShows:'Tabulka zobrazuje',turnover:'Obrat',back:'Zpět',
+  backToAllROs:'Zpět na všechny RO',ahead:'před plánem',behind:'za plánem',onPlan:'podle plánu',
+  onTrack:'podle plánu',reportedLate:'nahlášeno pozdě',checkData:'zkontrolovat data',noData:'žádná data',
+  sitesBehind:'závodů za Budget YTD',noSiteBehind:'všechny závody na úrovni Budget YTD',
+  committed:'závazek na rok',launchedSoFar:'dosud spuštěno',reporting:'vykazuje v tomto období',
+  againstBudgetYear:'Vůči Budget Year',byProjectType:'Podle typu projektu',byCustomer:'Podle zákazníka',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Ukazatele — poslední měsíce',
+  showRaw:'Zobrazit hrubá čísla',breakdown:'Rozpad',sourceSheet:'Zdrojový list',
+  parsingNotes:'Poznámky k načtení',crossCheck:'Nesoulad při kontrole',notReporting:'nevykazuje',
+  settingsTitle:'Nastavení — zdroje období',gmailQuery:'Vyhledávací dotaz Gmail',scanNow:'Skenovat',
+  saveQuery:'Uložit dotaz',installScan:'Nainstalovat denní skenování',addPeriodManually:'Přidat období ručně (odkaz Sheets)',
+  add:'Přidat',searchTerms:'Hledat pojmy…',loadingData:'Načítání dat…',startingUp:'Spouštění…',
+  readingPeriod:'Čtení měsíční zprávy…',rendering:'Příprava přehledu…',ready:'Hotovo',
+  skipToContent:'Přejít na obsah',language:'Jazyk',noPeriodYet:'Zatím není registrováno žádné období. Otevřete Nastavení a spusťte skenování Gmailu, nebo přidejte odkaz ručně.',
+  settingsIntro:'Měsíční zpráva přichází každý měsíc jako nový soubor. Skenování Gmailu ji najde automaticky; jinak přidejte odkaz ručně.',
+  regionalOrgs:'regionální organizace',scanningSheets:'skenuje se 48 listů, první načtení může chvíli trvat.'},
+ ro:{whatAmILookingAt:'Ce văd aici',year:'An',month:'Lună',productType:'Tip produs',
+  projectType:'Tip proiect',customer:'Client',all:'Toate',allROs:'Toate RO',sites:'situri',site:'Sit',
+  projects:'proiecte',of:'din',byRO:'După organizația regională',clickRow:'Faceți clic pe un rând pentru situri',
+  ofBudgetYear:'din Budget Year',tableShows:'Tabelul arată',turnover:'Cifră de afaceri',back:'Înapoi',
+  backToAllROs:'Înapoi la toate RO',ahead:'înaintea planului',behind:'în urma planului',onPlan:'conform planului',
+  onTrack:'conform planului',reportedLate:'raportat târziu',checkData:'verificați datele',noData:'fără date',
+  sitesBehind:'situri în urma Budget YTD',noSiteBehind:'toate siturile la nivelul Budget YTD',
+  committed:'angajat pentru an',launchedSoFar:'lansat până acum',reporting:'raportează în această perioadă',
+  againstBudgetYear:'Față de Budget Year',byProjectType:'După tipul proiectului',byCustomer:'După client',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indicatori — ultimele luni',
+  showRaw:'Afișați cifrele brute',breakdown:'Defalcare',sourceSheet:'Foaie sursă',
+  parsingNotes:'Note de analiză',crossCheck:'Nepotrivire la verificare',notReporting:'nu raportează',
+  settingsTitle:'Setări — surse de perioadă',gmailQuery:'Interogare Gmail',scanNow:'Scanați acum',
+  saveQuery:'Salvați interogarea',installScan:'Instalați scanarea zilnică',addPeriodManually:'Adăugați o perioadă manual (link Sheets)',
+  add:'Adăugați',searchTerms:'Căutați termeni…',loadingData:'Se încarcă datele…',startingUp:'Se pornește…',
+  readingPeriod:'Se citește raportul lunar…',rendering:'Se pregătește tabloul…',ready:'Gata',
+  skipToContent:'Salt la conținut',language:'Limbă',noPeriodYet:'Nicio perioadă înregistrată. Deschideți Setări și rulați scanarea Gmail, sau adăugați linkul manual.',
+  settingsIntro:'Raportul lunar sosește în fiecare lună ca fișier nou. Scanarea Gmail îl găsește automat; altfel, adăugați linkul manual.',
+  regionalOrgs:'organizații regionale',scanningSheets:'se scanează 48 de foi, prima încărcare poate dura un moment.'},
+ hu:{whatAmILookingAt:'Mit látok itt',year:'Év',month:'Hónap',productType:'Terméktípus',
+  projectType:'Projekttípus',customer:'Vevő',all:'Összes',allROs:'Összes RO',sites:'telephely',site:'Telephely',
+  projects:'projekt',of:'/',byRO:'Regionális szervezet szerint',clickRow:'Kattintson egy sorra a telephelyekért',
+  ofBudgetYear:'a Budget Year',tableShows:'A táblázat mutatja',turnover:'Árbevétel',back:'Vissza',
+  backToAllROs:'Vissza az összes RO-hoz',ahead:'terv előtt',behind:'terv mögött',onPlan:'terv szerint',
+  onTrack:'terv szerint',reportedLate:'későn jelentve',checkData:'ellenőrizze az adatokat',noData:'nincs adat',
+  sitesBehind:'telephely a Budget YTD mögött',noSiteBehind:'minden telephely a Budget YTD szintjén',
+  committed:'évre vállalva',launchedSoFar:'eddig indítva',reporting:'jelent ebben az időszakban',
+  againstBudgetYear:'A Budget Year-hez képest',byProjectType:'Projekttípus szerint',byCustomer:'Vevő szerint',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Mutatók — utolsó hónapok',
+  showRaw:'Nyers számok megjelenítése',breakdown:'Bontás',sourceSheet:'Forrás munkalap',
+  parsingNotes:'Feldolgozási megjegyzések',crossCheck:'Kereszt-ellenőrzési eltérés',notReporting:'nem jelent',
+  settingsTitle:'Beállítások — időszak-források',gmailQuery:'Gmail keresési lekérdezés',scanNow:'Keresés most',
+  saveQuery:'Lekérdezés mentése',installScan:'Napi keresés beállítása',addPeriodManually:'Időszak hozzáadása kézzel (Sheets link)',
+  add:'Hozzáadás',searchTerms:'Kifejezés keresése…',loadingData:'Adatok betöltése…',startingUp:'Indítás…',
+  readingPeriod:'Havi jelentés olvasása…',rendering:'Irányítópult előkészítése…',ready:'Kész',
+  skipToContent:'Ugrás a tartalomra',language:'Nyelv',noPeriodYet:'Még nincs regisztrált időszak. Nyissa meg a Beállításokat és futtassa a Gmail keresést, vagy adja hozzá a linket kézzel.',
+  settingsIntro:'A havi jelentés minden hónapban új fájlként érkezik. A Gmail keresés automatikusan megtalálja; ha nem, adja hozzá a linket kézzel.',
+  regionalOrgs:'regionális szervezet',scanningSheets:'48 munkalap beolvasása, az első betöltés eltarthat egy ideig.'},
+ ru:{whatAmILookingAt:'Что я вижу',year:'Год',month:'Месяц',productType:'Тип продукта',
+  projectType:'Тип проекта',customer:'Клиент',all:'Все',allROs:'Все RO',sites:'площадки',site:'Площадка',
+  projects:'проектов',of:'из',byRO:'По региональной организации',clickRow:'Нажмите на строку, чтобы увидеть площадки',
+  ofBudgetYear:'от Budget Year',tableShows:'Таблица показывает',turnover:'Оборот',back:'Назад',
+  backToAllROs:'Назад ко всем RO',ahead:'с опережением плана',behind:'с отставанием от плана',onPlan:'по плану',
+  onTrack:'по плану',reportedLate:'сообщено с опозданием',checkData:'проверьте данные',noData:'нет данных',
+  sitesBehind:'площадок отстают от Budget YTD',noSiteBehind:'все площадки на уровне Budget YTD',
+  committed:'обязательство на год',launchedSoFar:'запущено на данный момент',reporting:'отчитались в этом периоде',
+  againstBudgetYear:'Против Budget Year',byProjectType:'По типу проекта',byCustomer:'По клиенту',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Показатели — последние месяцы',
+  showRaw:'Показать исходные числа',breakdown:'Разбивка',sourceSheet:'Исходный лист',
+  parsingNotes:'Примечания разбора',crossCheck:'Несоответствие при сверке',notReporting:'не отчитывается',
+  settingsTitle:'Настройки — источники периодов',gmailQuery:'Поисковый запрос Gmail',scanNow:'Сканировать',
+  saveQuery:'Сохранить запрос',installScan:'Установить ежедневное сканирование',addPeriodManually:'Добавить период вручную (ссылка Sheets)',
+  add:'Добавить',searchTerms:'Поиск терминов…',loadingData:'Загрузка данных…',startingUp:'Запуск…',
+  readingPeriod:'Чтение месячного отчёта…',rendering:'Подготовка панели…',ready:'Готово',
+  skipToContent:'Перейти к содержимому',language:'Язык',noPeriodYet:'Период ещё не зарегистрирован. Откройте Настройки и запустите сканирование Gmail или добавьте ссылку вручную.',
+  settingsIntro:'Месячный отчёт приходит каждый месяц новым файлом. Сканирование Gmail находит его автоматически; иначе добавьте ссылку вручную.',
+  regionalOrgs:'региональных организаций',scanningSheets:'сканируется 48 листов, первая загрузка может занять время.'},
+ zh:{whatAmILookingAt:'这个页面在看什么',year:'年份',month:'月份',productType:'产品类型',
+  projectType:'项目类型',customer:'客户',all:'全部',allROs:'全部 RO',sites:'工厂',site:'工厂',
+  projects:'个项目',of:'/',byRO:'按区域组织',clickRow:'点击行查看其工厂',
+  ofBudgetYear:'的 Budget Year',tableShows:'表格显示',turnover:'营业额',back:'返回',
+  backToAllROs:'返回全部 RO',ahead:'领先于计划',behind:'落后于计划',onPlan:'符合计划',
+  onTrack:'正常',reportedLate:'报告延迟',checkData:'检查数据',noData:'无数据',
+  sitesBehind:'个工厂落后于 Budget YTD',noSiteBehind:'所有工厂达到 Budget YTD',
+  committed:'年度承诺',launchedSoFar:'迄今已发布',reporting:'本期已报告',
+  againstBudgetYear:'对比 Budget Year',byProjectType:'按项目类型',byCustomer:'按客户',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'指标 — 最近数月',
+  showRaw:'显示原始数字',breakdown:'明细',sourceSheet:'源工作表',
+  parsingNotes:'解析说明',crossCheck:'交叉核对不一致',notReporting:'未报告',
+  settingsTitle:'设置 — 期间来源',gmailQuery:'Gmail 搜索查询',scanNow:'立即扫描',
+  saveQuery:'保存查询',installScan:'安装每日扫描',addPeriodManually:'手动添加期间（Sheets 链接）',
+  add:'添加',searchTerms:'搜索术语…',loadingData:'正在加载数据…',startingUp:'正在启动…',
+  readingPeriod:'正在读取月度报告…',rendering:'正在准备仪表板…',ready:'就绪',
+  skipToContent:'跳到内容',language:'语言',noPeriodYet:'尚未注册期间。请打开设置并运行 Gmail 扫描，或手动添加链接。',
+  settingsIntro:'月度报告每月以新文件形式送达。Gmail 扫描会自动找到它；若未找到，请手动添加链接。',
+  regionalOrgs:'个区域组织',scanningSheets:'正在扫描 48 个工作表，首次加载可能需要一些时间。'},
+ ja:{whatAmILookingAt:'この画面について',year:'年',month:'月',productType:'製品タイプ',
+  projectType:'プロジェクトタイプ',customer:'顧客',all:'すべて',allROs:'すべての RO',sites:'拠点',site:'拠点',
+  projects:'件',of:'/',byRO:'地域組織別',clickRow:'行をクリックすると拠点が表示されます',
+  ofBudgetYear:'Budget Year に対して',tableShows:'表の表示',turnover:'売上高',back:'戻る',
+  backToAllROs:'すべての RO に戻る',ahead:'計画より先行',behind:'計画より遅延',onPlan:'計画どおり',
+  onTrack:'順調',reportedLate:'報告が遅延',checkData:'データを確認',noData:'データなし',
+  sitesBehind:'拠点が Budget YTD を下回る',noSiteBehind:'すべての拠点が Budget YTD 以上',
+  committed:'年間コミット',launchedSoFar:'これまでのローンチ',reporting:'今期報告済み',
+  againstBudgetYear:'Budget Year との比較',byProjectType:'プロジェクトタイプ別',byCustomer:'顧客別',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'指標 — 直近の月',
+  showRaw:'生の数値を表示',breakdown:'内訳',sourceSheet:'ソースシート',
+  parsingNotes:'解析メモ',crossCheck:'クロスチェックの不一致',notReporting:'未報告',
+  settingsTitle:'設定 — 期間ソース',gmailQuery:'Gmail 検索クエリ',scanNow:'今すぐスキャン',
+  saveQuery:'クエリを保存',installScan:'日次スキャンを設定',addPeriodManually:'期間を手動で追加（Sheets リンク）',
+  add:'追加',searchTerms:'用語を検索…',loadingData:'データを読み込み中…',startingUp:'起動中…',
+  readingPeriod:'月次レポートを読み込み中…',rendering:'ダッシュボードを準備中…',ready:'準備完了',
+  skipToContent:'本文へスキップ',language:'言語',noPeriodYet:'期間が未登録です。設定を開いて Gmail スキャンを実行するか、リンクを手動で追加してください。',
+  settingsIntro:'月次レポートは毎月新しいファイルとして届きます。Gmail スキャンが自動的に見つけます。見つからない場合はリンクを手動で追加してください。',
+  regionalOrgs:'の地域組織',scanningSheets:'48 シートをスキャン中です。初回の読み込みには少し時間がかかります。'},
+ ko:{whatAmILookingAt:'이 화면 안내',year:'연도',month:'월',productType:'제품 유형',
+  projectType:'프로젝트 유형',customer:'고객',all:'전체',allROs:'전체 RO',sites:'사업장',site:'사업장',
+  projects:'개 프로젝트',of:'/',byRO:'지역 조직별',clickRow:'행을 클릭하면 사업장이 표시됩니다',
+  ofBudgetYear:'Budget Year 대비',tableShows:'표 표시',turnover:'매출',back:'뒤로',
+  backToAllROs:'전체 RO로 돌아가기',ahead:'계획보다 앞섬',behind:'계획보다 뒤처짐',onPlan:'계획대로',
+  onTrack:'정상',reportedLate:'보고 지연',checkData:'데이터 확인',noData:'데이터 없음',
+  sitesBehind:'개 사업장이 Budget YTD 미달',noSiteBehind:'모든 사업장이 Budget YTD 이상',
+  committed:'연간 약정',launchedSoFar:'현재까지 런칭',reporting:'이번 기간 보고',
+  againstBudgetYear:'Budget Year 대비',byProjectType:'프로젝트 유형별',byCustomer:'고객별',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'지표 — 최근 몇 개월',
+  showRaw:'원시 수치 표시',breakdown:'세부 내역',sourceSheet:'원본 시트',
+  parsingNotes:'파싱 참고',crossCheck:'교차 확인 불일치',notReporting:'보고 없음',
+  settingsTitle:'설정 — 기간 소스',gmailQuery:'Gmail 검색어',scanNow:'지금 스캔',
+  saveQuery:'검색어 저장',installScan:'일일 스캔 설치',addPeriodManually:'기간 수동 추가 (Sheets 링크)',
+  add:'추가',searchTerms:'용어 검색…',loadingData:'데이터 로드 중…',startingUp:'시작 중…',
+  readingPeriod:'월간 보고서 읽는 중…',rendering:'대시보드 준비 중…',ready:'준비 완료',
+  skipToContent:'본문으로 건너뛰기',language:'언어',noPeriodYet:'등록된 기간이 없습니다. 설정을 열고 Gmail 스캔을 실행하거나 링크를 수동으로 추가하세요.',
+  settingsIntro:'월간 보고서는 매달 새 파일로 도착합니다. Gmail 스캔이 자동으로 찾습니다. 찾지 못하면 링크를 수동으로 추가하세요.',
+  regionalOrgs:'개 지역 조직',scanningSheets:'48개 시트를 스캔 중이며 첫 로드는 다소 시간이 걸릴 수 있습니다.'},
+ ar:{whatAmILookingAt:'ما الذي أنظر إليه',year:'السنة',month:'الشهر',productType:'نوع المنتج',
+  projectType:'نوع المشروع',customer:'العميل',all:'الكل',allROs:'كل RO',sites:'مواقع',site:'الموقع',
+  projects:'مشاريع',of:'من',byRO:'حسب المنظمة الإقليمية',clickRow:'انقر على صف لعرض مواقعه',
+  ofBudgetYear:'من Budget Year',tableShows:'يعرض الجدول',turnover:'الإيرادات',back:'رجوع',
+  backToAllROs:'العودة إلى كل RO',ahead:'متقدم على الخطة',behind:'متأخر عن الخطة',onPlan:'وفق الخطة',
+  onTrack:'على المسار',reportedLate:'تم الإبلاغ متأخرًا',checkData:'تحقق من البيانات',noData:'لا توجد بيانات',
+  sitesBehind:'مواقع متأخرة عن Budget YTD',noSiteBehind:'كل المواقع عند Budget YTD أو أعلى',
+  committed:'ملتزم به للسنة',launchedSoFar:'تم إطلاقه حتى الآن',reporting:'أبلغت هذه الفترة',
+  againstBudgetYear:'مقابل Budget Year',byProjectType:'حسب نوع المشروع',byCustomer:'حسب العميل',
+  portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'المؤشرات — الأشهر الأخيرة',
+  showRaw:'إظهار الأرقام الخام',breakdown:'التفصيل',sourceSheet:'الورقة المصدر',
+  parsingNotes:'ملاحظات التحليل',crossCheck:'عدم تطابق التحقق',notReporting:'لا تبلغ',
+  settingsTitle:'الإعدادات — مصادر الفترة',gmailQuery:'استعلام بحث Gmail',scanNow:'افحص الآن',
+  saveQuery:'حفظ الاستعلام',installScan:'تثبيت الفحص اليومي',addPeriodManually:'إضافة فترة يدويًا (رابط Sheets)',
+  add:'إضافة',searchTerms:'ابحث عن المصطلحات…',loadingData:'جارٍ تحميل البيانات…',startingUp:'جارٍ البدء…',
+  readingPeriod:'جارٍ قراءة التقرير الشهري…',rendering:'جارٍ تجهيز اللوحة…',ready:'جاهز',
+  skipToContent:'انتقل إلى المحتوى',language:'اللغة',noPeriodYet:'لا توجد فترة مسجلة بعد. افتح الإعدادات وشغّل فحص Gmail، أو أضف الرابط يدويًا.',
+  settingsIntro:'يصل التقرير الشهري كل شهر كملف جديد. يجده فحص Gmail تلقائيًا؛ وإلا فأضف الرابط يدويًا.',
+  regionalOrgs:'منظمات إقليمية',scanningSheets:'يتم فحص 48 ورقة، وقد يستغرق التحميل الأول لحظة.'}
+};
+var LANG='en', LOCALE='en-US';
+function t(k){ var d=T[LANG]||T.en; return (d[k]!=null?d[k]:(T.en[k]!=null?T.en[k]:k)); }
+function langMeta(code){
+  for(var i=0;i<LANGS.length;i++){ if(LANGS[i][0]===code) return LANGS[i]; }
+  return LANGS[0];
+}
+function applyLang(code){
+  var m=langMeta(code);
+  LANG=m[0]; LOCALE=m[3];
+  document.documentElement.lang=LANG;
+  document.documentElement.dir=(LANG==='ar')?'rtl':'ltr';
+  try{ localStorage.setItem('roDashLang',LANG); }catch(e){}
+  $('langLabel').textContent=LANG.toUpperCase();
+  $('btnLang').setAttribute('title',t('language'));
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    el.textContent=t(el.getAttribute('data-i18n'));
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(el){
+    el.setAttribute('placeholder',t(el.getAttribute('data-i18n-ph')));
+  });
+  buildLangMenu();
+  /* ay adlari da dile bagli — donem secicisini secimi koruyarak yeniden kur */
+  if(BOOT&&BOOT.periods&&BOOT.periods.length&&DATA&&DATA.period) buildPeriodSelects(DATA.period.key);
+  if(DATA){ buildFilterSegs(); render(); }
+}
+function buildLangMenu(){
+  $('langMenu').innerHTML=LANGS.map(function(l){
+    return '<button type="button" role="option" data-lang="'+l[0]+'" aria-selected="'+(l[0]===LANG)+'">'+
+      '<span class="flag">'+l[2]+'</span>'+esc(l[1])+'</button>';
+  }).join('');
+  $('langMenu').querySelectorAll('button').forEach(function(b){
+    b.onclick=function(){ applyLang(b.getAttribute('data-lang')); closeLangMenu(); };
+  });
+}
+function closeLangMenu(){ $('langMenu').hidden=true; $('btnLang').setAttribute('aria-expanded','false'); }
+function initLang(){
+  var saved=null; try{ saved=localStorage.getItem('roDashLang'); }catch(e){}
+  if(!saved){
+    var nav=(navigator.language||'en').slice(0,2).toLowerCase();
+    saved=T[nav]?nav:'en';
+  }
+  applyLang(saved);
+  $('btnLang').onclick=function(e){
+    e.stopPropagation();
+    var open=$('langMenu').hidden;
+    $('langMenu').hidden=!open;
+    $('btnLang').setAttribute('aria-expanded',String(open));
+  };
+  document.addEventListener('click',function(){ if(!$('langMenu').hidden) closeLangMenu(); });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeLangMenu(); });
+}
+
+/* ---------- glossary (sayfanin kendi terimleri — cevrilmez) ---------- */
 var GLOSSARY=[
  ['Budget Year','What the site committed at the start of the year: the projects to launch by year-end and the turnover they bring, in M€. Fixed once the year starts — shown as a single number, not compared against progress.','Section 3 “ORDER INTAKE → Budget Year” (M€) and Section 4 “PROJECT LAUNCH → Budget Year” (project count).'],
- ['Budget YTD','The same yearly commitment phased across the months — where the site should stand by the reporting month. This is the one figure Real Launches is actually compared against: the card shows what has been realized, with the Budget YTD plan named alongside it.','Section 4 “Budget YTD [CUMUL Number]” for the count; for M€, the projects whose planned launch date falls on or before the reporting month.'],
+ ['Budget YTD','The same yearly commitment phased across the months — where the site should stand by the reporting month. This is the one figure Real Launches is actually compared against.','Section 4 “Budget YTD [CUMUL Number]” for the count; for M€, the projects whose planned launch date falls on or before the reporting month.'],
  ['Real Launches','Projects actually launched since 1 January. A project counts only if its real launch date is on or before the reporting month.','Counted row by row from the VS / OES Current Portfolio and TTM Launch tables — the right-hand “Real” date column.'],
  ['Launch Done (L.S sent)','The turnover carried by those launched projects, in M€.','The Turnover (k€) column of the same detail rows, converted to M€.'],
- ['Launch Delay Number','Real Launches minus Budget YTD. Positive means the site is running ahead of its phased commitment, negative means it is behind. Shown as a coloured chip next to Budget YTD.','The sheet’s own “Launch Delay Number” column carries exactly this figure.'],
+ ['Launch Delay Number','Real Launches minus Budget YTD. Positive means the site is running ahead of its phased commitment, negative means it is behind.','The sheet’s own “Launch Delay Number” column carries exactly this figure.'],
  ['Current Portfolio','Projects planned to launch this year, launched or not — the work already in the book.','Counted from the VS / OES Current Portfolio and TTM Launch tables (all rows, regardless of launch date).'],
  ['Sites reported','How many of the 48 sites have a sheet with data in this period. A low number means the picture is incomplete, not that performance is bad.','Sheet presence per site in the selected month’s spreadsheet.'],
- ['NEW / REMAN','NEW covers new product projects. REMAN covers remanufacturing — used parts restored and sold again. The All filter adds both together; NEW and REMAN show each on its own.','Column pair repeated across Sections 3 and 4.'],
+ ['NEW / REMAN','NEW covers new product projects. REMAN covers remanufacturing — used parts restored and sold again. The All filter adds both together.','Column pair repeated across Sections 3 and 4.'],
  ['P1 / P10 / TTM','P1 = projects with development work. P10 (written PCO in some sheets) = projects without development. TTM = an OEM product taken straight to the aftermarket.','Row labels in Section 4; the “Type” column in the detail tables.'],
  ['VS / OES','VS = Valeo Service customers. OES = the OEM’s service arm. Both axes add up to the same total, from different angles.','Row labels in Sections 3 and 4; block names in the detail tables.']
 ];
-/** query verilirse terim veya aciklamada gecmeyenler [hidden] ile gizlenir. */
 function fillGlossary(hi,query){
   var m=monthName();
   var q=(query||'').trim().toLowerCase();
@@ -118,17 +532,9 @@ function hasReman(){
     return (s.detail&&s.detail.blocks||[]).some(function(b){ return b.status==='REMAN'&&b.total.count>0; });
   });
 }
+function roColor(ro){ return 'var(--ro-'+ro+')'; }
 
 /* ---------- small SVG charts ---------- */
-function bulletBar(actual, plan, max){
-  var w=max>0?clamp01(actual/max)*100:0;
-  var p=max>0?clamp01(plan/max)*100:0;
-  var behind=(plan!=null&&actual<plan);
-  return '<div class="bar">'+
-    '<div class="bar-fill'+(behind?' behind':'')+'" style="width:'+w.toFixed(1)+'%"></div>'+
-    (plan!=null?'<div class="bar-plan" style="left:'+p.toFixed(1)+'%"></div>':'')+
-  '</div>';
-}
 function donut(pctCount, pctMoney){
   var R1=52,R2=36,C1=2*Math.PI*R1,C2=2*Math.PI*R2;
   var a=clamp01((pctCount||0)/100)*C1, b=clamp01((pctMoney||0)/100)*C2;
@@ -150,7 +556,7 @@ function donut(pctCount, pctMoney){
 }
 function sparkline(vals, target){
   var pts=vals.filter(function(v){ return v!=null; });
-  if(pts.length<2) return '<span style="color:var(--text-mute);font-size:13px">not enough history</span>';
+  if(pts.length<2) return '<span style="color:var(--text-mute);font-size:13px">—</span>';
   var W=150,H=40,P=4;
   var all=pts.concat(target!=null?[target]:[]);
   var mn=Math.min.apply(null,all), mx=Math.max.apply(null,all);
@@ -165,8 +571,23 @@ function sparkline(vals, target){
       '" stroke="var(--text-mute)" stroke-width="1" stroke-dasharray="3 3"/>':'')+
     '<path d="'+d+'" fill="none" stroke="var(--valeo-mid)" stroke-width="2" '+
       'stroke-linecap="round" stroke-linejoin="round"/>'+
-    '<circle cx="'+x(pts.length-1).toFixed(1)+'" cy="'+y(last).toFixed(1)+'" r="3.2" fill="var(--valeo-mid)"/>'+
+    '<circle cx="'+x(pts.length-1).toFixed(1)+'" cy="'+y(last).toFixed(1)+'" r="3.6" fill="var(--valeo-mid)" '+
+      'stroke="var(--card)" stroke-width="2"/>'+
   '</svg>';
+}
+/* Durum cipi: renk TEK BASINA anlam tasimaz — ikon + etiket birlikte. */
+function deltaPill(delta,unit){
+  if(delta==null) return '<span class="pill mute">'+ICON_MINUS+'n/a</span>';
+  var cls=delta<0?'bad':(delta>0?'good':'mute');
+  var ico=delta<0?ICON_DOWN:(delta>0?ICON_UP:ICON_MINUS);
+  return '<span class="pill '+cls+'">'+ico+(delta>0?'+':'')+nf(delta,unit==='M€'?1:0)+(unit?' '+unit:'')+'</span>';
+}
+function statusPill(st){
+  if(st==='ok') return '<span class="pill good">'+ICON_CHECK+esc(t('onTrack'))+'</span>';
+  if(st==='behind-schedule') return '<span class="pill warn">'+ICON_ALERT+esc(t('reportedLate'))+'</span>';
+  if(st==='inconsistent') return '<span class="pill warn">'+ICON_ALERT+esc(t('checkData'))+'</span>';
+  if(st==='no-data') return '<span class="pill mute">'+ICON_MINUS+esc(t('noData'))+'</span>';
+  return '<span class="pill mute">'+esc(st)+'</span>';
 }
 
 /* ---------- shell ---------- */
@@ -184,7 +605,7 @@ function render(){
 }
 function crumb(parts){
   $('crumb').innerHTML=parts.map(function(p,i){
-    var sep=(i<parts.length-1)?'<span class="sep" aria-hidden="true">'+ICON_CHEVRON_RIGHT+'</span>':'';
+    var sep=(i<parts.length-1)?'<span class="sep" aria-hidden="true">'+ICON_CHEVRON_SM+'</span>':'';
     return (p.action?'<button type="button" data-ci="'+i+'">'+esc(p.t)+'</button>':'<b>'+esc(p.t)+'</b>')+sep;
   }).join('');
   $('crumb').querySelectorAll('button').forEach(function(b){
@@ -192,168 +613,189 @@ function crumb(parts){
     b.onclick=function(){ parts[i].action(); render(); };
   });
 }
-function kpi(label, value, unit, sub, cls, gloss, chip){
-  return '<div class="kpi'+(cls?' '+cls:'')+'">'+
-    '<div class="kpi-head"><span class="kpi-label">'+esc(label)+'</span>'+
-      (gloss?'<button class="kpi-info" type="button" data-gloss="'+esc(gloss)+'" '+
-             'aria-label="What is '+esc(label)+'?">'+ICON_INFO+'</button>':'')+
-      (chip?'<span class="spacer-x"></span>'+chip:'')+'</div>'+
-    '<div class="kpi-value">'+value+(unit?'<span class="unit">'+esc(unit)+'</span>':'')+'</div>'+
-    '<div class="kpi-sub">'+sub+'</div></div>';
-}
-/* Butun etiketler sayfanin kendi terminolojisi.
-   Budget Year sabit bir hedeftir (yil basinda belirlenir) — tek deger, kiyas YOK.
-   Budget YTD karti "X budget / Y launched" olarak hem ciro hem adet icin ayni
-   kalipla, cift anlami olmayan sekilde yazilir (kullanici karari). Current
-   Portfolio karti kaldirildi — kullanici "ne oldugu anlasilmiyor" dedi; ayni
-   bilgi site detayindaki huni diyagraminda zaten baglaminda duruyor. */
-function kpiRow(a){
-  var planKnown=a.planTurnoverM>0;
-  var ytdMoney=(planKnown?'<b>'+nf(a.planTurnoverM,1)+'</b>':'—')+'<span class="slash">/</span>'+moneyTag(a.realTurnoverM);
 
-  return '<div class="kpis">'+
-    kpi('Budget Year', moneyTag(a.budgetTurnover), '', nf(a.budgetCount)+' projects', '', 'Budget Year')+
-    '<div class="kpi">'+
-      '<div class="kpi-head"><span class="kpi-label">Budget YTD / Launched</span>'+
-        '<button class="kpi-info" type="button" data-gloss="Budget YTD" aria-label="What is Budget YTD?">'+ICON_INFO+'</button>'+
-      '</div>'+
-      '<div class="kpi-value kpi-phrase">'+ytdMoney+'</div>'+
-      '<div class="kpi-sub">'+nf(a.budgetYTD)+' / '+nf(a.realCount)+' projects</div>'+
+/* KPI hero kartlari — ucunde de AYNI tipografi/olcek (kullanici talebi).
+   dataviz/marks-and-anatomy.md "stat tile" sozlesmesi: etiket · deger ·
+   (opsiyonel) delta · olcer. */
+function kpiCard(o){
+  return '<div class="kpi" style="--kpi-hue:'+o.hue+'">'+
+    '<div class="kpi-head">'+
+      '<span class="kpi-ico">'+o.icon+'</span>'+
+      /* lang="en": etiket sayfanin kendi terimi; Turkce locale'de uppercase
+         "Sites" -> "SİTES" yapiyordu (i/I kurali) */
+      '<span class="kpi-label" lang="en">'+esc(o.label)+'</span>'+
+      (o.gloss?'<button class="kpi-info" type="button" data-gloss="'+esc(o.gloss)+'" '+
+        'aria-label="'+esc(o.label)+'">'+ICON_INFO+'</button>':'')+
     '</div>'+
-    kpi('Sites reported', a.reported+'<span class="unit">/ '+BOOT.siteCount+'</span>', '',
-        (a.behind?a.behind+' site'+(a.behind>1?'s':'')+' behind Budget YTD':'no site behind Budget YTD'),
-        '', 'Sites reported')+
+    '<div class="kpi-value">'+o.value+'</div>'+
+    '<div class="kpi-sub">'+o.sub+'</div>'+
+    '<div class="kpi-meter"><i style="width:'+Math.max(0,Math.min(100,o.meter||0)).toFixed(1)+'%"></i></div>'+
+    '<div class="kpi-foot"><span>'+o.footL+'</span>'+(o.footR||'')+'</div>'+
+  '</div>';
+}
+function kpiRow(a){
+  var pctYear=pct(a.realTurnoverM,a.budgetTurnover);
+  var pctPlan=pct(a.realTurnoverM,a.planTurnoverM);
+  var pctSites=pct(a.reported,BOOT.siteCount);
+  return '<div class="kpis">'+
+    kpiCard({
+      hue:'var(--ro-PDE)', icon:ICON_TARGET, label:'Budget Year', gloss:'Budget Year',
+      value:moneyTag(a.budgetTurnover),
+      sub:'<b>'+nf(a.budgetCount)+'</b> '+esc(t('projects'))+' '+esc(t('committed')),
+      meter:pctYear||0,
+      footL:esc(cap(t('launchedSoFar')))+' '+money(a.realTurnoverM),
+      footR:'<span>'+(pctYear==null?'—':pctYear+'%')+'</span>'
+    })+
+    kpiCard({
+      hue:'var(--ro-PDA)', icon:ICON_TREND, label:'Budget YTD / Launch Done', gloss:'Budget YTD',
+      value:moneyTag(a.realTurnoverM),
+      sub:'<b>'+nf(a.realCount)+'</b> '+esc(t('of'))+' '+nf(a.budgetYTD)+' '+esc(t('projects')),
+      meter:pctPlan||0,
+      footL:'Budget YTD '+money(a.planTurnoverM),
+      footR:deltaPill(a.delta)
+    })+
+    kpiCard({
+      hue:'var(--ro-PTA)', icon:ICON_PLANT, label:'Sites reported', gloss:'Sites reported',
+      value:nf(a.reported)+'<span class="unit">/ '+BOOT.siteCount+'</span>',
+      sub:(a.behind? '<b>'+a.behind+'</b> '+esc(t('sitesBehind')) : esc(t('noSiteBehind'))),
+      meter:pctSites||0,
+      footL:esc(cap(t('reporting'))),
+      footR:'<span>'+(pctSites==null?'—':pctSites+'%')+'</span>'
+    })+
   '</div>';
 }
 
-/* ---------- level 1: RO comparison strip ---------- */
-/**
- * RO satirinin altini/ustunu ciziyor. Bar artik ADET degil CIRO tabanli:
- * dolu kisim = Launch Done (M€), isaret = Budget YTD (M€), tam skala = bu
- * RO'nun kendi Budget Year cirosu (RO'lar arasi mutlak kiyas degil, RO'nun
- * kendi hedefine gore % tamamlanma). Sag taraftaki "X / Y" cirosu artik
- * Budget Year yerine Budget YTD ile eslesiyor — delta cipiyle ayni eksende.
- */
+/* ---------- level 1: RO karsilastirma kartlari ---------- */
+/* Bar olcegi = bu RO'nun kendi Budget Year cirosu (%100). KPI degerleri
+   barin ICINDE degil, sagda ayri okunabilir bloklarda (kullanici talebi). */
 function roRowHtml(r){
   var a=r.a, open=(NAV.expandedRo===r.ro);
+  var scale=a.budgetTurnover>0?a.budgetTurnover:1;
+  var w=clamp01(a.realTurnoverM/scale)*100;
+  var p=a.planTurnoverM>0?clamp01(a.planTurnoverM/scale)*100:null;
+  var pctYear=pct(a.realTurnoverM,a.budgetTurnover);
   return '<button class="ro-row'+(open?' open':'')+'" type="button" data-ro="'+r.ro+'" '+
-    'aria-expanded="'+open+'">'+
-    '<span class="ro-id"><span class="ro-code">'+esc(r.ro)+'</span>'+
-      '<span class="ro-name">'+esc(BOOT.roLabels[r.ro]||'')+' · '+r.list.length+' sites</span></span>'+
-    '<span class="bar-wrap">'+bulletBar(a.realTurnoverM,a.planTurnoverM>0?a.planTurnoverM:null,a.budgetTurnover>0?a.budgetTurnover:1)+
-      '<span class="bar-figs">'+
-      '<span>Launch Done '+moneyTag(a.realTurnoverM)+' <i>· '+nf(a.realCount)+'</i></span>'+
-      '<span>Budget YTD '+moneyTag(a.planTurnoverM)+' <i>· '+nf(a.budgetYTD)+'</i></span>'+
-      '<span>Budget Year '+moneyTag(a.budgetTurnover)+' <i>· '+nf(a.budgetCount)+'</i></span>'+
-      '</span></span>'+
-    '<span class="chev" aria-hidden="true">'+ICON_CHEVRON_RIGHT+'</span>'+
+    'style="--ro-color:'+roColor(r.ro)+'" aria-expanded="'+open+'">'+
+    '<span class="ro-id">'+
+      '<span class="ro-code"><i class="ro-dot"></i>'+esc(r.ro)+'</span>'+
+      '<span class="ro-name">'+esc(BOOT.roLabels[r.ro]||'')+'</span>'+
+      '<span class="ro-sites">'+r.list.length+' '+esc(t('sites'))+'</span>'+
+    '</span>'+
+    '<span class="ro-bar">'+
+      '<span class="ro-bar-top">'+
+        '<span><span class="ro-pct">'+(pctYear==null?'—':pctYear+'%')+'</span> '+
+          '<span class="ro-plan-note">'+esc(t('ofBudgetYear'))+'</span></span>'+
+        deltaPill(a.delta)+
+      '</span>'+
+      '<span class="bar">'+
+        '<span class="bar-fill" style="width:'+w.toFixed(1)+'%"></span>'+
+        (p!=null?'<span class="bar-plan" style="left:'+p.toFixed(1)+'%"></span>':'')+
+      '</span>'+
+    '</span>'+
+    '<span class="ro-stats">'+
+      roStat('Launch Done', moneyTag(a.realTurnoverM), nf(a.realCount)+' '+t('projects'), true)+
+      roStat('Budget YTD', moneyTag(a.planTurnoverM), nf(a.budgetYTD)+' '+t('projects'), false)+
+      roStat('Budget Year', moneyTag(a.budgetTurnover), nf(a.budgetCount)+' '+t('projects'), false)+
+    '</span>'+
+    '<span class="chev" aria-hidden="true">'+ICON_CHEVRON+'</span>'+
   '</button>';
 }
-
-/** Delta hucresi: gorunum moduna gore adet farki ya da ciro farki (M€). */
-function deltaChip(m){
-  if(F.tableView==='money'){
-    if(m.deltaTurnoverM==null) return '<span class="pill mute">n/a</span>';
-    var cls=m.deltaTurnoverM<0?'bad':'good';
-    return '<span class="pill '+cls+'">'+(m.deltaTurnoverM>=0?'+':'')+nf(m.deltaTurnoverM,1)+' M€</span>';
-  }
-  if(m.delta==null) return '<span class="pill mute">—</span>';
-  return '<span class="pill '+(m.delta<0?'bad':'good')+'">'+signed(m.delta)+'</span>';
+function roStat(label,value,sub,accent){
+  return '<span class="stat'+(accent?' accent':'')+'">'+
+    '<span class="stat-l">'+esc(label)+'</span>'+
+    '<span class="stat-v">'+value+'</span>'+
+    '<span class="stat-s">'+esc(sub)+'</span></span>';
 }
-/** Adet/ciro ikisi de: F.tableView'a gore hangisi gosterilecek. */
-function tblCell(countVal,moneyVal){ return F.tableView==='money' ? money(moneyVal) : nf(countVal); }
 
-/**
- * Bir RO'nun site tablosu — accordion'da RO satirinin hemen altina gomuluyor.
- * Budget Year / Budget YTD / Real Launches / Launch Delay sutunlari, ustteki
- * Projects/Turnover anahtarina gore adet veya M€ gosterir (ayni sutun, tek
- * baslik) — ayri bir "Launch Done" sutununa artik gerek yok, Real Launches
- * Turnover modunda zaten ayni bilgiyi veriyor.
- */
-function siteTableHtml(list){
+/* Site listesi — Excel tablosu degil, kart-satir listesi. Status sutunu
+   kullanici talebiyle kaldirildi (durum bilgisi site detayinda duruyor). */
+function tblCell(countVal,moneyVal){ return F.tableView==='money' ? money(moneyVal) : nf(countVal); }
+function siteListHtml(list,ro){
   var rows=list.map(function(s,i){ return {s:s,m:siteMetrics(s),i:i}; });
   rows.sort(function(a,b){
     var av=(a.m.delta==null?9999:a.m.delta), bv=(b.m.delta==null?9999:b.m.delta);
-    return av-bv;   // furthest behind first
+    return av-bv;   // en geride olan once
   });
-  var html='<div class="ro-expand">'+
-    '<div class="tbl-toggle"><span class="flabel">Table shows</span><div class="seg seg-sm" id="segTblView">'+
-      '<button type="button" data-tv="count" aria-pressed="'+(F.tableView==='count')+'">Projects</button>'+
-      '<button type="button" data-tv="money" aria-pressed="'+(F.tableView==='money')+'">Turnover (M€)</button>'+
+  var isMoney=F.tableView==='money';
+  var html='<div class="ro-expand" style="--ro-color:'+roColor(ro)+'">'+
+    '<div class="tbl-toggle"><span class="flabel">'+esc(t('tableShows'))+'</span>'+
+      '<div class="seg seg-sm" id="segTblView">'+
+      '<button type="button" data-tv="count" aria-pressed="'+(!isMoney)+'">'+esc(cap(t('projects')))+'</button>'+
+      '<button type="button" data-tv="money" aria-pressed="'+isMoney+'">'+esc(cap(t('turnover')))+' (M€)</button>'+
     '</div></div>'+
-    '<div class="tablewrap"><table><thead><tr>'+
-    '<th>Site</th><th class="num">Budget Year</th><th class="num">Budget YTD</th>'+
-    '<th class="num">Real Launches</th><th class="num">Launch Delay</th><th>Status</th>'+
-    '</tr></thead><tbody>';
+    '<div class="site-head">'+
+      '<span>'+esc(t('site'))+'</span><span>Real Launches / Budget YTD</span>'+
+      '<span class="r">Budget Year</span><span class="r">Budget YTD</span>'+
+      '<span class="r">Real Launches</span><span class="r">Launch Delay</span>'+
+    '</div><div class="sitelist">';
   rows.forEach(function(r){
-    html+='<tr data-i="'+r.i+'">'+
-      '<td class="site-name" data-label="Site">'+esc(r.s.site)+'</td>'+
-      '<td class="num" data-label="Budget Year">'+tblCell(r.m.budgetCount,r.m.budgetTurnover)+'</td>'+
-      '<td class="num" data-label="Budget YTD">'+tblCell(r.m.budgetYTD,r.m.planTurnoverM)+'</td>'+
-      '<td class="num" data-label="Real Launches">'+tblCell(r.m.realCount,r.m.realTurnoverM)+'</td>'+
-      '<td class="num" data-label="Launch Delay">'+deltaChip(r.m)+'</td>'+
-      '<td data-label="Status">'+statusPill(r.s.status)+'</td></tr>';
+    var m=r.m;
+    var base=isMoney?m.planTurnoverM:m.budgetYTD;
+    var got=isMoney?m.realTurnoverM:m.realCount;
+    var w=(base>0)?clamp01(got/base)*100:0;
+    var cap=(base>0)?(isMoney?m2(got)+' / '+m2(base)+' M€':nf(got)+' / '+nf(base))+' · '+Math.round(w)+'%'
+                    :(isMoney?m2(got)+' M€':nf(got));
+    html+='<button class="site-row" type="button" data-i="'+r.i+'">'+
+      '<span class="site-name"><i></i><span>'+esc(r.s.site)+'</span></span>'+
+      '<span class="mini-meter">'+
+        '<span class="mini-bar"><i style="width:'+w.toFixed(1)+'%"></i></span>'+
+        '<span class="mini-cap">'+esc(cap)+'</span>'+
+      '</span>'+
+      '<span class="tbl-v r" data-label="Budget Year">'+tblCell(m.budgetCount,m.budgetTurnover)+'</span>'+
+      '<span class="tbl-v r dim" data-label="Budget YTD">'+tblCell(m.budgetYTD,m.planTurnoverM)+'</span>'+
+      '<span class="tbl-v r" data-label="Real Launches">'+tblCell(m.realCount,m.realTurnoverM)+'</span>'+
+      '<span class="r" data-label="Launch Delay">'+
+        (isMoney?deltaPill(m.deltaTurnoverM,'M€'):deltaPill(m.delta))+'</span>'+
+    '</button>';
   });
-  html+='</tbody></table></div></div>';
+  html+='</div></div>';
   return html;
 }
 
 function renderRoLevel(){
-  crumb([{t:'All ROs'}]);
+  crumb([{t:t('allROs')}]);
   var all=DATA.sites||[];
   var rows=[];
   BOOT.roOrder.forEach(function(ro){
     var list=sitesOfRo(ro); if(!list.length) return;
     rows.push({ro:ro,list:list,a:sumMetrics(list)});
   });
-  rows.sort(function(x,y){ return (x.a.delta||0)-(y.a.delta||0); });   // worst first
+  rows.sort(function(x,y){ return (x.a.delta||0)-(y.a.delta||0); });   // en geride olan once
 
   var html=kpiRow(sumMetrics(all));
-  html+='<div class="section-title">By RO — bar shows Launch Done vs Budget Year, marker shows Budget YTD. '+
-        'Click a row to see its sites.</div><div class="rolist">';
+  html+='<div class="section-head"><h2 class="section-title">'+esc(t('byRO'))+'</h2>'+
+        '<span class="section-note">'+esc(t('clickRow'))+'</span></div><div class="rolist">';
   rows.forEach(function(r){
     html+=roRowHtml(r);
-    if(NAV.expandedRo===r.ro) html+=siteTableHtml(r.list);
+    if(NAV.expandedRo===r.ro) html+=siteListHtml(r.list,r.ro);
   });
   html+='</div>'+noticeBlock();
   $('view').innerHTML=html;
   $('view').querySelectorAll('.ro-row[data-ro]').forEach(function(b){
     b.onclick=function(){
       var ro=b.getAttribute('data-ro');
-      NAV.expandedRo=(NAV.expandedRo===ro?null:ro);   // ikinci tiklama kapatir
+      NAV.expandedRo=(NAV.expandedRo===ro?null:ro);
       render();
     };
   });
-  $('view').querySelectorAll('tr[data-i]').forEach(function(tr){
-    tr.onclick=function(){
-      NAV.level='site'; NAV.ro=NAV.expandedRo; NAV.siteIdx=parseInt(tr.getAttribute('data-i'),10);
-      render();
+  $('view').querySelectorAll('.site-row[data-i]').forEach(function(el){
+    el.onclick=function(e){
+      e.stopPropagation();
+      NAV.level='site'; NAV.ro=NAV.expandedRo; NAV.siteIdx=parseInt(el.getAttribute('data-i'),10);
+      render(); window.scrollTo({top:0,behavior:'smooth'});
     };
   });
   $('view').querySelectorAll('#segTblView button').forEach(function(b){
-    b.onclick=function(e){
-      e.stopPropagation();
-      F.tableView=b.getAttribute('data-tv');
-      render();
-    };
+    b.onclick=function(e){ e.stopPropagation(); F.tableView=b.getAttribute('data-tv'); render(); };
   });
 }
 
-/* status pill re-used by the accordion's site table and the site-detail level */
-function statusPill(st){
-  if(st==='ok') return '<span class="pill good">on track</span>';
-  if(st==='behind-schedule') return '<span class="pill warn">reported late</span>';
-  if(st==='inconsistent') return '<span class="pill warn">check data</span>';
-  if(st==='no-data') return '<span class="pill mute">no data</span>';
-  return '<span class="pill mute">'+esc(st)+'</span>';
-}
-
-/* ---------- level 3: one site ---------- */
-function typeTotals(s,t){
+/* ---------- level 3: tek site ---------- */
+function typeTotals(s,t2){
   var acc=emptyM();
   (s.detail.blocks||[]).forEach(function(b){
     if(!statusMatches_(b.status)) return;
-    if(b.byType&&b.byType[t]) addM(acc,b.byType[t]);
+    if(b.byType&&b.byType[t2]) addM(acc,b.byType[t2]);
   });
   return acc;
 }
@@ -364,48 +806,57 @@ function custTotals(s,c){
   });
   return acc;
 }
+function goBackToRo(){
+  NAV.level='ro'; NAV.expandedRo=NAV.ro; render();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
 function renderSiteLevel(){
   var list=sitesOfRo(NAV.ro), s=list[NAV.siteIdx];
-  if(!s){ NAV.level='sites'; return render(); }
+  if(!s){ NAV.level='ro'; return render(); }
   crumb([
-    {t:'All ROs', action:function(){ NAV.level='ro'; }},                       // expandedRo dokunulmuyor, RO acik kalir
+    {t:t('allROs'), action:function(){ NAV.level='ro'; NAV.expandedRo=null; }},
     {t:NAV.ro+' — '+(BOOT.roLabels[NAV.ro]||''), action:function(){ NAV.level='ro'; NAV.expandedRo=NAV.ro; }},
     {t:s.site}
   ]);
   var m=siteMetrics(s);
   var ahead=(m.delta>=0), pctC=pct(m.realCount,m.budgetCount), pctM=pct(m.realTurnoverM,m.budgetTurnover);
 
-  /* 1 — one sentence */
-  var head='<div class="headline">'+esc(s.site)+' is '+
-    (m.delta==null?'<b>not reporting</b> this period'
-      :'<b class="'+(ahead?'up':'down')+'">'+Math.abs(m.delta)+' project'+(Math.abs(m.delta)===1?'':'s')+' '+
-       (ahead?'ahead of':'behind')+'</b> plan')+
-    ' — Real Launches <b>'+nf(m.realCount)+'</b> of Budget Year '+nf(m.budgetCount)+', '+
-    'Launch Done <b>'+money(m.realTurnoverM)+'</b> of '+money(m.budgetTurnover)+'.</div>';
+  /* geri butonu — kullanici "geri donulemiyorde" dedi, breadcrumb yetmiyordu */
+  var head='<button class="backbtn" id="btnBack" type="button">'+ICON_BACK+
+    esc(t('back'))+' · '+esc(NAV.ro)+'</button>';
 
-  /* 2 — progress + 3 type breakdown */
+  head+='<div class="headline" style="--ro-color:'+roColor(s.ro)+'">'+esc(s.site)+' — '+
+    (m.delta==null?'<b>'+esc(t('notReporting'))+'</b>'
+      :'<b class="'+(ahead?'up':'down')+'">'+Math.abs(m.delta)+' '+esc(t('projects'))+' '+
+       (m.delta===0?esc(t('onPlan')):(ahead?esc(t('ahead')):esc(t('behind'))))+'</b>')+
+    ' · Real Launches <b>'+nf(m.realCount)+'</b> '+esc(t('of'))+' Budget Year '+nf(m.budgetCount)+
+    ' · Launch Done <b>'+money(m.realTurnoverM)+'</b> '+esc(t('of'))+' '+money(m.budgetTurnover)+
+    ' &nbsp;'+statusPill(s.status)+'</div>';
+
   var maxT=0;
-  ['P1','P10','TTM'].forEach(function(t){ var a=typeTotals(s,t); maxT=Math.max(maxT,a.count,a.ytdCount); });
+  ['P1','P10','TTM'].forEach(function(x){ var a=typeTotals(s,x); maxT=Math.max(maxT,a.count,a.ytdCount); });
   var brk='';
-  ['P1','P10','TTM'].forEach(function(t){
-    var a=typeTotals(s,t);
-    brk+='<div class="brk-row"><span class="brk-name">'+t+'</span>'+
-      bulletBar(a.ytdCount,null,maxT||1)+
-      '<span class="num" style="font-weight:600">'+nf(a.ytdCount)+' / '+nf(a.count)+'</span></div>';
+  ['P1','P10','TTM'].forEach(function(x){
+    var a=typeTotals(s,x);
+    var w=clamp01(a.ytdCount/(maxT||1))*100;
+    brk+='<div class="brk-row" style="--ro-color:'+roColor(s.ro)+'"><span class="brk-name">'+x+'</span>'+
+      '<span class="bar"><span class="bar-fill" style="width:'+w.toFixed(1)+'%"></span></span>'+
+      '<span class="num" style="font-weight:700">'+nf(a.ytdCount)+' / '+nf(a.count)+'</span></div>';
   });
 
-  /* 4 — customer split */
   var vs=custTotals(s,'VS'), oes=custTotals(s,'OES');
   var tot=(vs.ytdTurnover+oes.ytdTurnover)||1;
   var vsp=Math.round(vs.ytdTurnover/tot*100), oesp=100-vsp;
   var stack='<div class="stack">'+
-    (vsp>0?'<span style="width:'+vsp+'%;background:var(--valeo-mid)">'+(vsp>13?'VS '+vsp+'%':'')+'</span>':'')+
-    (oesp>0?'<span style="width:'+oesp+'%;background:var(--valeo-dark)">'+(oesp>13?'OES '+oesp+'%':'')+'</span>':'')+
+    (vsp>0?'<span style="width:'+vsp+'%;background:var(--ro-PDE)">'+(vsp>13?'VS '+vsp+'%':'')+'</span>':'')+
+    (oesp>0?'<span style="width:'+oesp+'%;background:var(--ro-PTA)">'+(oesp>13?'OES '+oesp+'%':'')+'</span>':'')+
     '</div>'+
-    '<div class="bar-figs" style="margin-top:8px"><span>VS <b>'+money(vs.ytdTurnover/1000)+'</b></span>'+
-    '<span>OES <b>'+money(oes.ytdTurnover/1000)+'</b></span></div>';
+    '<div class="donut-legend" style="margin-top:14px">'+
+    '<span class="lg-item"><span class="lg-dot" style="background:var(--ro-PDE)"></span>VS'+
+      '<span class="lg-val">'+money(vs.ytdTurnover/1000)+'</span></span>'+
+    '<span class="lg-item"><span class="lg-dot" style="background:var(--ro-PTA)"></span>OES'+
+      '<span class="lg-val">'+money(oes.ytdTurnover/1000)+'</span></span></div>';
 
-  /* 5 — funnel */
   var f1=m.budgetTurnover||0, f2=m.portfolioTurnoverM||0, f3=m.realTurnoverM||0;
   var fmax=Math.max(f1,f2,f3)||1;
   var funnel='<div class="funnel">'+
@@ -413,7 +864,6 @@ function renderSiteLevel(){
     fnRow('Current Portfolio',f2,fmax,'b2')+
     fnRow('Launch Done',f3,fmax,'b3')+'</div>';
 
-  /* 6 — indicators */
   var ind=s.indicators||{}, indHtml='';
   [['EMI','EMI'],['DAP','DAP'],['RED','Red launches']].forEach(function(p){
     var d=ind[p[0]]; if(!d) return;
@@ -421,14 +871,15 @@ function renderSiteLevel(){
     var last=null; for(var i=vals.length-1;i>=0;i--){ if(vals[i]!=null){ last=vals[i]; break; } }
     var okPill='';
     if(last!=null&&d.target!=null)
-      okPill='<span class="pill '+(last>=d.target?'good':'bad')+'">'+nf(last,2)+'</span>';
+      okPill='<span class="pill '+(last>=d.target?'good':'bad')+'">'+
+        (last>=d.target?ICON_CHECK:ICON_ALERT)+nf(last,2)+'</span>';
     else if(last!=null) okPill='<span class="pill mute">'+nf(last,2)+'</span>';
     indHtml+='<div class="ind-row"><span class="ind-name">'+p[1]+'</span>'+
       sparkline(vals,d.target)+okPill+'</div>';
   });
 
   var html=head+'<div class="panels">'+
-    '<div class="panel"><h3>Against Budget Year</h3><div class="donut-row">'+
+    '<div class="panel"><h3>'+esc(t('againstBudgetYear'))+'</h3><div class="donut-row">'+
       donut(pctC,pctM)+
       '<div class="donut-legend">'+
         '<span class="lg-item"><span class="lg-dot" style="background:var(--valeo-mid)"></span>'+
@@ -438,25 +889,27 @@ function renderSiteLevel(){
         '<span class="lg-item"><span class="lg-dot" style="background:var(--track)"></span>'+
           'Budget YTD <span class="lg-val">'+nf(m.budgetYTD)+'</span></span>'+
       '</div></div></div>'+
-    '<div class="panel"><h3>By project type — Real Launches / Current Portfolio</h3><div class="brk">'+brk+'</div></div>'+
-    '<div class="panel"><h3>By customer — Launch Done (M€)</h3>'+stack+'</div>'+
-    '<div class="panel"><h3>Budget Year → Current Portfolio → Launch Done</h3>'+funnel+'</div>'+
-    (indHtml?'<div class="panel" style="grid-column:1/-1"><h3>Indicators — last months</h3>'+indHtml+'</div>':'')+
+    '<div class="panel"><h3>'+esc(t('byProjectType'))+' — Real Launches / Current Portfolio</h3>'+
+      '<div class="brk">'+brk+'</div></div>'+
+    '<div class="panel"><h3>'+esc(t('byCustomer'))+' — Launch Done (M€)</h3>'+stack+'</div>'+
+    '<div class="panel"><h3>'+esc(t('portfolioFunnel'))+'</h3>'+funnel+'</div>'+
+    (indHtml?'<div class="panel" style="grid-column:1/-1"><h3>'+esc(t('indicators'))+'</h3>'+indHtml+'</div>':'')+
   '</div>';
 
-  html+='<details class="raw"><summary>Show raw numbers</summary>'+
-    '<div class="tablewrap"><table><thead><tr><th>Breakdown</th><th class="num">Current Portfolio</th>'+
+  html+='<details class="raw"><summary>'+esc(t('showRaw'))+'</summary>'+
+    '<div class="tablewrap"><table><thead><tr><th>'+esc(t('breakdown'))+'</th>'+
+    '<th class="num">Current Portfolio</th>'+
     '<th class="num">Real Launches</th><th class="num">Launch Done (M€)</th></tr></thead><tbody>';
-  ['P1','P10','TTM'].forEach(function(t){
-    var a=typeTotals(s,t);
-    html+='<tr><td data-label="Breakdown">Project type '+t+'</td>'+
+  ['P1','P10','TTM'].forEach(function(x){
+    var a=typeTotals(s,x);
+    html+='<tr><td data-label="'+esc(t('breakdown'))+'">Project type '+x+'</td>'+
       '<td class="num" data-label="Current Portfolio">'+nf(a.count)+'</td>'+
       '<td class="num" data-label="Real Launches">'+nf(a.ytdCount)+'</td>'+
       '<td class="num" data-label="Launch Done (M€)">'+m2(a.ytdTurnover/1000)+'</td></tr>';
   });
   ['VS','OES'].forEach(function(c){
     var a=custTotals(s,c);
-    html+='<tr><td data-label="Breakdown">Customer '+c+'</td>'+
+    html+='<tr><td data-label="'+esc(t('breakdown'))+'">Customer '+c+'</td>'+
       '<td class="num" data-label="Current Portfolio">'+nf(a.count)+'</td>'+
       '<td class="num" data-label="Real Launches">'+nf(a.ytdCount)+'</td>'+
       '<td class="num" data-label="Launch Done (M€)">'+m2(a.ytdTurnover/1000)+'</td></tr>';
@@ -464,18 +917,19 @@ function renderSiteLevel(){
   html+='</tbody></table></div></details>';
 
   if(s.mismatch&&s.mismatch.length)
-    html+='<div class="notice">Cross-check mismatch — counted from detail rows vs the sheet\'s summary row: '+
-          esc(s.mismatch.join(' | '))+'</div>';
+    html+='<div class="notice">'+esc(t('crossCheck'))+': '+esc(s.mismatch.join(' | '))+'</div>';
   if(s.warnings&&s.warnings.length)
-    html+='<div class="notice">Parsing notes ('+s.warnings.length+'): '+esc(s.warnings.slice(0,8).join(' | '))+'</div>';
-  html+='<div class="notice">Source sheet: <b>'+esc(s.sheet)+'</b></div>';
+    html+='<div class="notice">'+esc(t('parsingNotes'))+' ('+s.warnings.length+'): '+
+          esc(s.warnings.slice(0,8).join(' | '))+'</div>';
+  html+='<div class="notice">'+esc(t('sourceSheet'))+': <b>'+esc(s.sheet)+'</b></div>';
   $('view').innerHTML=html;
+  $('btnBack').onclick=goBackToRo;
 }
 function fnRow(label,val,max,cls){
-  return '<div class="fn-row"><div><div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">'+
+  return '<div class="fn-row"><div><div style="font-size:12px;color:var(--text-dim);margin-bottom:5px;font-weight:600">'+
     esc(label)+'</div><div class="fn-bar '+cls+'" style="width:'+
-    (clamp01(val/max)*100).toFixed(1)+'%;min-width:3px"></div></div>'+
-    '<span class="num" style="font-weight:600">'+money(val)+'</span></div>';
+    (clamp01(val/max)*100).toFixed(1)+'%;min-width:4px"></div></div>'+
+    '<span class="num" style="font-weight:700">'+money(val)+'</span></div>';
 }
 
 function noticeBlock(){
@@ -502,20 +956,16 @@ function seg(container,items,current,onPick){
   });
 }
 function buildStatusSeg(){
-  var items=[{v:'ALL',t:'All'},{v:'NEW',t:'NEW'}];
+  var items=[{v:'ALL',t:t('all')},{v:'NEW',t:'NEW'}];
   if(hasReman()) items.push({v:'REMAN',t:'REMAN'});
   if(F.status==='REMAN'&&items.length===2) F.status='ALL';
   seg($('segStatus'),items,F.status,function(v){ F.status=v; render(); });
 }
-/* buildStatusSeg() TEK BASINA render() icinde cagriliyordu; segType/segCustomer
-   hic yeniden cizilmiyordu, bu yuzden P1/P10/TTM ve VS/OES'e tiklaninca veri
-   dogru filtreleniyordu ama buton hicbir zaman mavi/secili gorunmuyordu.
-   Uc segmenti de tek yerden guncelleyen ortak fonksiyon: */
 function buildFilterSegs(){
   buildStatusSeg();
-  seg($('segType'),[{v:'ALL',t:'All'},{v:'P1',t:'P1'},{v:'P10',t:'P10'},{v:'TTM',t:'TTM'}],F.type,
+  seg($('segType'),[{v:'ALL',t:t('all')},{v:'P1',t:'P1'},{v:'P10',t:'P10'},{v:'TTM',t:'TTM'}],F.type,
       function(v){ F.type=v; render(); });
-  seg($('segCustomer'),[{v:'ALL',t:'All'},{v:'VS',t:'VS'},{v:'OES',t:'OES'}],F.customer,
+  seg($('segCustomer'),[{v:'ALL',t:t('all')},{v:'VS',t:'VS'},{v:'OES',t:'OES'}],F.customer,
       function(v){ F.customer=v; render(); });
 }
 function buildFilters(){
@@ -523,28 +973,129 @@ function buildFilters(){
   $('filters').hidden=false;
 }
 
+/* ---------- acilis ekrani (splash) ---------- */
+var SPLASH={target:0,shown:0,timer:null,raf:null,done:false,t0:Date.now()};
+function splashSet(p,stageKey){
+  SPLASH.target=Math.max(SPLASH.target,p);
+  if(stageKey) $('splashStage').textContent=t(stageKey);
+}
+function splashTick(){
+  var d=SPLASH.target-SPLASH.shown;
+  SPLASH.shown+=d>0?Math.max(.35,d*0.09):0;
+  if(SPLASH.shown>100) SPLASH.shown=100;
+  $('splashFill').style.width=SPLASH.shown.toFixed(1)+'%';
+  $('splashPct').textContent=Math.round(SPLASH.shown)+'%';
+}
+function splashHide(){
+  if(SPLASH.done) return;
+  SPLASH.done=true;
+  splashSet(100,'ready');
+  var wait=Math.max(0,900-(Date.now()-SPLASH.t0));   // cok hizli acilirsa bir an gorunsun
+  setTimeout(function(){
+    SPLASH.shown=100; splashTick();
+    setTimeout(function(){
+      $('splash').classList.add('hide');
+      clearInterval(SPLASH.timer);
+      if(SPLASH.raf) cancelAnimationFrame(SPLASH.raf);
+    },320);
+  },wait);
+}
+/* Noktali dunya haritasi + site sehirleri (WorldMapData.html). */
+function drawSplashMap(){
+  var cv=$('splashMap'); if(!cv||!window.WORLD_MAP) return;
+  var ctx=cv.getContext('2d'); if(!ctx) return;
+  var W=cv.width, H=cv.height;
+  var cw=W/WORLD_MAP.cols, ch=H/WORLD_MAP.rows;
+  var keys=Object.keys(SITE_GEO||{});
+  var RO_HUE={PAS:'#eb6834',PDA:'#1baf7a',PDC:'#eda100',PDE:'#3b9ae4',
+              PTA:'#9085e9',PTC:'#e87ba4',PTE:'#22c55e'};
+  function proj(lat,lon){
+    return [((lon-WORLD_MAP.lon0)/WORLD_MAP.step+0.5)*cw,
+            ((WORLD_MAP.lat0-lat)/WORLD_MAP.step+0.5)*ch];
+  }
+  function frame(){
+    var el=Date.now()-SPLASH.t0;
+    ctx.clearRect(0,0,W,H);
+    /* kara noktalari */
+    ctx.fillStyle='rgba(160,205,245,.22)';
+    for(var i=0;i<WORLD_MAP.bits.length;i++){
+      if(WORLD_MAP.bits.charAt(i)!=='1') continue;
+      var c=i%WORLD_MAP.cols, r=(i/WORLD_MAP.cols)|0;
+      ctx.beginPath();
+      ctx.arc((c+0.5)*cw,(r+0.5)*ch,1.7,0,6.2832);
+      ctx.fill();
+    }
+    /* site sehirleri — sirayla yanar, sonra nabiz gibi atar */
+    for(var k=0;k<keys.length;k++){
+      var g=SITE_GEO[keys[k]];
+      var appear=220+k*24;
+      if(el<appear) continue;
+      var age=el-appear;
+      var grow=Math.min(1,age/420);
+      var pulse=0.72+0.28*Math.sin((el/620)+k);
+      var xy=proj(g[0],g[1]);
+      var hue=RO_HUE[g[2]]||'#3b9ae4';
+      var rr=(3.2+2.6*pulse)*grow;
+      var glow=ctx.createRadialGradient(xy[0],xy[1],0,xy[0],xy[1],rr*4.4);
+      glow.addColorStop(0,hue); glow.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.globalAlpha=0.42*grow; ctx.fillStyle=glow;
+      ctx.beginPath(); ctx.arc(xy[0],xy[1],rr*4.4,0,6.2832); ctx.fill();
+      ctx.globalAlpha=grow; ctx.fillStyle=hue;
+      ctx.beginPath(); ctx.arc(xy[0],xy[1],2.6,0,6.2832); ctx.fill();
+      ctx.globalAlpha=1;
+    }
+    if(!SPLASH.done||SPLASH.shown<100) SPLASH.raf=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function initSplash(){
+  $('splashSub').textContent='48 '+t('sites')+' · 7 '+t('regionalOrgs');
+  SPLASH.timer=setInterval(splashTick,90);
+  splashSet(8,'startingUp');
+  drawSplashMap();
+}
+
+/* ---------- toast (docs/bilesenler.md — showToast) ---------- */
+function showToast(msg,type){
+  var el=document.createElement('div');
+  el.className='toast toast-'+(type||'info');
+  el.setAttribute('role',type==='error'?'alert':'status');
+  el.setAttribute('aria-live',type==='error'?'assertive':'polite');
+  el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(function(){
+    el.style.opacity='0';
+    setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); },300);
+  },2700);
+}
+
 /* ---------- loading ---------- */
 function loadPeriod(key){
-  $('view').innerHTML='<div class="spinner" role="status">Reading '+esc(key)+
-    '… scanning 48 sheets, the first load may take a moment.</div>';
+  splashSet(52,'readingPeriod');
+  $('view').innerHTML='<div class="spinner" role="status">'+esc(t('readingPeriod'))+' '+
+    esc(t('scanningSheets'))+'</div>';
   google.script.run
     .withSuccessHandler(function(res){
-      if(!res||res.error){ $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Unknown error')+'</div>'; return; }
-      DATA=res; NAV={level:'ro',ro:null,siteIdx:null}; buildFilters(); render();
+      if(!res||res.error){
+        $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Unknown error')+'</div>';
+        splashHide(); return;
+      }
+      splashSet(90,'rendering');
+      DATA=res; NAV={level:'ro',expandedRo:null,ro:null,siteIdx:null}; buildFilters(); render();
+      splashHide();
     })
     .withFailureHandler(function(err){
       $('view').innerHTML='<div class="notice err">Server error: '+esc(err&&err.message||err)+'</div>';
+      splashHide();
     })
     .getDashboardData(key,false);
 }
-/** "June 2026" -> "June". Period label her zaman "<MonthName> <Year>". */
-function monthNameOf(p){ return p.label.split(' ')[0]; }
-
-/**
- * Period seciciyi Year + Month olarak ikiye ayirir (kullanici karari — tek
- * "June 2026" dropdown yerine). BOOT.periods'i yila gore gruplar; sadece
- * gercekten var olan (yil, ay) kombinasyonlari secilebilir.
- */
+/* Ay adi secili dile gore yerellestirilir; sunucu etiketi yalniz yedek. */
+function monthNameOf(p){
+  try{
+    return cap(new Date(2000,(p.month||1)-1,1).toLocaleDateString(LOCALE,{month:'long'}));
+  }catch(e){ return p.label.split(' ')[0]; }
+}
 function buildPeriodSelects(defaultKey){
   var byYear={};
   BOOT.periods.forEach(function(p){ (byYear[p.year]=byYear[p.year]||[]).push(p); });
@@ -554,7 +1105,6 @@ function buildPeriodSelects(defaultKey){
   $('selYear').innerHTML=years.map(function(y){
     return '<option value="'+y+'"'+(y===def.year?' selected':'')+'>'+y+'</option>';
   }).join('');
-
   function renderMonths(year,selMonth){
     var months=byYear[year].slice().sort(function(a,b){ return a.month-b.month; });
     $('selMonth').innerHTML=months.map(function(p){
@@ -562,41 +1112,41 @@ function buildPeriodSelects(defaultKey){
     }).join('');
   }
   renderMonths(def.year,def.month);
-
   $('selYear').onchange=function(){
     var y=parseInt(this.value,10);
-    var months=byYear[y].slice().sort(function(a,b){ return b.month-a.month; });   // en guncel ay once
-    var pick=months[0];
-    renderMonths(y,pick.month);
-    loadPeriod(pick.key);
+    var months=byYear[y].slice().sort(function(a,b){ return b.month-a.month; });
+    renderMonths(y,months[0].month);
+    loadPeriod(months[0].key);
   };
   $('selMonth').onchange=function(){
-    var y=parseInt($('selYear').value,10);
-    var m=parseInt(this.value,10);
-    var p=byYear[y].filter(function(x){ return x.month===m; })[0];
+    var y=parseInt($('selYear').value,10), mm=parseInt(this.value,10);
+    var p=byYear[y].filter(function(x){ return x.month===mm; })[0];
     if(p) loadPeriod(p.key);
   };
 }
 
 function boot(){
+  splashSet(24,'loadingData');
   google.script.run
     .withSuccessHandler(function(res){
-      if(!res||res.error){ $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Could not load start-up data')+'</div>'; return; }
+      if(!res||res.error){
+        $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Could not load start-up data')+'</div>';
+        splashHide(); return;
+      }
       BOOT=res; $('inpQuery').value=res.gmailQuery||'';
-      /* Settings sadece yetkili hesaplarda gorunur — asil kontrol Code.gs'teki
-         ui* fonksiyonlarinda (bkz. requireAdmin_()), bu yalniz gereksiz bir
-         butonu gizleyen bir UX iyilestirmesi. */
+      /* Settings sadece yetkili hesaplarda gorunur — asil kontrol Code.gs'te
+         (requireAdmin_), bu yalniz gereksiz bir butonu gizleyen UX katmani. */
       $('btnSettings').hidden=!res.isAdmin;
       if(!res.periods.length){
-        $('view').innerHTML='<div class="notice">No period registered yet. Open <b>Settings</b> and run the '+
-          'Gmail scan, or add this month\'s spreadsheet link manually.</div>';
-        return;
+        $('view').innerHTML='<div class="notice">'+esc(t('noPeriodYet'))+'</div>';
+        splashHide(); return;
       }
       buildPeriodSelects(res.periods[0].key);
       loadPeriod(res.periods[0].key);
     })
     .withFailureHandler(function(err){
       $('view').innerHTML='<div class="notice err">Server error: '+esc(err&&err.message||err)+'</div>';
+      splashHide();
     })
     .getBootstrap();
 }
@@ -605,7 +1155,7 @@ function boot(){
 function applyTheme(dark){
   document.body.classList.toggle('dark-mode',dark);
   $('btnTheme').setAttribute('aria-pressed',String(dark));
-  $('btnThemeIcon').innerHTML=dark?ICON_SUN:ICON_MOON;   // ikon HEDEF durumu gosterir (tiklaninca gidilecek yer)
+  $('btnThemeIcon').innerHTML=dark?ICON_SUN:ICON_MOON;   // ikon hedef durumu gosterir
   try{ localStorage.setItem('roDashTheme',dark?'dark':'light'); }catch(e){}
 }
 function initTheme(){
@@ -616,24 +1166,7 @@ function initTheme(){
   $('btnTheme').onclick=function(){ applyTheme(!document.body.classList.contains('dark-mode')); };
 }
 
-/* ---------- toast (docs/bilesenler.md — showToast, hizli/kendiliginden-kapanan) ---------- */
-function showToast(msg,type){
-  var t=document.createElement('div');
-  t.className='toast toast-'+(type||'info');
-  t.setAttribute('role',type==='error'?'alert':'status');
-  t.setAttribute('aria-live',type==='error'?'assertive':'polite');
-  t.textContent=msg;
-  document.body.appendChild(t);
-  setTimeout(function(){
-    t.style.opacity='0';
-    setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); },300);
-  },2700);
-}
-
 /* ---------- panels ---------- */
-/* logS(): Settings icindeki kalici .log kutusu (ayrinti/gecmis) — showToast()
-   ile ayni amaci tasimaz, docs/bilesenler.md'nin "iki farkli amac" ayrimi:
-   toast kisa bir aninlik onay, log kutusu tarama/ekleme detayini tutar. */
 function logS(m){ $('settingsLog').textContent=m; }
 function initPanels(){
   $('glossSearch').oninput=function(){ fillGlossary(null,this.value); };
@@ -685,5 +1218,5 @@ function initPanels(){
 }
 
 window.addEventListener('resize',function(){ if(DATA) render(); });
-initTheme(); initPanels(); fillGlossary(null); boot();
+initLang(); initTheme(); initPanels(); initSplash(); fillGlossary(null); boot();
 </script>

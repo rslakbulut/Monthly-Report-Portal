@@ -1,44 +1,79 @@
 <!-- Valeo RO Monthly Report — synoptic dashboard (docs/jenerik-desenler.md) -->
 <?!= include('Stylesheet'); ?>
 
+<a class="skip-link" href="#view" data-i18n="skipToContent">Skip to content</a>
+
+<!-- Acilis ekrani: noktali dunya haritasi + site sehirleri + yukleme yuzdesi -->
+<div id="splash">
+  <img class="splash-logo" alt="Valeo" src="data:image/png;base64,<?!= include('LogoBase64'); ?>">
+  <h1>RO Monthly Report</h1>
+  <p class="splash-sub" id="splashSub">48 sites · 7 regional organizations</p>
+  <div class="splash-map"><canvas id="splashMap" width="1208" height="456"></canvas></div>
+  <div class="splash-prog">
+    <div class="splash-meta">
+      <span id="splashStage" data-i18n="loadingData">Loading data…</span>
+      <span class="splash-pct" id="splashPct">0%</span>
+    </div>
+    <div class="splash-track"><div class="splash-fill" id="splashFill"></div></div>
+  </div>
+</div>
+
 <header class="topbar">
-  <!-- docs/logo.md: dark ground -> white logo, max 28px, no text beside it -->
-  <img class="logo" alt="Valeo" src="data:image/png;base64,<?!= include('LogoBase64'); ?>">
-  <span class="spacer"></span>
-  <button class="tbtn" id="btnGloss" type="button">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
-    </svg>
-    What am I looking at
-  </button>
-  <button class="tbtn icon" id="btnTheme" type="button" aria-pressed="false"
-          title="Dark mode" aria-label="Toggle dark mode"><span id="btnThemeIcon" aria-hidden="true"></span></button>
-  <button class="tbtn icon" id="btnSettings" type="button" hidden
-          title="Settings" aria-label="Settings">
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-      <circle cx="12" cy="12" r="3"/>
-    </svg>
-  </button>
+  <div class="topbar-inner">
+    <!-- docs/logo.md: dark ground -> white logo, max 28px, no text beside it -->
+    <img class="logo" alt="Valeo" src="data:image/png;base64,<?!= include('LogoBase64'); ?>">
+    <span class="spacer"></span>
+
+    <div class="langwrap">
+      <button class="tbtn" id="btnLang" type="button" aria-haspopup="listbox" aria-expanded="false"
+              title="Language" aria-label="Language">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        <span id="langLabel">EN</span>
+      </button>
+      <div class="langmenu" id="langMenu" role="listbox" aria-label="Language" hidden></div>
+    </div>
+
+    <button class="tbtn" id="btnGloss" type="button">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+      </svg>
+      <span data-i18n="whatAmILookingAt">What am I looking at</span>
+    </button>
+    <button class="tbtn icon" id="btnTheme" type="button" aria-pressed="false"
+            title="Dark mode" aria-label="Toggle dark mode"><span id="btnThemeIcon" aria-hidden="true"></span></button>
+    <button class="tbtn icon" id="btnSettings" type="button" hidden
+            title="Settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+    </button>
+  </div>
 </header>
 
 <div class="filters" id="filters" hidden>
-  <div class="fgroup">
-    <span class="flabel" id="lblYear">Year</span>
-    <select class="ctl" id="selYear" aria-labelledby="lblYear"></select>
+  <div class="filters-inner">
+    <div class="fgroup">
+      <span class="flabel" id="lblYear" data-i18n="year">Year</span>
+      <select class="ctl" id="selYear" aria-labelledby="lblYear"></select>
+    </div>
+    <div class="fgroup">
+      <span class="flabel" id="lblMonth" data-i18n="month">Month</span>
+      <select class="ctl" id="selMonth" aria-labelledby="lblMonth"></select>
+    </div>
+    <div class="fgroup"><span class="flabel" id="lblProduct" data-i18n="productType">Product type</span>
+      <div class="seg" role="group" aria-labelledby="lblProduct" id="segStatus"></div></div>
+    <div class="fgroup"><span class="flabel" id="lblType" data-i18n="projectType">Project type</span>
+      <div class="seg" role="group" aria-labelledby="lblType" id="segType"></div></div>
+    <div class="fgroup"><span class="flabel" id="lblCustomer" data-i18n="customer">Customer</span>
+      <div class="seg" role="group" aria-labelledby="lblCustomer" id="segCustomer"></div></div>
   </div>
-  <div class="fgroup">
-    <span class="flabel" id="lblMonth">Month</span>
-    <select class="ctl" id="selMonth" aria-labelledby="lblMonth"></select>
-  </div>
-  <div class="fgroup"><span class="flabel" id="lblProduct">Product type</span>
-    <div class="seg" role="group" aria-labelledby="lblProduct" id="segStatus"></div></div>
-  <div class="fgroup"><span class="flabel" id="lblType">Project type</span>
-    <div class="seg" role="group" aria-labelledby="lblType" id="segType"></div></div>
-  <div class="fgroup"><span class="flabel" id="lblCustomer">Customer</span>
-    <div class="seg" role="group" aria-labelledby="lblCustomer" id="segCustomer"></div></div>
 </div>
 
 <main>
@@ -48,7 +83,7 @@
 
 <dialog class="panelx" id="dlgGloss" aria-labelledby="glossTitle">
   <div class="panel-head">
-    <h2 id="glossTitle">What am I looking at</h2>
+    <h2 id="glossTitle" data-i18n="whatAmILookingAt">What am I looking at</h2>
     <button class="tbtn icon" id="btnCloseGloss" type="button" aria-label="Close">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
@@ -56,40 +91,41 @@
   </div>
   <div class="panel-body">
     <input type="text" id="glossSearch" class="gloss-search" placeholder="Search terms…" spellcheck="false"
-           aria-label="Search terms">
+           aria-label="Search terms" data-i18n-ph="searchTerms">
     <dl class="gloss" id="glossList"></dl>
   </div>
 </dialog>
 
 <dialog class="panelx" id="dlgSettings" aria-labelledby="settingsTitle">
   <div class="panel-head">
-    <h2 id="settingsTitle">Settings — period sources</h2>
+    <h2 id="settingsTitle" data-i18n="settingsTitle">Settings — period sources</h2>
     <button class="tbtn icon" id="btnCloseSettings" type="button" aria-label="Close">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
     </button>
   </div>
   <div class="panel-body">
-    <p style="margin:0;font-size:13px;color:var(--text-dim)">
+    <p style="margin:0;font-size:13px;color:var(--text-dim)" data-i18n="settingsIntro">
       The monthly report arrives as a new spreadsheet each month. The Gmail scan finds
       it automatically; if it doesn't, add the link manually.
     </p>
     <div class="fgroup">
-      <label class="flabel" for="inpQuery">Gmail search query</label>
+      <label class="flabel" for="inpQuery" data-i18n="gmailQuery">Gmail search query</label>
       <input type="text" id="inpQuery" spellcheck="false">
     </div>
     <div class="btn-row">
-      <button class="btn" id="btnScan" type="button">Scan now</button>
-      <button class="btn ghost" id="btnSaveQuery" type="button">Save query</button>
-      <button class="btn ghost" id="btnTrigger" type="button">Install daily scan</button>
+      <button class="btn" id="btnScan" type="button" data-i18n="scanNow">Scan now</button>
+      <button class="btn ghost" id="btnSaveQuery" type="button" data-i18n="saveQuery">Save query</button>
+      <button class="btn ghost" id="btnTrigger" type="button" data-i18n="installScan">Install daily scan</button>
     </div>
     <div class="fgroup">
-      <label class="flabel" for="inpUrl">Add a period manually (Sheets link)</label>
+      <label class="flabel" for="inpUrl" data-i18n="addPeriodManually">Add a period manually (Sheets link)</label>
       <input type="text" id="inpUrl" placeholder="https://docs.google.com/spreadsheets/d/…" spellcheck="false">
     </div>
-    <div class="btn-row"><button class="btn" id="btnAdd" type="button">Add</button></div>
+    <div class="btn-row"><button class="btn" id="btnAdd" type="button" data-i18n="add">Add</button></div>
     <div class="log" id="settingsLog" aria-live="polite"></div>
   </div>
 </dialog>
 
+<?!= include('WorldMapData'); ?>
 <?!= include('Script'); ?>
