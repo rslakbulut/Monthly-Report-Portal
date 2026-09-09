@@ -24,6 +24,12 @@ function monthName(){ return (DATA&&DATA.period&&DATA.period.label)?DATA.period.
 function emptyM(){ return {count:0,turnover:0,ytdCount:0,ytdTurnover:0,planYtdCount:0,planYtdTurnover:0}; }
 function addM(a,b){ for(var k in a){ a[k]+=b[k]||0; } return a; }
 
+/* ---------- icons (docs/ikonlar.md — Lucide, inline SVG, currentColor) ---------- */
+var ICON_INFO='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
+var ICON_CHEVRON_RIGHT='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+var ICON_MOON='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
+var ICON_SUN='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';
+
 /* ---------- glossary ---------- */
 var GLOSSARY=[
  ['Budget Year','What the site committed at the start of the year: the projects to launch by year-end and the turnover they bring, in M€. Fixed once the year starts — shown as a single number, not compared against progress.','Section 3 “ORDER INTAKE → Budget Year” (M€) and Section 4 “PROJECT LAUNCH → Budget Year” (project count).'],
@@ -37,16 +43,19 @@ var GLOSSARY=[
  ['P1 / P10 / TTM','P1 = projects with development work. P10 (written PCO in some sheets) = projects without development. TTM = an OEM product taken straight to the aftermarket.','Row labels in Section 4; the “Type” column in the detail tables.'],
  ['VS / OES','VS = Valeo Service customers. OES = the OEM’s service arm. Both axes add up to the same total, from different angles.','Row labels in Sections 3 and 4; block names in the detail tables.']
 ];
-function fillGlossary(hi){
+/** query verilirse terim veya aciklamada gecmeyenler [hidden] ile gizlenir. */
+function fillGlossary(hi,query){
   var m=monthName();
+  var q=(query||'').trim().toLowerCase();
   $('glossList').innerHTML=GLOSSARY.map(function(g){
     var term=g[0].replace('<month>',m);
-    var cls=(hi&&hi===g[0])?' class="hit"':'';
-    return '<div'+cls+'><dt>'+esc(term)+'</dt><dd>'+esc(g[1])+
+    var match=!q || term.toLowerCase().indexOf(q)>-1 || g[1].toLowerCase().indexOf(q)>-1;
+    var attrs=(hi&&hi===g[0]?' class="hit"':'')+(match?'':' hidden');
+    return '<div'+attrs+'><dt>'+esc(term)+'</dt><dd>'+esc(g[1])+
            '<span class="src">Source: '+esc(g[2])+'</span></dd></div>';
   }).join('');
 }
-function openGloss(term){ fillGlossary(term); $('dlgGloss').showModal(); }
+function openGloss(term){ $('glossSearch').value=''; fillGlossary(term); $('dlgGloss').showModal(); }
 
 /* ---------- aggregation ---------- */
 function statusMatches_(blockStatus){ return F.status==='ALL' || blockStatus===F.status; }
@@ -175,7 +184,7 @@ function render(){
 }
 function crumb(parts){
   $('crumb').innerHTML=parts.map(function(p,i){
-    var sep=(i<parts.length-1)?'<span class="sep" aria-hidden="true">›</span>':'';
+    var sep=(i<parts.length-1)?'<span class="sep" aria-hidden="true">'+ICON_CHEVRON_RIGHT+'</span>':'';
     return (p.action?'<button type="button" data-ci="'+i+'">'+esc(p.t)+'</button>':'<b>'+esc(p.t)+'</b>')+sep;
   }).join('');
   $('crumb').querySelectorAll('button').forEach(function(b){
@@ -187,7 +196,7 @@ function kpi(label, value, unit, sub, cls, gloss, chip){
   return '<div class="kpi'+(cls?' '+cls:'')+'">'+
     '<div class="kpi-head"><span class="kpi-label">'+esc(label)+'</span>'+
       (gloss?'<button class="kpi-info" type="button" data-gloss="'+esc(gloss)+'" '+
-             'aria-label="What is '+esc(label)+'?">ⓘ</button>':'')+
+             'aria-label="What is '+esc(label)+'?">'+ICON_INFO+'</button>':'')+
       (chip?'<span class="spacer-x"></span>'+chip:'')+'</div>'+
     '<div class="kpi-value">'+value+(unit?'<span class="unit">'+esc(unit)+'</span>':'')+'</div>'+
     '<div class="kpi-sub">'+sub+'</div></div>';
@@ -206,7 +215,7 @@ function kpiRow(a){
     kpi('Budget Year', moneyTag(a.budgetTurnover), '', nf(a.budgetCount)+' projects', '', 'Budget Year')+
     '<div class="kpi">'+
       '<div class="kpi-head"><span class="kpi-label">Budget YTD / Launched</span>'+
-        '<button class="kpi-info" type="button" data-gloss="Budget YTD" aria-label="What is Budget YTD?">ⓘ</button>'+
+        '<button class="kpi-info" type="button" data-gloss="Budget YTD" aria-label="What is Budget YTD?">'+ICON_INFO+'</button>'+
       '</div>'+
       '<div class="kpi-value kpi-phrase">'+ytdMoney+'</div>'+
       '<div class="kpi-sub">'+nf(a.budgetYTD)+' / '+nf(a.realCount)+' projects</div>'+
@@ -237,7 +246,7 @@ function roRowHtml(r){
       '<span>Budget YTD '+moneyTag(a.planTurnoverM)+' <i>· '+nf(a.budgetYTD)+'</i></span>'+
       '<span>Budget Year '+moneyTag(a.budgetTurnover)+' <i>· '+nf(a.budgetCount)+'</i></span>'+
       '</span></span>'+
-    '<span class="chev" aria-hidden="true">›</span>'+
+    '<span class="chev" aria-hidden="true">'+ICON_CHEVRON_RIGHT+'</span>'+
   '</button>';
 }
 
@@ -574,6 +583,10 @@ function boot(){
     .withSuccessHandler(function(res){
       if(!res||res.error){ $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Could not load start-up data')+'</div>'; return; }
       BOOT=res; $('inpQuery').value=res.gmailQuery||'';
+      /* Settings sadece yetkili hesaplarda gorunur — asil kontrol Code.gs'teki
+         ui* fonksiyonlarinda (bkz. requireAdmin_()), bu yalniz gereksiz bir
+         butonu gizleyen bir UX iyilestirmesi. */
+      $('btnSettings').hidden=!res.isAdmin;
       if(!res.periods.length){
         $('view').innerHTML='<div class="notice">No period registered yet. Open <b>Settings</b> and run the '+
           'Gmail scan, or add this month\'s spreadsheet link manually.</div>';
@@ -592,6 +605,7 @@ function boot(){
 function applyTheme(dark){
   document.body.classList.toggle('dark-mode',dark);
   $('btnTheme').setAttribute('aria-pressed',String(dark));
+  $('btnThemeIcon').innerHTML=dark?ICON_SUN:ICON_MOON;   // ikon HEDEF durumu gosterir (tiklaninca gidilecek yer)
   try{ localStorage.setItem('roDashTheme',dark?'dark':'light'); }catch(e){}
 }
 function initTheme(){
@@ -602,9 +616,27 @@ function initTheme(){
   $('btnTheme').onclick=function(){ applyTheme(!document.body.classList.contains('dark-mode')); };
 }
 
+/* ---------- toast (docs/bilesenler.md — showToast, hizli/kendiliginden-kapanan) ---------- */
+function showToast(msg,type){
+  var t=document.createElement('div');
+  t.className='toast toast-'+(type||'info');
+  t.setAttribute('role',type==='error'?'alert':'status');
+  t.setAttribute('aria-live',type==='error'?'assertive':'polite');
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(function(){
+    t.style.opacity='0';
+    setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); },300);
+  },2700);
+}
+
 /* ---------- panels ---------- */
+/* logS(): Settings icindeki kalici .log kutusu (ayrinti/gecmis) — showToast()
+   ile ayni amaci tasimaz, docs/bilesenler.md'nin "iki farkli amac" ayrimi:
+   toast kisa bir aninlik onay, log kutusu tarama/ekleme detayini tutar. */
 function logS(m){ $('settingsLog').textContent=m; }
 function initPanels(){
+  $('glossSearch').oninput=function(){ fillGlossary(null,this.value); };
   $('btnGloss').onclick=function(){ openGloss(null); };
   $('btnCloseGloss').onclick=function(){ $('dlgGloss').close(); };
   $('btnSettings').onclick=function(){ $('dlgSettings').showModal(); };
@@ -613,34 +645,41 @@ function initPanels(){
     logS('Scanning Gmail…');
     google.script.run
       .withSuccessHandler(function(r){
-        if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); return; }
+        if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); showToast(r&&r.error||'Scan failed','error'); return; }
         var lines=(r.found||[]).map(function(f){ return (f.isNew?'NEW      ':'existing ')+f.key+'  '+f.name; });
         logS(r.threadCount+' email threads scanned.\n'+
              (lines.length?lines.join('\n'):'No new period found.')+
              ((r.errors||[]).length?'\n\nSkipped:\n'+r.errors.join('\n'):''));
+        showToast(r.threadCount+' threads scanned — '+(lines.length||0)+' period(s) found','success');
         boot();
       })
-      .withFailureHandler(function(e){ logS('Server error: '+(e&&e.message||e)); })
+      .withFailureHandler(function(e){ var m=e&&e.message||e; logS('Server error: '+m); showToast('Server error: '+m,'error'); })
       .uiScanGmail();
   };
   $('btnSaveQuery').onclick=function(){
-    google.script.run.withSuccessHandler(function(r){ logS('Query saved: '+r.query); })
-      .withFailureHandler(function(e){ logS('Error: '+(e&&e.message||e)); })
+    google.script.run.withSuccessHandler(function(r){
+        if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); showToast(r&&r.error||'Could not save','error'); return; }
+        logS('Query saved: '+r.query); showToast('Query saved','success');
+      })
+      .withFailureHandler(function(e){ var m=e&&e.message||e; logS('Error: '+m); showToast('Error: '+m,'error'); })
       .uiSetGmailQuery($('inpQuery').value);
   };
   $('btnTrigger').onclick=function(){
-    google.script.run.withSuccessHandler(function(r){ logS(r.message); })
-      .withFailureHandler(function(e){ logS('Error: '+(e&&e.message||e)); })
+    google.script.run.withSuccessHandler(function(r){
+        if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); showToast(r&&r.error||'Could not install trigger','error'); return; }
+        logS(r.message); showToast(r.message,'success');
+      })
+      .withFailureHandler(function(e){ var m=e&&e.message||e; logS('Error: '+m); showToast('Error: '+m,'error'); })
       .uiInstallTrigger();
   };
   $('btnAdd').onclick=function(){
     logS('Adding…');
     google.script.run
       .withSuccessHandler(function(r){
-        if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); return; }
-        logS(r.message); $('inpUrl').value=''; boot();
+        if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); showToast(r&&r.error||'Could not add','error'); return; }
+        logS(r.message); showToast('Period added','success'); $('inpUrl').value=''; boot();
       })
-      .withFailureHandler(function(e){ logS('Server error: '+(e&&e.message||e)); })
+      .withFailureHandler(function(e){ var m=e&&e.message||e; logS('Server error: '+m); showToast('Server error: '+m,'error'); })
       .uiAddPeriod($('inpUrl').value);
   };
 }

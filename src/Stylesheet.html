@@ -61,7 +61,6 @@ body{
   display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:60;
 }
 .topbar img.logo{height:28px; width:auto; object-fit:contain; filter:brightness(0) invert(1)}
-.topbar .title{font-size:15px; font-weight:600; letter-spacing:.01em; opacity:.96}
 .topbar .spacer{flex:1 1 auto}
 .tbtn{
   background:rgba(255,255,255,.10); color:#fff; border:1px solid rgba(255,255,255,.14);
@@ -70,7 +69,9 @@ body{
   transition:background .14s ease, border-color .14s ease, transform .14s ease;
 }
 .tbtn:hover{background:rgba(255,255,255,.22); border-color:rgba(255,255,255,.35); transform:translateY(-1px)}
-.tbtn.icon{min-width:40px; padding:0; justify-content:center; font-size:15px}
+.tbtn.icon{min-width:40px; padding:0; justify-content:center}
+/* docs/ikonlar.md: Lucide, currentColor, 20px yaninda-metin / 16px ikon-only */
+.tbtn svg{display:block; flex:none}
 
 /* ---------- filtre barI ---------- */
 .filters{
@@ -108,7 +109,8 @@ main{padding:24px 20px 48px; max-width:1240px; margin:0 auto}
 }
 .crumb button:hover{background:var(--track); text-decoration:underline}
 .crumb b{color:var(--text); font-weight:600; padding:0 4px}
-.crumb .sep{color:var(--text-mute); opacity:.6}
+.crumb .sep{color:var(--text-mute); opacity:.6; display:inline-flex; vertical-align:-3px}
+.crumb .sep svg{display:block}
 
 .section-title{
   font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.1em;
@@ -127,10 +129,11 @@ main{padding:24px 20px 48px; max-width:1240px; margin:0 auto}
 .kpi-label{font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.09em; color:var(--text-mute)}
 .kpi-info{
   background:none; border:none; cursor:pointer; color:var(--text-mute); padding:2px;
-  width:20px; height:20px; border-radius:50%; font-size:11px; line-height:1;
+  width:20px; height:20px; border-radius:50%; line-height:1;
   display:inline-flex; align-items:center; justify-content:center;
   transition:background .14s ease, color .14s ease;
 }
+.kpi-info svg{display:block}
 .kpi-info:hover{background:var(--track); color:var(--valeo-mid)}
 .kpi-value{font-size:clamp(28px,3.4vw,38px); font-weight:700; line-height:1.05; letter-spacing:-.02em}
 /* .unit: eskiden .42em/text-mute cok silikti (kullanici geri bildirimi) — buyutuldu, koyulastirildi */
@@ -159,7 +162,8 @@ main{padding:24px 20px 48px; max-width:1240px; margin:0 auto}
 .ro-id{display:flex; flex-direction:column; gap:1px; min-width:0}
 .ro-code{font-size:15px; font-weight:700; letter-spacing:-.01em}
 .ro-name{font-size:11.5px; color:var(--text-mute); white-space:normal; line-height:1.35}
-.chev{color:var(--text-mute); font-size:17px; transition:transform .18s ease, color .16s ease; justify-self:end}
+.chev{color:var(--text-mute); display:inline-flex; transition:transform .18s ease, color .16s ease; justify-self:end}
+.chev svg{display:block}
 .ro-row.open .chev{transform:rotate(90deg); color:var(--valeo-mid)}
 .ro-row:hover .chev{color:var(--valeo-mid)}
 .ro-row.open{border-color:var(--valeo-mid); box-shadow:var(--sh-2)}
@@ -249,6 +253,23 @@ details.raw[open] summary::before{transform:rotate(90deg)}
 .notice.err{border-left-color:var(--bad); color:var(--text)}
 .spinner{text-align:center; padding:64px 16px; color:var(--text-mute); font-size:14px}
 
+/* ---------- toast (docs/bilesenler.md — showToast) ---------- */
+/* Renkler markanin ham --valeo-green'i yerine bu projenin zaten WCAG AA'ya
+   gore koyulastirdigi durum tokenlarindan (--good/--bad/--warn) aliniyor —
+   beyaz metin uzerinde acik yesil (#76ff03) kontrasti yetersiz kalirdi. */
+.toast{
+  position:fixed; bottom:24px; right:24px; z-index:9999;
+  padding:12px 18px; border-radius:var(--r-sm); font-size:13px; font-weight:500;
+  color:#fff; box-shadow:var(--sh-2); max-width:340px; word-break:break-word;
+  animation:toast-in .3s ease; transition:opacity .3s ease;
+}
+.toast-info{background:var(--valeo-dark)}
+.toast-success{background:var(--good-line)}
+.toast-error{background:var(--bad-line)}
+.toast-warning{background:var(--warn)}
+@keyframes toast-in{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)}}
+@media (max-width:480px){ .toast{left:16px; right:16px; bottom:16px; max-width:none} }
+
 /* ---------- paneller (dialog) ---------- */
 dialog.panelx{border:none; border-radius:var(--r-lg); padding:0; max-width:min(620px,94vw); background:var(--card); color:var(--text); box-shadow:var(--sh-2)}
 dialog.panelx::backdrop{background:rgba(4,27,60,.55)}
@@ -263,6 +284,12 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.55)}
 .btn.ghost:hover{background:var(--track); filter:none}
 .btn-row{display:flex; gap:8px; flex-wrap:wrap}
 .log{font-size:12.5px; color:var(--text-dim); white-space:pre-wrap; max-height:190px; overflow:auto; font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.gloss-search{
+  width:100%; min-height:42px; padding:0 12px; font:inherit; font-size:14px;
+  border:1px solid var(--border-strong); border-radius:var(--r-sm);
+  background:var(--card); color:var(--text); margin-bottom:2px;
+}
+.gloss-search:hover{border-color:var(--valeo-mid)}
 .gloss{display:flex; flex-direction:column; gap:14px}
 .gloss dt{font-weight:700; font-size:14px; margin-bottom:3px}
 .gloss dd{margin:0 0 14px; font-size:13.5px; color:var(--text-dim); line-height:1.55}

@@ -14,6 +14,39 @@
 
 var PROP_PERIODS = 'RO_DASH_PERIODS';
 var PROP_GMAIL_QUERY = 'RO_DASH_GMAIL_QUERY';
+var PROP_ADMIN_EMAILS = 'RO_DASH_ADMIN_EMAILS';
+
+/**
+ * Ayarlar panelindeki eylemleri (Gmail taramasi, donem ekleme/silme,
+ * gunluk tetikleyici kurma) kimin cagirabilecegini belirler. Onceden hicbir
+ * kontrol yoktu: appsscript.json'daki webapp.access:'DOMAIN' + executeAs:
+ * 'USER_DEPLOYING' kombinasyonu yuzunden erisimi olan HERKES deploy eden
+ * hesabin kimligiyle bu eylemleri tetikleyebiliyordu (bkz.
+ * standartlar-uyumluluk-monthly-report-portal.html, "Muhendislik Saglamligi"
+ * kritik bulgusu).
+ *
+ * Liste bos ise (ilk kurulum), tek yetkili deploy eden hesabin kendisidir —
+ * yani varsayilan "yalniz ben", "herkes" degil. Ek admin eklemek icin GAS
+ * editorunde Project Settings > Script Properties'e RO_DASH_ADMIN_EMAILS
+ * anahtariyla JSON dizi ("["a@valeo.com","b@valeo.com"]") eklenir.
+ */
+function adminEmails_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PROP_ADMIN_EMAILS);
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch (e) { return []; }
+}
+function isAuthorizedAdmin_() {
+  var caller = Session.getActiveUser().getEmail();
+  if (!caller) return false;   // kimlik cozulemedi (DOMAIN disi/anonim) -> reddet
+  var list = adminEmails_();
+  if (!list.length) return caller === Session.getEffectiveUser().getEmail();
+  return list.indexOf(caller) !== -1;
+}
+/** Yetkisizse {error} dondurur (cagiran bunu dogrudan geri iletir), yetkiliyse null. */
+function requireAdmin_() {
+  if (isAuthorizedAdmin_()) return null;
+  return { error: 'Not authorized. Ask the dashboard owner to add you as an admin.' };
+}
 
 /** Varsayilan Gmail aramasi. Ayarlar ekranindan degistirilebilir. */
 var DEFAULT_GMAIL_QUERY =

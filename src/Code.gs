@@ -70,7 +70,8 @@ function getBootstrap() {
       roLabels: RO_LABELS,
       roOrder: RO_ORDER,
       siteCount: SITE_REGISTRY.length,
-      gmailQuery: getGmailQuery_()
+      gmailQuery: getGmailQuery_(),
+      isAdmin: isAuthorizedAdmin_()
     };
   } catch (e) {
     return { error: 'Could not load start-up data: ' + e.message };
@@ -152,10 +153,30 @@ function getDashboardData(key, forceRefresh) {
   }
 }
 
-/* --- Ayarlar ekrani ucu ------------------------------------------- */
+/* --- Ayarlar ekrani ucu -------------------------------------------
+   Her fonksiyon requireAdmin_() ile baslar (bkz. PeriodRegistry.gs) — bu
+   kontrol olmadan appsscript.json'daki webapp.access:'DOMAIN' + executeAs:
+   'USER_DEPLOYING' kombinasyonu, erisimi olan HERKESIN deploy eden hesabin
+   kimligiyle Gmail taratmasina/tetikleyici kurmasina/kayit defterine
+   spreadsheet eklemesine izin veriyordu. */
 
-function uiScanGmail()          { return scanGmailForPeriods(); }
-function uiAddPeriod(url)       { return addPeriodByUrl(url); }
-function uiRemovePeriod(key)    { return removePeriod(key); }
-function uiSetGmailQuery(q)     { return { ok: true, query: setGmailQuery(q) }; }
-function uiInstallTrigger()     { return { ok: true, message: installDailyScanTrigger() }; }
+function uiScanGmail() {
+  var deny = requireAdmin_(); if (deny) return deny;
+  return scanGmailForPeriods();
+}
+function uiAddPeriod(url) {
+  var deny = requireAdmin_(); if (deny) return deny;
+  return addPeriodByUrl(url);
+}
+function uiRemovePeriod(key) {
+  var deny = requireAdmin_(); if (deny) return deny;
+  return removePeriod(key);
+}
+function uiSetGmailQuery(q) {
+  var deny = requireAdmin_(); if (deny) return deny;
+  return { ok: true, query: setGmailQuery(q) };
+}
+function uiInstallTrigger() {
+  var deny = requireAdmin_(); if (deny) return deny;
+  return { ok: true, message: installDailyScanTrigger() };
+}
