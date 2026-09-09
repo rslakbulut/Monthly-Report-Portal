@@ -106,6 +106,14 @@ body{
 /* docs/ikonlar.md: Lucide, currentColor, 20px yaninda-metin / 16px ikon-only */
 .tbtn svg{display:block; flex:none}
 
+/* Bayrak cipleri — emoji bayraklar Windows'ta render edilmedigi icin inline SVG */
+.flag{display:inline-flex; border-radius:3px; overflow:hidden; flex:none; line-height:0;
+      box-shadow:0 0 0 1px rgba(12,22,38,.2)}
+.flag svg{display:block}
+body.dark-mode .flag{box-shadow:0 0 0 1px rgba(255,255,255,.22)}
+#langLabel{display:inline-flex; align-items:center; gap:7px}
+.headline .flag{vertical-align:-2px; margin-right:2px}
+
 /* dil secici (ozel dropdown — native select degil, docs/bilesenler.md) */
 .langwrap{position:relative}
 /* [hidden] UA kurali display:grid tarafindan eziliyordu — menu acik aciliyordu */

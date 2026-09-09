@@ -79,22 +79,17 @@ function getBootstrap() {
 }
 
 /**
- * Secili donemin tum site'larini okur.
- * @param {string} key  "2026-06"
- * @param {boolean} forceRefresh  cache'i atla
+ * Bir donemin sayfa listesini cikarir (SAYFA ICERIGI OKUNMAZ — hizli).
+ *
+ * Neden ayri: tum 48 sayfayi tek cagrida okumak Apps Script'in istek suresini
+ * asip HTTP 502'ye dusuyordu ve istemci tarafinda ilerleme cubugu tek bir
+ * degerde donuyordu. Artik istemci once bu ucuz cagriyla ne kadar is oldugunu
+ * ogreniyor, sonra sayfalari parca parca (getPeriodChunk) cekiyor.
+ *
+ * @param {string} key "2026-06"
  */
-function getDashboardData(key, forceRefresh) {
+function getPeriodMeta(key) {
   try {
-    var cache = CacheService.getScriptCache();
-    var cacheKey = 'dash_' + key;
-    if (!forceRefresh) {
-      var hit = cacheGet_(cache, cacheKey);
-      if (hit) {
-        hit.fromCache = true;
-        return hit;
-      }
-    }
-
     var periods = readPeriods_();
     var period = periods[key];
     if (!period) return { error: 'Period is not registered: ' + key };
@@ -105,51 +100,81 @@ function getDashboardData(key, forceRefresh) {
 
     var byKey = registryByKey_();
     var sheets = ss.getSheets();
-    var sites = [], unknownSheets = [], seen = {};
+    var known = [], unknownSheets = [], seenKeys = {};
 
     for (var i = 0; i < sheets.length; i++) {
-      var parsedName = parseSheetName_(sheets[i].getName());
-      var reg = byKey[parsedName.key];
-      if (!reg) { unknownSheets.push(sheets[i].getName()); continue; }
-      // Ayni site icin birden cok sayfa varsa en guncel ayi tut
-      var prev = seen[parsedName.key];
-      if (prev && (prev.month || 0) >= (parsedName.month || 0)) continue;
-      var site = parseSiteSheet_(sheets[i], reg, parsedName.month, period.year);
-      seen[parsedName.key] = site;
+      var name = sheets[i].getName();
+      var parsedName = parseSheetName_(name);
+      if (!byKey[parsedName.key]) { unknownSheets.push(name); continue; }
+      known.push({ name: name, key: parsedName.key, month: parsedName.month || 0, index: i });
+      seenKeys[parsedName.key] = true;
     }
-    for (var k in seen) { if (seen.hasOwnProperty(k)) sites.push(seen[k]); }
 
-    // Kayitta olup sayfasi olmayan site'lar
     var missing = [];
     for (var s = 0; s < SITE_REGISTRY.length; s++) {
-      if (!seen[SITE_REGISTRY[s].key]) {
+      if (!seenKeys[SITE_REGISTRY[s].key]) {
         missing.push({ ro: SITE_REGISTRY[s].ro, site: SITE_REGISTRY[s].site, status: 'no-data' });
       }
     }
 
-    // Raporlama ayinin gerisinde kalan site'lari isaretle
-    var maxMonth = 0;
-    sites.forEach(function (s) { if (s.month > maxMonth) maxMonth = s.month; });
-    sites.forEach(function (s) {
-      if (s.month && s.month < maxMonth && s.status === 'ok') s.status = 'behind-schedule';
-    });
-
-    var payload = {
+    return {
       period: { key: key, year: period.year, month: period.month,
                 label: MONTH_LABELS[period.month] + ' ' + period.year, name: period.name },
-      reportMonth: maxMonth,
-      sites: sites,
+      sheets: known,
+      total: known.length,
       missingSites: missing,
-      unknownSheets: unknownSheets,
-      generatedAt: new Date().toISOString()
+      unknownSheets: unknownSheets
     };
+  } catch (e) {
+    return { error: 'Could not read period: ' + e.message };
+  }
+}
 
+/**
+ * Sayfa listesinin [from, to) araligini ayristirir. Her parca ayri
+ * cache'lenir; bir parca birkac saniye surdugu icin zaman asimi riski yok.
+ */
+function getPeriodChunk(key, from, to, forceRefresh) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var cacheKey = 'chunk_' + key + '_' + from + '_' + to;
+    if (!forceRefresh) {
+      var hit = cacheGet_(cache, cacheKey);
+      if (hit) { hit.fromCache = true; return hit; }
+    }
+
+    var periods = readPeriods_();
+    var period = periods[key];
+    if (!period) return { error: 'Period is not registered: ' + key };
+
+    var ss;
+    try { ss = SpreadsheetApp.openById(period.id); }
+    catch (e) { return { error: 'Period file could not be opened: ' + period.name }; }
+
+    var byKey = registryByKey_();
+    var sheets = ss.getSheets();
+    var known = [];
+    for (var i = 0; i < sheets.length; i++) {
+      var parsedName = parseSheetName_(sheets[i].getName());
+      if (!byKey[parsedName.key]) continue;
+      known.push({ sheet: sheets[i], key: parsedName.key, month: parsedName.month });
+    }
+
+    var sites = [];
+    var end = Math.min(to, known.length);
+    for (var j = from; j < end; j++) {
+      var it = known[j];
+      var site = parseSiteSheet_(it.sheet, byKey[it.key], it.month, period.year);
+      site.key = it.key;   // istemci ayni site'in birden cok ayini bu anahtarla eler
+      sites.push(site);
+    }
+
+    var payload = { sites: sites, from: from, to: end };
     try { cachePut_(cache, cacheKey, payload, CACHE_TTL_SECONDS); }
-    catch (e) { /* cache yazilamadi (kota vb.); cache'siz devam */ }
-
+    catch (e) { /* cache yazilamadi; cache'siz devam */ }
     return payload;
   } catch (e) {
-    return { error: 'Could not read data: ' + e.message };
+    return { error: 'Could not read sheets ' + from + '-' + to + ': ' + e.message };
   }
 }
 

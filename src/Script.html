@@ -54,19 +54,143 @@ var ICON_ALERT=svg('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 2
   '<path d="M12 9v4"/><path d="M12 17h.01"/>',13);
 var ICON_MINUS=svg('<path d="M5 12h14"/>',13);
 
+/* ---------- bayraklar ----------
+   Emoji bayraklar (🇹🇷 vb.) Windows'ta HIC render edilmiyor (iki harfli kod
+   olarak gorunuyor) — bu yuzden hepsi inline SVG. 20x14 kadraj, sadelestirilmis
+   ama taninabilir cizimler. */
+function starPts(cx,cy,r){
+  var p=[];
+  for(var i=0;i<10;i++){
+    var a=-Math.PI/2+i*Math.PI/5, rr=(i%2)?r*0.382:r;
+    p.push((cx+rr*Math.cos(a)).toFixed(2)+','+(cy+rr*Math.sin(a)).toFixed(2));
+  }
+  return p.join(' ');
+}
+function star(cx,cy,r,fill){ return '<polygon points="'+starPts(cx,cy,r)+'" fill="'+fill+'"/>'; }
+var FLAGS={
+ TR:'<rect width="20" height="14" fill="#e30a17"/><circle cx="7.6" cy="7" r="3.1" fill="#fff"/>'+
+    '<circle cx="8.7" cy="7" r="2.5" fill="#e30a17"/>'+star(12.2,7,1.7,'#fff'),
+ PL:'<rect width="20" height="7" fill="#fff"/><rect y="7" width="20" height="7" fill="#dc143c"/>',
+ CZ:'<rect width="20" height="7" fill="#fff"/><rect y="7" width="20" height="7" fill="#d7141a"/>'+
+    '<polygon points="0,0 9,7 0,14" fill="#11457e"/>',
+ SK:'<rect width="20" height="4.67" fill="#fff"/><rect y="4.67" width="20" height="4.66" fill="#0b4ea2"/>'+
+    '<rect y="9.33" width="20" height="4.67" fill="#ee1c25"/>'+
+    '<path d="M5 4h4v4.2c0 1.6-2 2.6-2 2.6s-2-1-2-2.6z" fill="#ee1c25" stroke="#fff" stroke-width=".7"/>',
+ HU:'<rect width="20" height="4.67" fill="#ce2939"/><rect y="4.67" width="20" height="4.66" fill="#fff"/>'+
+    '<rect y="9.33" width="20" height="4.67" fill="#477050"/>',
+ DE:'<rect width="20" height="4.67" fill="#000"/><rect y="4.67" width="20" height="4.66" fill="#dd0000"/>'+
+    '<rect y="9.33" width="20" height="4.67" fill="#ffce00"/>',
+ FR:'<rect width="6.67" height="14" fill="#002395"/><rect x="6.67" width="6.66" height="14" fill="#fff"/>'+
+    '<rect x="13.33" width="6.67" height="14" fill="#ed2939"/>',
+ IT:'<rect width="6.67" height="14" fill="#008c45"/><rect x="6.67" width="6.66" height="14" fill="#fff"/>'+
+    '<rect x="13.33" width="6.67" height="14" fill="#cd212a"/>',
+ ES:'<rect width="20" height="14" fill="#aa151b"/><rect y="3.5" width="20" height="7" fill="#f1bf00"/>',
+ RO:'<rect width="6.67" height="14" fill="#002b7f"/><rect x="6.67" width="6.66" height="14" fill="#fcd116"/>'+
+    '<rect x="13.33" width="6.67" height="14" fill="#ce1126"/>',
+ PT:'<rect width="20" height="14" fill="#da291c"/><rect width="8" height="14" fill="#046a38"/>'+
+    '<circle cx="8" cy="7" r="2.6" fill="#ffe900" stroke="#046a38" stroke-width=".6"/>',
+ NL:'<rect width="20" height="4.67" fill="#ae1c28"/><rect y="4.67" width="20" height="4.66" fill="#fff"/>'+
+    '<rect y="9.33" width="20" height="4.67" fill="#21468b"/>',
+ GB:'<rect width="20" height="14" fill="#012169"/>'+
+    '<path d="M0 0l20 14M20 0L0 14" stroke="#fff" stroke-width="2.8"/>'+
+    '<path d="M0 0l20 14M20 0L0 14" stroke="#c8102e" stroke-width="1.6"/>'+
+    '<path d="M10 0v14M0 7h20" stroke="#fff" stroke-width="4.4"/>'+
+    '<path d="M10 0v14M0 7h20" stroke="#c8102e" stroke-width="2.6"/>',
+ US:'<rect width="20" height="14" fill="#fff"/>'+
+    '<g fill="#b22234"><rect width="20" height="1.08"/><rect y="2.15" width="20" height="1.08"/>'+
+    '<rect y="4.31" width="20" height="1.08"/><rect y="6.46" width="20" height="1.08"/>'+
+    '<rect y="8.62" width="20" height="1.08"/><rect y="10.77" width="20" height="1.08"/>'+
+    '<rect y="12.92" width="20" height="1.08"/></g>'+
+    '<rect width="8.6" height="7.54" fill="#3c3b6e"/>'+
+    '<g fill="#fff">'+star(2,1.8,.8,'#fff')+star(4.3,1.8,.8,'#fff')+star(6.6,1.8,.8,'#fff')+
+    star(3.1,3.8,.8,'#fff')+star(5.5,3.8,.8,'#fff')+star(2,5.7,.8,'#fff')+
+    star(4.3,5.7,.8,'#fff')+star(6.6,5.7,.8,'#fff')+'</g>',
+ MX:'<rect width="6.67" height="14" fill="#006847"/><rect x="6.67" width="6.66" height="14" fill="#fff"/>'+
+    '<rect x="13.33" width="6.67" height="14" fill="#ce1126"/>'+
+    '<ellipse cx="10" cy="7" rx="1.5" ry="1.9" fill="none" stroke="#8d6a3f" stroke-width=".8"/>',
+ BR:'<rect width="20" height="14" fill="#009b3a"/><polygon points="10,1.6 18.4,7 10,12.4 1.6,7" fill="#fedf00"/>'+
+    '<circle cx="10" cy="7" r="2.9" fill="#002776"/>'+
+    '<path d="M7.3 6.2c1.9-.9 3.9-.6 5.4.4" stroke="#fff" stroke-width=".7" fill="none"/>',
+ CN:'<rect width="20" height="14" fill="#de2910"/>'+star(4,4,2.4,'#ffde00')+star(8,1.8,.9,'#ffde00')+
+    star(9.6,3.6,.9,'#ffde00')+star(9.6,5.9,.9,'#ffde00')+star(8,7.6,.9,'#ffde00'),
+ JP:'<rect width="20" height="14" fill="#fff"/><circle cx="10" cy="7" r="4" fill="#bc002d"/>',
+ KR:'<rect width="20" height="14" fill="#fff"/>'+
+    '<path d="M10 3.4a3.6 3.6 0 0 1 0 7.2 1.8 1.8 0 0 0 0-3.6 1.8 1.8 0 0 1 0-3.6z" fill="#cd2e3a"/>'+
+    '<path d="M10 3.4a3.6 3.6 0 0 0 0 7.2 1.8 1.8 0 0 1 0-3.6 1.8 1.8 0 0 0 0-3.6z" fill="#0047a0"/>'+
+    '<g stroke="#000" stroke-width=".55"><path d="M2.6 3.2l1.6 2.2M16.2 8.6l1.6 2.2M2.6 10.8l1.6-2.2M16.2 5.4l1.6-2.2"/></g>',
+ IN:'<rect width="20" height="4.67" fill="#ff9933"/><rect y="4.67" width="20" height="4.66" fill="#fff"/>'+
+    '<rect y="9.33" width="20" height="4.67" fill="#138808"/>'+
+    '<circle cx="10" cy="7" r="1.8" fill="none" stroke="#000080" stroke-width=".7"/>',
+ ID:'<rect width="20" height="7" fill="#ce1126"/><rect y="7" width="20" height="7" fill="#fff"/>',
+ TH:'<rect width="20" height="14" fill="#a51931"/><rect y="2.33" width="20" height="9.34" fill="#f4f5f8"/>'+
+    '<rect y="4.67" width="20" height="4.66" fill="#2d2a4a"/>',
+ MA:'<rect width="20" height="14" fill="#c1272d"/>'+
+    '<polygon points="'+starPts(10,7,3.2)+'" fill="none" stroke="#006233" stroke-width=".9"/>',
+ RU:'<rect width="20" height="4.67" fill="#fff"/><rect y="4.67" width="20" height="4.66" fill="#0039a6"/>'+
+    '<rect y="9.33" width="20" height="4.67" fill="#d52b1e"/>',
+ SA:'<rect width="20" height="14" fill="#006c35"/><rect x="3" y="9.4" width="14" height=".9" fill="#fff"/>'+
+    '<rect x="3.4" y="4" width="13.2" height="1.1" fill="#fff"/><rect x="3.4" y="6" width="10" height=".9" fill="#fff"/>',
+ EU:'<rect width="20" height="14" fill="#003399"/>'+
+    (function(){ var s=''; for(var i=0;i<12;i++){ var a=i*Math.PI/6;
+      s+='<circle cx="'+(10+4.3*Math.sin(a)).toFixed(2)+'" cy="'+(7-4.3*Math.cos(a)).toFixed(2)+
+         '" r=".85" fill="#ffcc00"/>'; } return s; })()
+};
+function flagChip(cc,w){
+  var f=FLAGS[cc]; if(!f) return '';
+  w=w||20;
+  return '<span class="flag" style="width:'+w+'px;height:'+Math.round(w*0.7)+'px">'+
+    '<svg viewBox="0 0 20 14" width="'+w+'" height="'+Math.round(w*0.7)+'" aria-hidden="true">'+f+'</svg></span>';
+}
+/* Asya/Amerika icin resmi bir bayrak yok — o bolgeler icin, acilis
+   ekranindaki ayni kara verisinden (WORLD_MAP) uretilen minik bolge
+   haritasi kullaniliyor. Avrupa AB bayragini, Cin kendi bayragini alir. */
+var REGION_BOX={ ASIA:[55,150,58,-12], AMERICAS:[-170,-32,72,-56] };
+function regionChip(reg,color){
+  var box=REGION_BOX[reg]; if(!box||!window.WORLD_MAP) return '';
+  var lon0=box[0],lon1=box[1],lat1=box[2],lat0=box[3];
+  var s='<rect width="20" height="14" rx="0" fill="#0c2140"/>';
+  var c0=Math.max(0,Math.round((lon0-WORLD_MAP.lon0)/WORLD_MAP.step));
+  var c1=Math.min(WORLD_MAP.cols-1,Math.round((lon1-WORLD_MAP.lon0)/WORLD_MAP.step));
+  var r0=Math.max(0,Math.round((WORLD_MAP.lat0-lat1)/WORLD_MAP.step));
+  var r1=Math.min(WORLD_MAP.rows-1,Math.round((WORLD_MAP.lat0-lat0)/WORLD_MAP.step));
+  var cw=20/Math.max(1,(c1-c0)), chh=14/Math.max(1,(r1-r0));
+  for(var r=r0;r<=r1;r++){
+    for(var c=c0;c<=c1;c++){
+      if(WORLD_MAP.bits.charAt(r*WORLD_MAP.cols+c)!=='1') continue;
+      s+='<rect x="'+((c-c0)*cw).toFixed(2)+'" y="'+((r-r0)*chh).toFixed(2)+
+         '" width="'+Math.max(.6,cw*.72).toFixed(2)+'" height="'+Math.max(.6,chh*.72).toFixed(2)+
+         '" fill="currentColor"/>';
+    }
+  }
+  /* Noktalar RO renginde — boylece Asya ve Amerika rozetleri birbirinden
+     ayirt ediliyor (ikisi de ayni acik maviyle cizilince benzer duruyordu). */
+  return '<span class="flag" style="width:22px;height:16px;color:'+(color||'#7fd4ff')+'">'+
+    '<svg viewBox="0 0 20 14" width="22" height="16" aria-hidden="true">'+s+'</svg></span>';
+}
+var RO_REGION={PAS:'ASIA',PDA:'AMERICAS',PDC:'CN',PDE:'EU',PTA:'AMERICAS',PTC:'CN',PTE:'EU'};
+function roRegionChip(ro){
+  var reg=RO_REGION[ro];
+  if(reg==='EU'||reg==='CN') return flagChip(reg,22);
+  return regionChip(reg,roColor(ro));
+}
+function siteFlag(site){
+  var g=(window.SITE_GEO&&site.key)?SITE_GEO[site.key]:null;
+  return (g&&g[3])?flagChip(g[3],18):'';
+}
+
 /* ---------- i18n ---------- */
 /* Yalniz arayuz kelimeleri; sayfanin kendi terimleri (Budget Year, VS/OES, P1...)
    her dilde ayni kalir — kullanici karari. */
 var LANGS=[
- ['en','English','🇬🇧','en-US'], ['tr','Türkçe','🇹🇷','tr-TR'],
- ['fr','Français','🇫🇷','fr-FR'], ['de','Deutsch','🇩🇪','de-DE'],
- ['es','Español','🇪🇸','es-ES'], ['it','Italiano','🇮🇹','it-IT'],
- ['pt','Português','🇵🇹','pt-PT'], ['nl','Nederlands','🇳🇱','nl-NL'],
- ['pl','Polski','🇵🇱','pl-PL'], ['cs','Čeština','🇨🇿','cs-CZ'],
- ['ro','Română','🇷🇴','ro-RO'], ['hu','Magyar','🇭🇺','hu-HU'],
- ['ru','Русский','🇷🇺','ru-RU'], ['zh','中文','🇨🇳','zh-CN'],
- ['ja','日本語','🇯🇵','ja-JP'], ['ko','한국어','🇰🇷','ko-KR'],
- ['ar','العربية','🇸🇦','ar-SA']
+ ['en','English','GB','en-US'], ['tr','Türkçe','TR','tr-TR'],
+ ['fr','Français','FR','fr-FR'], ['de','Deutsch','DE','de-DE'],
+ ['es','Español','ES','es-ES'], ['it','Italiano','IT','it-IT'],
+ ['pt','Português','PT','pt-PT'], ['nl','Nederlands','NL','nl-NL'],
+ ['pl','Polski','PL','pl-PL'], ['cs','Čeština','CZ','cs-CZ'],
+ ['ro','Română','RO','ro-RO'], ['hu','Magyar','HU','hu-HU'],
+ ['ru','Русский','RU','ru-RU'], ['zh','中文','CN','zh-CN'],
+ ['ja','日本語','JP','ja-JP'], ['ko','한국어','KR','ko-KR'],
+ ['ar','العربية','SA','ar-SA']
 ];
 var T={
  en:{whatAmILookingAt:'What am I looking at',year:'Year',month:'Month',productType:'Product type',
@@ -79,8 +203,7 @@ var T={
   committed:'committed for the year',launchedSoFar:'launched so far',reporting:'reporting this period',
   againstBudgetYear:'Against Budget Year',byProjectType:'By project type',byCustomer:'By customer',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indicators — last months',
-  showRaw:'Show raw numbers',breakdown:'Breakdown',sourceSheet:'Source sheet',
-  parsingNotes:'Parsing notes',crossCheck:'Cross-check mismatch',notReporting:'not reporting',
+  notReporting:'not reporting',
   settingsTitle:'Settings — period sources',gmailQuery:'Gmail search query',scanNow:'Scan now',
   saveQuery:'Save query',installScan:'Install daily scan',addPeriodManually:'Add a period manually (Sheets link)',
   add:'Add',searchTerms:'Search terms…',loadingData:'Loading data…',startingUp:'Starting up…',
@@ -98,8 +221,7 @@ var T={
   committed:'yıl için taahhüt edildi',launchedSoFar:'bugüne kadar launch edildi',reporting:'bu dönem raporladı',
   againstBudgetYear:'Budget Year’a karşı',byProjectType:'Proje tipine göre',byCustomer:'Müşteriye göre',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Göstergeler — son aylar',
-  showRaw:'Ham sayıları göster',breakdown:'Kırılım',sourceSheet:'Kaynak sayfa',
-  parsingNotes:'Ayrıştırma notları',crossCheck:'Çapraz doğrulama uyuşmazlığı',notReporting:'raporlamıyor',
+  notReporting:'raporlamıyor',
   settingsTitle:'Ayarlar — dönem kaynakları',gmailQuery:'Gmail arama sorgusu',scanNow:'Şimdi tara',
   saveQuery:'Sorguyu kaydet',installScan:'Günlük taramayı kur',addPeriodManually:'Elle dönem ekle (Sheets linki)',
   add:'Ekle',searchTerms:'Terim ara…',loadingData:'Veri yükleniyor…',startingUp:'Başlatılıyor…',
@@ -117,8 +239,7 @@ var T={
   committed:'engagé pour l’année',launchedSoFar:'lancé à ce jour',reporting:'ont rapporté cette période',
   againstBudgetYear:'Face au Budget Year',byProjectType:'Par type de projet',byCustomer:'Par client',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indicateurs — derniers mois',
-  showRaw:'Afficher les chiffres bruts',breakdown:'Répartition',sourceSheet:'Feuille source',
-  parsingNotes:'Notes d’analyse',crossCheck:'Écart de contrôle croisé',notReporting:'ne rapporte pas',
+  notReporting:'ne rapporte pas',
   settingsTitle:'Paramètres — sources de période',gmailQuery:'Requête de recherche Gmail',scanNow:'Analyser',
   saveQuery:'Enregistrer la requête',installScan:'Installer l’analyse quotidienne',addPeriodManually:'Ajouter une période manuellement (lien Sheets)',
   add:'Ajouter',searchTerms:'Rechercher un terme…',loadingData:'Chargement des données…',startingUp:'Démarrage…',
@@ -136,8 +257,7 @@ var T={
   committed:'für das Jahr zugesagt',launchedSoFar:'bisher gelauncht',reporting:'melden in dieser Periode',
   againstBudgetYear:'Gegen Budget Year',byProjectType:'Nach Projekttyp',byCustomer:'Nach Kunde',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indikatoren — letzte Monate',
-  showRaw:'Rohzahlen anzeigen',breakdown:'Aufschlüsselung',sourceSheet:'Quellblatt',
-  parsingNotes:'Parsing-Hinweise',crossCheck:'Abweichung im Abgleich',notReporting:'meldet nicht',
+  notReporting:'meldet nicht',
   settingsTitle:'Einstellungen — Periodenquellen',gmailQuery:'Gmail-Suchanfrage',scanNow:'Jetzt scannen',
   saveQuery:'Anfrage speichern',installScan:'Täglichen Scan einrichten',addPeriodManually:'Periode manuell hinzufügen (Sheets-Link)',
   add:'Hinzufügen',searchTerms:'Begriffe suchen…',loadingData:'Daten werden geladen…',startingUp:'Wird gestartet…',
@@ -155,8 +275,7 @@ var T={
   committed:'comprometido para el año',launchedSoFar:'lanzado hasta ahora',reporting:'reportan este período',
   againstBudgetYear:'Frente al Budget Year',byProjectType:'Por tipo de proyecto',byCustomer:'Por cliente',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indicadores — últimos meses',
-  showRaw:'Mostrar cifras brutas',breakdown:'Desglose',sourceSheet:'Hoja de origen',
-  parsingNotes:'Notas de análisis',crossCheck:'Discrepancia en verificación',notReporting:'no reporta',
+  notReporting:'no reporta',
   settingsTitle:'Ajustes — fuentes de período',gmailQuery:'Consulta de búsqueda de Gmail',scanNow:'Escanear ahora',
   saveQuery:'Guardar consulta',installScan:'Instalar escaneo diario',addPeriodManually:'Añadir período manualmente (enlace de Sheets)',
   add:'Añadir',searchTerms:'Buscar términos…',loadingData:'Cargando datos…',startingUp:'Iniciando…',
@@ -174,8 +293,7 @@ var T={
   committed:'impegnato per l’anno',launchedSoFar:'lanciato finora',reporting:'hanno riportato in questo periodo',
   againstBudgetYear:'Rispetto al Budget Year',byProjectType:'Per tipo di progetto',byCustomer:'Per cliente',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indicatori — ultimi mesi',
-  showRaw:'Mostra i numeri grezzi',breakdown:'Ripartizione',sourceSheet:'Foglio di origine',
-  parsingNotes:'Note di analisi',crossCheck:'Discrepanza nel controllo incrociato',notReporting:'non riporta',
+  notReporting:'non riporta',
   settingsTitle:'Impostazioni — fonti del periodo',gmailQuery:'Query di ricerca Gmail',scanNow:'Scansiona ora',
   saveQuery:'Salva query',installScan:'Installa scansione giornaliera',addPeriodManually:'Aggiungi un periodo manualmente (link Sheets)',
   add:'Aggiungi',searchTerms:'Cerca termini…',loadingData:'Caricamento dati…',startingUp:'Avvio…',
@@ -193,8 +311,7 @@ var T={
   committed:'comprometido para o ano',launchedSoFar:'lançado até agora',reporting:'reportaram neste período',
   againstBudgetYear:'Face ao Budget Year',byProjectType:'Por tipo de projeto',byCustomer:'Por cliente',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indicadores — últimos meses',
-  showRaw:'Mostrar números brutos',breakdown:'Detalhe',sourceSheet:'Folha de origem',
-  parsingNotes:'Notas de análise',crossCheck:'Divergência na verificação',notReporting:'não reporta',
+  notReporting:'não reporta',
   settingsTitle:'Definições — fontes de período',gmailQuery:'Pesquisa do Gmail',scanNow:'Analisar agora',
   saveQuery:'Guardar pesquisa',installScan:'Instalar análise diária',addPeriodManually:'Adicionar período manualmente (link Sheets)',
   add:'Adicionar',searchTerms:'Procurar termos…',loadingData:'A carregar dados…',startingUp:'A iniciar…',
@@ -212,8 +329,7 @@ var T={
   committed:'toegezegd voor het jaar',launchedSoFar:'tot nu toe gelanceerd',reporting:'rapporteren deze periode',
   againstBudgetYear:'Tegen Budget Year',byProjectType:'Per projecttype',byCustomer:'Per klant',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indicatoren — laatste maanden',
-  showRaw:'Toon ruwe cijfers',breakdown:'Uitsplitsing',sourceSheet:'Bronblad',
-  parsingNotes:'Parsing-notities',crossCheck:'Afwijking bij controle',notReporting:'rapporteert niet',
+  notReporting:'rapporteert niet',
   settingsTitle:'Instellingen — periodebronnen',gmailQuery:'Gmail-zoekopdracht',scanNow:'Nu scannen',
   saveQuery:'Zoekopdracht opslaan',installScan:'Dagelijkse scan instellen',addPeriodManually:'Periode handmatig toevoegen (Sheets-link)',
   add:'Toevoegen',searchTerms:'Zoek termen…',loadingData:'Gegevens laden…',startingUp:'Opstarten…',
@@ -231,8 +347,7 @@ var T={
   committed:'zobowiązanie na rok',launchedSoFar:'dotychczas uruchomione',reporting:'raportuje w tym okresie',
   againstBudgetYear:'Wobec Budget Year',byProjectType:'Wg typu projektu',byCustomer:'Wg klienta',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Wskaźniki — ostatnie miesiące',
-  showRaw:'Pokaż surowe liczby',breakdown:'Podział',sourceSheet:'Arkusz źródłowy',
-  parsingNotes:'Uwagi z parsowania',crossCheck:'Rozbieżność kontrolna',notReporting:'nie raportuje',
+  notReporting:'nie raportuje',
   settingsTitle:'Ustawienia — źródła okresów',gmailQuery:'Zapytanie Gmail',scanNow:'Skanuj teraz',
   saveQuery:'Zapisz zapytanie',installScan:'Zainstaluj skan dzienny',addPeriodManually:'Dodaj okres ręcznie (link Sheets)',
   add:'Dodaj',searchTerms:'Szukaj terminów…',loadingData:'Ładowanie danych…',startingUp:'Uruchamianie…',
@@ -250,8 +365,7 @@ var T={
   committed:'závazek na rok',launchedSoFar:'dosud spuštěno',reporting:'vykazuje v tomto období',
   againstBudgetYear:'Vůči Budget Year',byProjectType:'Podle typu projektu',byCustomer:'Podle zákazníka',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Ukazatele — poslední měsíce',
-  showRaw:'Zobrazit hrubá čísla',breakdown:'Rozpad',sourceSheet:'Zdrojový list',
-  parsingNotes:'Poznámky k načtení',crossCheck:'Nesoulad při kontrole',notReporting:'nevykazuje',
+  notReporting:'nevykazuje',
   settingsTitle:'Nastavení — zdroje období',gmailQuery:'Vyhledávací dotaz Gmail',scanNow:'Skenovat',
   saveQuery:'Uložit dotaz',installScan:'Nainstalovat denní skenování',addPeriodManually:'Přidat období ručně (odkaz Sheets)',
   add:'Přidat',searchTerms:'Hledat pojmy…',loadingData:'Načítání dat…',startingUp:'Spouštění…',
@@ -269,8 +383,7 @@ var T={
   committed:'angajat pentru an',launchedSoFar:'lansat până acum',reporting:'raportează în această perioadă',
   againstBudgetYear:'Față de Budget Year',byProjectType:'După tipul proiectului',byCustomer:'După client',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Indicatori — ultimele luni',
-  showRaw:'Afișați cifrele brute',breakdown:'Defalcare',sourceSheet:'Foaie sursă',
-  parsingNotes:'Note de analiză',crossCheck:'Nepotrivire la verificare',notReporting:'nu raportează',
+  notReporting:'nu raportează',
   settingsTitle:'Setări — surse de perioadă',gmailQuery:'Interogare Gmail',scanNow:'Scanați acum',
   saveQuery:'Salvați interogarea',installScan:'Instalați scanarea zilnică',addPeriodManually:'Adăugați o perioadă manual (link Sheets)',
   add:'Adăugați',searchTerms:'Căutați termeni…',loadingData:'Se încarcă datele…',startingUp:'Se pornește…',
@@ -288,8 +401,7 @@ var T={
   committed:'évre vállalva',launchedSoFar:'eddig indítva',reporting:'jelent ebben az időszakban',
   againstBudgetYear:'A Budget Year-hez képest',byProjectType:'Projekttípus szerint',byCustomer:'Vevő szerint',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Mutatók — utolsó hónapok',
-  showRaw:'Nyers számok megjelenítése',breakdown:'Bontás',sourceSheet:'Forrás munkalap',
-  parsingNotes:'Feldolgozási megjegyzések',crossCheck:'Kereszt-ellenőrzési eltérés',notReporting:'nem jelent',
+  notReporting:'nem jelent',
   settingsTitle:'Beállítások — időszak-források',gmailQuery:'Gmail keresési lekérdezés',scanNow:'Keresés most',
   saveQuery:'Lekérdezés mentése',installScan:'Napi keresés beállítása',addPeriodManually:'Időszak hozzáadása kézzel (Sheets link)',
   add:'Hozzáadás',searchTerms:'Kifejezés keresése…',loadingData:'Adatok betöltése…',startingUp:'Indítás…',
@@ -307,8 +419,7 @@ var T={
   committed:'обязательство на год',launchedSoFar:'запущено на данный момент',reporting:'отчитались в этом периоде',
   againstBudgetYear:'Против Budget Year',byProjectType:'По типу проекта',byCustomer:'По клиенту',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'Показатели — последние месяцы',
-  showRaw:'Показать исходные числа',breakdown:'Разбивка',sourceSheet:'Исходный лист',
-  parsingNotes:'Примечания разбора',crossCheck:'Несоответствие при сверке',notReporting:'не отчитывается',
+  notReporting:'не отчитывается',
   settingsTitle:'Настройки — источники периодов',gmailQuery:'Поисковый запрос Gmail',scanNow:'Сканировать',
   saveQuery:'Сохранить запрос',installScan:'Установить ежедневное сканирование',addPeriodManually:'Добавить период вручную (ссылка Sheets)',
   add:'Добавить',searchTerms:'Поиск терминов…',loadingData:'Загрузка данных…',startingUp:'Запуск…',
@@ -326,8 +437,7 @@ var T={
   committed:'年度承诺',launchedSoFar:'迄今已发布',reporting:'本期已报告',
   againstBudgetYear:'对比 Budget Year',byProjectType:'按项目类型',byCustomer:'按客户',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'指标 — 最近数月',
-  showRaw:'显示原始数字',breakdown:'明细',sourceSheet:'源工作表',
-  parsingNotes:'解析说明',crossCheck:'交叉核对不一致',notReporting:'未报告',
+  notReporting:'未报告',
   settingsTitle:'设置 — 期间来源',gmailQuery:'Gmail 搜索查询',scanNow:'立即扫描',
   saveQuery:'保存查询',installScan:'安装每日扫描',addPeriodManually:'手动添加期间（Sheets 链接）',
   add:'添加',searchTerms:'搜索术语…',loadingData:'正在加载数据…',startingUp:'正在启动…',
@@ -345,8 +455,7 @@ var T={
   committed:'年間コミット',launchedSoFar:'これまでのローンチ',reporting:'今期報告済み',
   againstBudgetYear:'Budget Year との比較',byProjectType:'プロジェクトタイプ別',byCustomer:'顧客別',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'指標 — 直近の月',
-  showRaw:'生の数値を表示',breakdown:'内訳',sourceSheet:'ソースシート',
-  parsingNotes:'解析メモ',crossCheck:'クロスチェックの不一致',notReporting:'未報告',
+  notReporting:'未報告',
   settingsTitle:'設定 — 期間ソース',gmailQuery:'Gmail 検索クエリ',scanNow:'今すぐスキャン',
   saveQuery:'クエリを保存',installScan:'日次スキャンを設定',addPeriodManually:'期間を手動で追加（Sheets リンク）',
   add:'追加',searchTerms:'用語を検索…',loadingData:'データを読み込み中…',startingUp:'起動中…',
@@ -364,8 +473,7 @@ var T={
   committed:'연간 약정',launchedSoFar:'현재까지 런칭',reporting:'이번 기간 보고',
   againstBudgetYear:'Budget Year 대비',byProjectType:'프로젝트 유형별',byCustomer:'고객별',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'지표 — 최근 몇 개월',
-  showRaw:'원시 수치 표시',breakdown:'세부 내역',sourceSheet:'원본 시트',
-  parsingNotes:'파싱 참고',crossCheck:'교차 확인 불일치',notReporting:'보고 없음',
+  notReporting:'보고 없음',
   settingsTitle:'설정 — 기간 소스',gmailQuery:'Gmail 검색어',scanNow:'지금 스캔',
   saveQuery:'검색어 저장',installScan:'일일 스캔 설치',addPeriodManually:'기간 수동 추가 (Sheets 링크)',
   add:'추가',searchTerms:'용어 검색…',loadingData:'데이터 로드 중…',startingUp:'시작 중…',
@@ -383,8 +491,7 @@ var T={
   committed:'ملتزم به للسنة',launchedSoFar:'تم إطلاقه حتى الآن',reporting:'أبلغت هذه الفترة',
   againstBudgetYear:'مقابل Budget Year',byProjectType:'حسب نوع المشروع',byCustomer:'حسب العميل',
   portfolioFunnel:'Budget Year → Current Portfolio → Launch Done',indicators:'المؤشرات — الأشهر الأخيرة',
-  showRaw:'إظهار الأرقام الخام',breakdown:'التفصيل',sourceSheet:'الورقة المصدر',
-  parsingNotes:'ملاحظات التحليل',crossCheck:'عدم تطابق التحقق',notReporting:'لا تبلغ',
+  notReporting:'لا تبلغ',
   settingsTitle:'الإعدادات — مصادر الفترة',gmailQuery:'استعلام بحث Gmail',scanNow:'افحص الآن',
   saveQuery:'حفظ الاستعلام',installScan:'تثبيت الفحص اليومي',addPeriodManually:'إضافة فترة يدويًا (رابط Sheets)',
   add:'إضافة',searchTerms:'ابحث عن المصطلحات…',loadingData:'جارٍ تحميل البيانات…',startingUp:'جارٍ البدء…',
@@ -405,7 +512,7 @@ function applyLang(code){
   document.documentElement.lang=LANG;
   document.documentElement.dir=(LANG==='ar')?'rtl':'ltr';
   try{ localStorage.setItem('roDashLang',LANG); }catch(e){}
-  $('langLabel').textContent=LANG.toUpperCase();
+  $('langLabel').innerHTML=flagChip(m[2],18)+'<span>'+LANG.toUpperCase()+'</span>';
   $('btnLang').setAttribute('title',t('language'));
   document.querySelectorAll('[data-i18n]').forEach(function(el){
     el.textContent=t(el.getAttribute('data-i18n'));
@@ -421,7 +528,7 @@ function applyLang(code){
 function buildLangMenu(){
   $('langMenu').innerHTML=LANGS.map(function(l){
     return '<button type="button" role="option" data-lang="'+l[0]+'" aria-selected="'+(l[0]===LANG)+'">'+
-      '<span class="flag">'+l[2]+'</span>'+esc(l[1])+'</button>';
+      flagChip(l[2],20)+esc(l[1])+'</button>';
   }).join('');
   $('langMenu').querySelectorAll('button').forEach(function(b){
     b.onclick=function(){ applyLang(b.getAttribute('data-lang')); closeLangMenu(); };
@@ -677,7 +784,7 @@ function roRowHtml(r){
   return '<button class="ro-row'+(open?' open':'')+'" type="button" data-ro="'+r.ro+'" '+
     'style="--ro-color:'+roColor(r.ro)+'" aria-expanded="'+open+'">'+
     '<span class="ro-id">'+
-      '<span class="ro-code"><i class="ro-dot"></i>'+esc(r.ro)+'</span>'+
+      '<span class="ro-code">'+roRegionChip(r.ro)+esc(r.ro)+'</span>'+
       '<span class="ro-name">'+esc(BOOT.roLabels[r.ro]||'')+'</span>'+
       '<span class="ro-sites">'+r.list.length+' '+esc(t('sites'))+'</span>'+
     '</span>'+
@@ -736,7 +843,7 @@ function siteListHtml(list,ro){
     var cap=(base>0)?(isMoney?m2(got)+' / '+m2(base)+' M€':nf(got)+' / '+nf(base))+' · '+Math.round(w)+'%'
                     :(isMoney?m2(got)+' M€':nf(got));
     html+='<button class="site-row" type="button" data-i="'+r.i+'">'+
-      '<span class="site-name"><i></i><span>'+esc(r.s.site)+'</span></span>'+
+      '<span class="site-name">'+(siteFlag(r.s)||'<i></i>')+'<span>'+esc(r.s.site)+'</span></span>'+
       '<span class="mini-meter">'+
         '<span class="mini-bar"><i style="width:'+w.toFixed(1)+'%"></i></span>'+
         '<span class="mini-cap">'+esc(cap)+'</span>'+
@@ -825,7 +932,8 @@ function renderSiteLevel(){
   var head='<button class="backbtn" id="btnBack" type="button">'+ICON_BACK+
     esc(t('back'))+' · '+esc(NAV.ro)+'</button>';
 
-  head+='<div class="headline" style="--ro-color:'+roColor(s.ro)+'">'+esc(s.site)+' — '+
+  head+='<div class="headline" style="--ro-color:'+roColor(s.ro)+'">'+
+    siteFlag(s)+' '+esc(s.site)+' — '+
     (m.delta==null?'<b>'+esc(t('notReporting'))+'</b>'
       :'<b class="'+(ahead?'up':'down')+'">'+Math.abs(m.delta)+' '+esc(t('projects'))+' '+
        (m.delta===0?esc(t('onPlan')):(ahead?esc(t('ahead')):esc(t('behind'))))+'</b>')+
@@ -868,6 +976,9 @@ function renderSiteLevel(){
   [['EMI','EMI'],['DAP','DAP'],['RED','Red launches']].forEach(function(p){
     var d=ind[p[0]]; if(!d) return;
     var vals=(d.trail||[]).map(function(x){ return x.value; });
+    /* Verisi olmayan gostergeyi hic cizme — eskiden "EMI —" gibi bos
+       satirlar kaliyordu (kullanici geri bildirimi). */
+    if(!vals.some(function(v){ return v!=null; })) return;
     var last=null; for(var i=vals.length-1;i>=0;i--){ if(vals[i]!=null){ last=vals[i]; break; } }
     var okPill='';
     if(last!=null&&d.target!=null)
@@ -896,32 +1007,6 @@ function renderSiteLevel(){
     (indHtml?'<div class="panel" style="grid-column:1/-1"><h3>'+esc(t('indicators'))+'</h3>'+indHtml+'</div>':'')+
   '</div>';
 
-  html+='<details class="raw"><summary>'+esc(t('showRaw'))+'</summary>'+
-    '<div class="tablewrap"><table><thead><tr><th>'+esc(t('breakdown'))+'</th>'+
-    '<th class="num">Current Portfolio</th>'+
-    '<th class="num">Real Launches</th><th class="num">Launch Done (M€)</th></tr></thead><tbody>';
-  ['P1','P10','TTM'].forEach(function(x){
-    var a=typeTotals(s,x);
-    html+='<tr><td data-label="'+esc(t('breakdown'))+'">Project type '+x+'</td>'+
-      '<td class="num" data-label="Current Portfolio">'+nf(a.count)+'</td>'+
-      '<td class="num" data-label="Real Launches">'+nf(a.ytdCount)+'</td>'+
-      '<td class="num" data-label="Launch Done (M€)">'+m2(a.ytdTurnover/1000)+'</td></tr>';
-  });
-  ['VS','OES'].forEach(function(c){
-    var a=custTotals(s,c);
-    html+='<tr><td data-label="'+esc(t('breakdown'))+'">Customer '+c+'</td>'+
-      '<td class="num" data-label="Current Portfolio">'+nf(a.count)+'</td>'+
-      '<td class="num" data-label="Real Launches">'+nf(a.ytdCount)+'</td>'+
-      '<td class="num" data-label="Launch Done (M€)">'+m2(a.ytdTurnover/1000)+'</td></tr>';
-  });
-  html+='</tbody></table></div></details>';
-
-  if(s.mismatch&&s.mismatch.length)
-    html+='<div class="notice">'+esc(t('crossCheck'))+': '+esc(s.mismatch.join(' | '))+'</div>';
-  if(s.warnings&&s.warnings.length)
-    html+='<div class="notice">'+esc(t('parsingNotes'))+' ('+s.warnings.length+'): '+
-          esc(s.warnings.slice(0,8).join(' | '))+'</div>';
-  html+='<div class="notice">'+esc(t('sourceSheet'))+': <b>'+esc(s.sheet)+'</b></div>';
   $('view').innerHTML=html;
   $('btnBack').onclick=goBackToRo;
 }
@@ -1069,26 +1154,77 @@ function showToast(msg,type){
   },2700);
 }
 
-/* ---------- loading ---------- */
+/* ---------- loading ----------
+   48 sayfa tek cagrida okunurken Apps Script zaman asimina girip HTTP 502
+   veriyordu ve ilerleme cubugu tek bir degerde donuyordu. Artik once ucuz bir
+   meta cagrisi yapiliyor, sonra sayfalar CHUNK_SIZE'lik parcalar halinde
+   sirayla cekiliyor — her parca sonrasi ilerleme gercek ilerlemeyi gosteriyor. */
+var CHUNK_SIZE=8;
 function loadPeriod(key){
-  splashSet(52,'readingPeriod');
-  $('view').innerHTML='<div class="spinner" role="status">'+esc(t('readingPeriod'))+' '+
-    esc(t('scanningSheets'))+'</div>';
+  splashSet(30,'readingPeriod');
+  $('view').innerHTML='<div class="spinner" role="status">'+esc(t('readingPeriod'))+'</div>';
   google.script.run
-    .withSuccessHandler(function(res){
-      if(!res||res.error){
-        $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Unknown error')+'</div>';
+    .withSuccessHandler(function(meta){
+      if(!meta||meta.error){
+        $('view').innerHTML='<div class="notice err">'+esc(meta&&meta.error||'Unknown error')+'</div>';
         splashHide(); return;
       }
-      splashSet(90,'rendering');
-      DATA=res; NAV={level:'ro',expandedRo:null,ro:null,siteIdx:null}; buildFilters(); render();
-      splashHide();
+      loadChunks(key,meta);
     })
-    .withFailureHandler(function(err){
-      $('view').innerHTML='<div class="notice err">Server error: '+esc(err&&err.message||err)+'</div>';
-      splashHide();
-    })
-    .getDashboardData(key,false);
+    .withFailureHandler(function(err){ loadFailed(err); })
+    .getPeriodMeta(key);
+}
+function loadFailed(err){
+  var m=(err&&err.message)||String(err||'');
+  $('view').innerHTML='<div class="notice err">Server error: '+esc(m)+'</div>';
+  splashHide();
+}
+function loadChunks(key,meta){
+  var total=meta.total||0, collected=[], from=0;
+  if(!total){ finishLoad(key,meta,[]); return; }
+  function next(){
+    if(from>=total){ finishLoad(key,meta,collected); return; }
+    var to=Math.min(total,from+CHUNK_SIZE);
+    $('splashStage').textContent=t('readingPeriod')+'  '+from+'–'+to+' / '+total;
+    $('view').innerHTML='<div class="spinner" role="status">'+esc(t('readingPeriod'))+
+      ' '+from+'–'+to+' / '+total+'</div>';
+    google.script.run
+      .withSuccessHandler(function(res){
+        if(!res||res.error){
+          $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Unknown error')+'</div>';
+          splashHide(); return;
+        }
+        collected=collected.concat(res.sites||[]);
+        from=res.to||to;
+        splashSet(30+Math.round(62*from/total));
+        next();
+      })
+      .withFailureHandler(function(err){ loadFailed(err); })
+      .getPeriodChunk(key,from,to,false);
+  }
+  next();
+}
+/* Parcalar birlestikten sonraki son gecis: ayni site'in birden cok ayi varsa
+   en guncelini tut, sonra raporlama ayinin gerisinde kalanlari isaretle.
+   (Eskiden sunucuda yapiliyordu; parcali okumada butun ancak burada olusuyor.) */
+function finishLoad(key,meta,sites){
+  splashSet(94,'rendering');
+  var seen={};
+  sites.forEach(function(s){
+    var k=s.key||s.sheet;
+    var prev=seen[k];
+    if(!prev||((s.month||0)>(prev.month||0))) seen[k]=s;
+  });
+  var out=[]; for(var k in seen){ if(seen.hasOwnProperty(k)) out.push(seen[k]); }
+  var maxMonth=0;
+  out.forEach(function(s){ if(s.month>maxMonth) maxMonth=s.month; });
+  out.forEach(function(s){
+    if(s.month&&s.month<maxMonth&&s.status==='ok') s.status='behind-schedule';
+  });
+  DATA={ period:meta.period, reportMonth:maxMonth, sites:out,
+         missingSites:meta.missingSites||[], unknownSheets:meta.unknownSheets||[] };
+  NAV={level:'ro',expandedRo:null,ro:null,siteIdx:null};
+  buildFilters(); render(); splashHide();
 }
 /* Ay adi secili dile gore yerellestirilir; sunucu etiketi yalniz yedek. */
 function monthNameOf(p){
