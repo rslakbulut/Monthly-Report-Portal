@@ -59,6 +59,14 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
+/** RO basina kayitli site sayisi — "Sites reported" paydasi RO secilince
+    48 degil o RO'nun kendi site sayisi olsun diye. */
+function roSiteCounts_() {
+  var out = {};
+  SITE_REGISTRY.forEach(function (r) { out[r.ro] = (out[r.ro] || 0) + 1; });
+  return out;
+}
+
 /** Ekranin acilista ihtiyac duydugu hafif bilgi: donem listesi + RO etiketleri. */
 function getBootstrap() {
   try {
@@ -70,6 +78,7 @@ function getBootstrap() {
       roLabels: RO_LABELS,
       roOrder: RO_ORDER,
       siteCount: SITE_REGISTRY.length,
+      roCounts: roSiteCounts_(),
       gmailQuery: getGmailQuery_(),
       isAdmin: isAuthorizedAdmin_()
     };

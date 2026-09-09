@@ -10,6 +10,7 @@
  * yalniz capraz dogrulama icin ayrica okunur (crossCheck).
  */
 
+var TOP_PROJECTS_PER_BLOCK = 15;   // TOPS listesi icin blok basina saklanan proje sayisi
 var PROJECT_TYPES = ['P1', 'P10', 'TTM'];
 
 /** Detay bloklari: baslik deseni -> musteri / urun durumu. */
@@ -150,7 +151,7 @@ function findIn_(row, needle) {
  * @return {{byType:Object, total:Object, rows:number, typeColFound:boolean}}
  */
 function parseDetailBlock_(grid, startRow, spec, year, reportMonth, warnings) {
-  var res = { byType: {}, total: emptyMeasure_(), rows: 0, typeColFound: false };
+  var res = { byType: {}, total: emptyMeasure_(), rows: 0, typeColFound: false, projects: [] };
 
   // Tablo basligi: capanin altinda "Milestone" veya "Project Ref" iceren satir
   var headerRow = -1;
@@ -165,6 +166,14 @@ function parseDetailBlock_(grid, startRow, spec, year, reportMonth, warnings) {
   var gType = pickGroup_(groups, 'TYPE');
   var gDate = pickGroup_(groups, 'LAUNCH SHEET');
   var gTurn = pickGroup_(groups, 'TURNOVER');
+  // TOPS proje listesi icin (kullanici talebi): proje adi Model sutunundan,
+  // segment Segment (yoksa PRODUCT) sutunundan.
+  var gModel = pickGroup_(groups, 'MODEL');
+  var gSeg   = pickGroup_(groups, 'SEGMENT');
+  var gProd  = pickGroup_(groups, 'PRODUCT');
+  var modelCol = gModel ? gModel.start : null;
+  var segCol   = gSeg ? gSeg.start : null;
+  var prodCol  = gProd ? gProd.start : null;
   if (!gDate) warnings.push(spec.match + ': Launch Sheet Date column missing');
   if (!gTurn) warnings.push(spec.match + ': Turnover column missing');
 
@@ -231,11 +240,33 @@ function parseDetailBlock_(grid, startRow, spec, year, reportMonth, warnings) {
       warnings.push(spec.match + ': unparsed date -> "' + real.raw + '"');
     }
 
+    var pName = modelCol !== null ? cellText_(row[modelCol]) : '';
+    if (pName || turnover > 0) {
+      res.projects.push({
+        model: pName,
+        segment: (segCol !== null ? cellText_(row[segCol]) : '') ||
+                 (prodCol !== null ? cellText_(row[prodCol]) : ''),
+        type: type || null,
+        planMonth: plan.ok ? plan.month : null,
+        planRaw: planCol !== null ? cellText_(row[planCol]) : '',
+        realMonth: real.ok ? real.month : null,
+        realRaw: realCol !== null ? cellText_(row[realCol]) : '',
+        turnover: turnover                      // k€
+      });
+    }
+
     addMeasure_(res.total, m);
     if (type) {
       if (!res.byType[type]) res.byType[type] = emptyMeasure_();
       addMeasure_(res.byType[type], m);
     }
+  }
+  // Yalniz en buyuk TOP_PROJECTS_PER_BLOCK proje tasinir — tum satirlari
+  // tasimak payload'i (ve cache'i) gereksiz sisirirdi. Site basina bu kadar
+  // saklamak, RO/genel toplamda da dogru bir "en buyuk N" listesi verir.
+  res.projects.sort(function (a, b) { return b.turnover - a.turnover; });
+  if (res.projects.length > TOP_PROJECTS_PER_BLOCK) {
+    res.projects = res.projects.slice(0, TOP_PROJECTS_PER_BLOCK);
   }
   return res;
 }

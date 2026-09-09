@@ -38,6 +38,63 @@ function parseIndicators_(grid, warnings) {
   return out;
 }
 
+/* Bir satirin gercekten bir "rol | kisi" satiri oldugunu anlamak icin
+   aranan kelimeler. Sayfadaki roller: Project Manager, R&D/Process/Quality/
+   Purchasing/Supply chain PTM. Hicbiri eslesmezse o site icin headcount 0
+   kalir — uydurma sayi uretmektense sifir gostermek dogru. */
+var HR_ROLE_WORDS = ['MANAGER', 'PTM', 'LEADER', 'ENGINEER', 'RESPONSIBLE', 'COORDINATOR'];
+
+/**
+ * Bolum 2 "HUMAN RESOURCES" — proje ekibi kadrosu.
+ *
+ * Sayfada sayi degil ISIM var (Project Manager, R&D/Process/Quality/Purchasing/
+ * Supply chain PTM satirlari). Bu yuzden "headcount" = bu bolumde adi gecen
+ * BENZERSIZ kisi sayisi. Ayni kisi birden fazla rolu tasiyorsa bir kez sayilir.
+ */
+function parseHumanResources_(grid, warnings) {
+  var res = { count: 0, roles: [] };
+  var hit = findCell_(grid, 'HUMAN RESOURCES', 0);
+  if (!hit) return res;
+
+  var seen = {};
+  for (var r = hit.row + 1; r < Math.min(hit.row + 20, grid.length); r++) {
+    var rowText = normText_(grid[r].join(' '));
+    var stop = false;
+    for (var p = 0; p < BLOCK_STOP_PATTERNS.length; p++) {
+      if (rowText.indexOf(BLOCK_STOP_PATTERNS[p]) !== -1) { stop = true; break; }
+    }
+    if (stop) break;
+    if (isEmptyRow_(grid[r])) continue;
+
+    // Satirdaki ilk dolu hucre rol etiketi, ondan sonraki ilk dolu hucre kisi.
+    var label = '', person = '';
+    for (var c = 0; c < grid[r].length; c++) {
+      var txt = cellText_(grid[r][c]);
+      if (!txt) continue;
+      if (!label) { label = txt; continue; }
+      person = txt; break;
+    }
+    if (!label || !person) continue;
+    // Sayi/tarih gibi degerler kisi adi degildir
+    if (/^[\d.,%\/-]+$/.test(person)) continue;
+    // Satirin gercekten bir ROL satiri oldugunu dogrula — boylece "TEAM | NAME"
+    // gibi baslik satirlari kisi olarak sayilmaz. Etiket bilinen rol
+    // kelimelerinden birini icermeliyken kisi hucresi icermemeli.
+    var lab = normText_(label), per = normText_(person);
+    var isRole = false, personIsRole = false;
+    for (var w = 0; w < HR_ROLE_WORDS.length; w++) {
+      if (lab.indexOf(HR_ROLE_WORDS[w]) !== -1) isRole = true;
+      if (per.indexOf(HR_ROLE_WORDS[w]) !== -1) personIsRole = true;
+    }
+    if (!isRole || personIsRole) continue;
+
+    var key = person.toLowerCase();
+    res.roles.push({ role: label, person: person });
+    if (!seen[key]) { seen[key] = true; res.count++; }
+  }
+  return res;
+}
+
 /**
  * Tek bir site sayfasini okur.
  * @param {Sheet} sheet
@@ -59,10 +116,12 @@ function parseSiteSheet_(sheet, reg, sheetMonth, reportYear) {
   var orderIntake = parseOrderIntakeBudget_(grid, warnings);
   var launch      = parseProjectLaunchBudget_(grid, warnings);
   var indicators  = parseIndicators_(grid, warnings);
+  var hr          = parseHumanResources_(grid, warnings);
 
   // Detay bloklari — ONCEDEN TOPLANMAZ. Istemci NEW/REMAN x musteri x tip
   // filtrelerini caprazlayabilsin diye her blok ayri saklanir.
   var detail = { blocks: [], total: emptyMeasure_() };
+  var topProjects = [];   // TOPS: en buyuk cirolu projeler (kullanici talebi)
 
   DETAIL_BLOCKS.forEach(function (spec) {
     var hit = findCell_(grid, spec.match, 0);
@@ -87,8 +146,17 @@ function parseSiteSheet_(sheet, reg, sheetMonth, reportYear) {
       total: block.total,
       typeColFound: block.typeColFound
     });
+    (block.projects || []).forEach(function (pr) {
+      pr.customer = spec.customer || null;
+      pr.status = spec.status;
+      topProjects.push(pr);
+    });
     addMeasure_(detail.total, block.total);
   });
+  topProjects.sort(function (a, b) { return b.turnover - a.turnover; });
+  if (topProjects.length > TOP_PROJECTS_PER_BLOCK) {
+    topProjects = topProjects.slice(0, TOP_PROJECTS_PER_BLOCK);
+  }
 
   // Capraz dogrulama: detaydan sayilan YTD adet, Bolum 4'un Real Launches'i ile
   // tutuyor mu? Tutmuyorsa sessizce birini secmiyoruz, isaretliyoruz.
@@ -122,6 +190,9 @@ function parseSiteSheet_(sheet, reg, sheetMonth, reportYear) {
     budgetYTDCount: launch.budgetYTD,
     detail: detail,                  // gerceklesen: adet + k€
     indicators: indicators,
+    headcount: hr.count,             // Bolum 2'deki benzersiz kisi sayisi
+    hrRoles: hr.roles,
+    topProjects: topProjects,        // [{model, segment, type, customer, status, ...}]
     mismatch: mismatch,
     warnings: warnings
   };

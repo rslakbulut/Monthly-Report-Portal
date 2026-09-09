@@ -173,6 +173,43 @@ select.ctl{
   transition:border-color .15s ease, box-shadow .15s ease;
 }
 select.ctl:hover{border-color:var(--valeo-mid); box-shadow:var(--sh-2)}
+.fgroup.grow{flex:1 1 240px; min-width:200px; max-width:400px}
+.searchwrap{position:relative; display:flex; align-items:center}
+.searchwrap svg{position:absolute; left:13px; color:var(--text-mute); pointer-events:none}
+.searchwrap input{
+  width:100%; min-height:44px; padding:0 14px 0 38px; font:inherit; font-size:14px; font-weight:600;
+  border:1px solid var(--border-strong); border-radius:12px; background:var(--card);
+  color:var(--text); box-shadow:var(--sh-1); -webkit-appearance:none; appearance:none;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.searchwrap input::placeholder{font-weight:500; color:var(--text-mute)}
+.searchwrap input:hover{border-color:var(--valeo-mid)}
+.searchwrap input:focus{outline:none; border-color:var(--valeo-mid); box-shadow:var(--ring)}
+
+/* aktif secim seridi */
+.selstrip{
+  max-width:var(--maxw); margin:0 auto; padding:0 24px 13px;
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+}
+.selstrip-l{
+  font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.11em;
+  color:var(--text-mute); margin-right:2px;
+}
+.selchip{
+  display:inline-flex; align-items:center; gap:7px; cursor:pointer; font:inherit;
+  min-height:30px; padding:0 9px 0 11px; border-radius:999px;
+  background:var(--sunken); border:1px solid var(--border-strong); color:var(--text);
+  transition:border-color .15s ease, background .15s ease, color .15s ease;
+}
+.selchip:hover{border-color:var(--bad); color:var(--bad); background:var(--card)}
+.selchip-k{font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.09em; color:var(--text-mute)}
+.selchip:hover .selchip-k{color:inherit}
+.selchip-v{font-size:12.5px; font-weight:700}
+.selchip svg{display:block; opacity:.55}
+.selclear{
+  background:none; border:none; cursor:pointer; font:inherit; font-size:12px; font-weight:700;
+  color:var(--valeo-mid); text-decoration:underline; text-underline-offset:3px; padding:4px 6px;
+}
 
 /* ---------- yerlesim ---------- */
 main{padding:26px 24px 56px; max-width:var(--maxw); margin:0 auto}
@@ -388,7 +425,83 @@ main{padding:26px 24px 56px; max-width:var(--maxw); margin:0 auto}
 }
 .headline b{font-weight:800}
 .headline .up{color:var(--good)} .headline .down{color:var(--bad)}
+/* ---------- grafik: Budget Year vs Launch Done (kutuphanesiz) ---------- */
+.chart{
+  background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg);
+  padding:16px 18px 12px; box-shadow:var(--sh-1);
+}
+.ch-key{display:flex; gap:18px; margin-bottom:12px; padding-bottom:11px; border-bottom:1px solid var(--border)}
+.ch-key span{display:inline-flex; align-items:center; gap:7px; font-size:11px; font-weight:700;
+  letter-spacing:.05em; color:var(--text-mute); text-transform:uppercase}
+.ch-key .sw{width:14px; height:9px; border-radius:3px; display:block}
+.ch-key .sw.budget{background:var(--track); border:1px solid var(--border-strong)}
+/* cubuklar RO rengine gore boyandigi icin gosterge ornegi de cok renkli */
+.ch-key .sw.done{background:linear-gradient(90deg,var(--ro-PDE),var(--ro-PAS),var(--ro-PDA))}
+.ch-row{
+  display:grid; grid-template-columns:minmax(120px,1.3fr) minmax(140px,3fr) minmax(120px,auto);
+  align-items:center; gap:16px; width:100%; text-align:left; font:inherit; color:inherit;
+  background:none; border:none; border-radius:var(--r-sm); cursor:pointer;
+  padding:8px 10px; transition:background .15s ease, transform .15s ease;
+}
+.ch-row:hover{background:var(--sunken); transform:translateX(2px)}
+.ch-lab{display:flex; flex-direction:column; gap:1px; min-width:0}
+.ch-lab b{font-size:13.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.ch-lab i{font-size:10.5px; font-style:normal; color:var(--text-mute); font-weight:600;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.ch-bars{display:flex; flex-direction:column; gap:3px; min-width:0}
+.ch-b{height:9px; border-radius:999px; min-width:2px; display:block}
+.ch-b.budget{background:var(--track); border:1px solid var(--border-strong); box-sizing:border-box}
+.ch-b.done{background:linear-gradient(90deg,color-mix(in srgb,var(--c) 55%,#fff),var(--c))}
+.ch-val{text-align:right; justify-self:end; display:flex; flex-direction:column; gap:1px;
+  font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap}
+.ch-val .ch-num{display:block; white-space:nowrap}
+.ch-val .ch-num .cur{font-size:.72em; color:var(--text-dim); margin-left:2px}
+.ch-val i{font-size:10.5px; font-style:normal; font-weight:600; color:var(--text-mute)}
+
+/* ---------- TOPS projeleri ---------- */
+.panel .p-note{font-size:10px; font-weight:700; color:var(--text-mute); letter-spacing:.06em; margin-left:6px}
+.panel.tops .empty{margin:0; font-size:13px; color:var(--text-mute)}
+.tops-head,.tops-row{
+  display:grid; grid-template-columns:minmax(130px,2fr) minmax(80px,1.1fr) 62px 62px 76px;
+  align-items:center; gap:12px;
+}
+.tops-head.with-site,.tops-row.with-site{
+  grid-template-columns:minmax(120px,1.8fr) minmax(74px,1fr) minmax(80px,1fr) 62px 62px 76px;
+}
+.tops-head{padding:0 2px 7px; border-bottom:1px solid var(--border)}
+.tops-head span{font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.1em;
+  color:var(--text-mute); white-space:nowrap}
+.tops-head .r,.tops-row .r{text-align:right; justify-self:end}
+.tops-row{padding:9px 2px; border-bottom:1px solid var(--border); font-size:13px}
+.tops-row:last-child{border-bottom:none}
+.tp-model{display:flex; align-items:center; gap:8px; min-width:0}
+.tp-model b{font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.tp-type{
+  font-style:normal; font-size:9.5px; font-weight:800; letter-spacing:.05em; flex:none;
+  padding:2px 6px; border-radius:5px; background:var(--sunken); color:var(--ro-color);
+  border:1px solid color-mix(in srgb,var(--ro-color) 35%,var(--border));
+}
+.tp-seg,.tp-site{color:var(--text-dim); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.tops-row .dim{color:var(--text-mute); font-weight:600; font-variant-numeric:tabular-nums}
+.tops-row .ok{color:var(--good-line); font-weight:700; font-variant-numeric:tabular-nums}
+.tp-oi{font-weight:700; font-variant-numeric:tabular-nums}
+
+/* ekip (Bolum 2 HUMAN RESOURCES) */
+.team{display:flex; flex-direction:column}
+.team-row{display:flex; justify-content:space-between; gap:14px; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px}
+.team-row:last-child{border-bottom:none}
+.tm-role{color:var(--text-mute); font-weight:600}
+.tm-person{font-weight:700; text-align:right}
+
+/* arama sonucu satiri */
+.site-head, .site-row.search-row{align-items:center}
+.site-row.search-row{grid-template-columns:minmax(150px,1.6fr) minmax(180px,1.6fr) minmax(90px,.9fr) 92px}
+.sr-ro{display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:var(--text-dim);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
 .panels{display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.panels.one{grid-template-columns:1fr; margin-top:22px}
+.panels .wide{grid-column:1 / -1}
 .panel{
   background:linear-gradient(180deg,var(--card),var(--card-2));
   border:1px solid var(--border); border-radius:var(--r-lg); padding:20px 22px; box-shadow:var(--sh-1);
@@ -513,6 +626,16 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
   .stat:first-child{padding-left:0}
 }
 @media (max-width:860px){
+  .ch-row{grid-template-columns:1fr auto; gap:6px 12px; padding:10px}
+  .ch-bars{grid-column:1 / -1; order:3}
+  .ch-val{align-items:flex-end}
+  .tops-head{display:none}
+  .tops-row,.tops-row.with-site{grid-template-columns:1fr auto; gap:4px 12px}
+  .tp-model{grid-column:1 / -1}
+  .tops-row .r{justify-self:start; text-align:left}
+  .tops-row .tp-oi{justify-self:end; text-align:right; grid-row:2; grid-column:2}
+  .site-row.search-row{grid-template-columns:1fr 1fr}
+  .sr-ro{grid-column:1 / -1}
   .site-head{display:none}
   .site-row{grid-template-columns:1fr 1fr; gap:10px 14px; padding:14px 16px}
   .site-row .mini-meter{grid-column:1 / -1; order:5}
@@ -529,6 +652,8 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
 @media (max-width:768px){
   .filters{position:static}
   .filters-inner{gap:16px; padding:14px 16px}
+  .selstrip{padding:0 16px 12px}
+  .fgroup.grow{flex:1 1 100%}
   .topbar-inner{padding:10px 16px; gap:8px}
   main{padding:20px 16px 44px}
   .kpis{grid-template-columns:1fr; gap:12px}
@@ -553,9 +678,9 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
   .splash-map{display:none}
 }
 @media print{
-  .topbar,.filters,.crumb button,.tbtn,.kpi-info,.chev,.backbtn,#splash{display:none!important}
+  .topbar,.filters,.crumb button,.tbtn,.kpi-info,.chev,.backbtn,#splash,.selstrip{display:none!important}
   body{background:#fff}
-  .kpi,.ro-row,.panel,.tablewrap,.site-row{break-inside:avoid; box-shadow:none; border:1px solid #ccc}
+  .kpi,.ro-row,.panel,.tablewrap,.site-row,.chart{break-inside:avoid; box-shadow:none; border:1px solid #ccc}
   .kpi,.ro-row,.panel{background:#fff!important}
 }
 </style>

@@ -67,13 +67,35 @@
       <span class="flabel" id="lblMonth" data-i18n="month">Month</span>
       <select class="ctl" id="selMonth" aria-labelledby="lblMonth"></select>
     </div>
+    <div class="fgroup">
+      <span class="flabel" id="lblRo">RO</span>
+      <select class="ctl" id="selRo" aria-labelledby="lblRo"></select>
+    </div>
+    <div class="fgroup">
+      <span class="flabel" id="lblSite" data-i18n="site">Site</span>
+      <select class="ctl" id="selSite" aria-labelledby="lblSite"></select>
+    </div>
     <div class="fgroup"><span class="flabel" id="lblProduct" data-i18n="productType">Product type</span>
       <div class="seg" role="group" aria-labelledby="lblProduct" id="segStatus"></div></div>
     <div class="fgroup"><span class="flabel" id="lblType" data-i18n="projectType">Project type</span>
       <div class="seg" role="group" aria-labelledby="lblType" id="segType"></div></div>
     <div class="fgroup"><span class="flabel" id="lblCustomer" data-i18n="customer">Customer</span>
       <div class="seg" role="group" aria-labelledby="lblCustomer" id="segCustomer"></div></div>
+    <div class="fgroup grow">
+      <span class="flabel" id="lblSearch" data-i18n="search">Search</span>
+      <div class="searchwrap">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+        </svg>
+        <input type="search" id="inpSearch" autocomplete="off" spellcheck="false"
+               aria-labelledby="lblSearch" data-i18n-ph="searchPh" placeholder="Search site or RO&#8230;">
+      </div>
+    </div>
   </div>
+  <!-- Aktif secim seridi: hangi kapsamda bakildigi ust tarafta gorunur olsun
+       (is arkadasi geri bildirimi). Bos secimde hic render edilmez. -->
+  <div class="selstrip" id="selStrip" hidden></div>
 </div>
 
 <main>

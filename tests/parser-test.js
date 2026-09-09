@@ -44,10 +44,11 @@ push({1:'DAP',4:'-%',7:0,8:0,9:0,10:0,11:0,12:0});
 push({1:'RED LAUNCHES',4:0,7:0,8:0,9:0,10:0,11:0,12:0});
 push({});
 push({1:'2.  HUMAN RESOURCES.'});
-push({1:'TEAM',3:'Project Manager'});
-push({});
-push({});
-push({});
+push({1:'TEAM',3:'NAME'});
+push({1:'Project Manager',3:'John Smith'});
+push({1:'R&D PTM',3:'Ana Lopez'});
+push({1:'Process PTM',3:'John Smith'});
+push({1:'Quality PTM'});
 push({});
 push({1:'3. ORDER INTAKE - Budget & Real'});
 push({1:'ORDER INTAKE',5:'Budget Year 2026',7:'Launch Done (L.S sent)',9:'Current Portfolio (C.A signed)',11:'Potential O.I (C.A not signed)',13:'COMMENTS'});
@@ -84,6 +85,11 @@ eq(pl.budgetYear.P10.NEW,   17, 'B4 "PCO /P10" satiri P10 olarak okundu = 17');
 eq(pl.budgetYTD.P10.NEW,     9, 'B4 Budget YTD P10 = 9');
 eq(pl.crossCheck.TOTAL.NEW, 31, 'B4 Real Launches (yalniz capraz dogrulama) = 31');
 
+const hrRes = parseHumanResources_(g, warn);
+eq(hrRes.count, 2, 'Headcount: benzersiz kisi = 2 (ayni kisi iki rolde bir kez)');
+eq(hrRes.roles.length, 3, 'Headcount: 3 dolu rol satiri (bos Quality PTM sayilmadi)');
+eq(hrRes.roles[0].person, 'John Smith', 'Headcount: kisi adi dogru okundu');
+
 const ind = parseIndicators_(g, warn);
 eq(ind.EMI.target, 102, 'B1 EMI hedefi = 102');
 eq(ind.EMI.trail.map(t=>t.value), [129.69,122.15,123.59,108.49,119.56,null], 'B1 EMI M-1..M trendi');
@@ -113,10 +119,10 @@ push({});
 push({1:'* 2026 VS Current Portfolio - NEW'});
 push({0:'Milestone',1:'Project Ref. in WishList',2:'Ref',3:'Model',4:'Type',5:'Segment',6:'Difficulty Rate',7:'PRODUCT',
       8:'Launch Sheet Date Plan / Real',10:'SOP IS Approval date',11:'Sales Price in €',12:'Quantity of pieces per year',13:'Turnover (k€)'});
-push({1:'Fuen 1',4:'P1', 8:'01/2026',9:'01/2026',11:230.62,12:68, 13:15.68});
-push({1:'Fuen 1',4:'P10',8:'02/2026',9:'03/2026',11:112.21,12:525,13:58.91});
-push({1:'Fuen 1',4:'PCO',8:'05/2026',9:'W27',   11:61.21, 12:290,13:17.75});  // W27 = Temmuz > Haziran
-push({1:'Fuen 1',4:'P1', 8:'08/2026',9:'',      11:99.00, 12:100,13:9.90});   // henuz launch olmadi
+push({1:'Fuen 1',3:'BMW 1 (F20) 114 d',4:'P1', 5:'FullPack DMF',8:'01/2026',9:'01/2026',11:230.62,12:68, 13:15.68});
+push({1:'Fuen 1',3:'OPEL ASTRA K (B16)',4:'P10',5:'2PK+CSC',    8:'02/2026',9:'03/2026',11:112.21,12:525,13:58.91});
+push({1:'Fuen 1',3:'RENAULT 1.3 TCe',   4:'PCO',5:'PC Trad',    8:'05/2026',9:'W27',   11:61.21, 12:290,13:17.75});  // W27 = Temmuz > Haziran
+push({1:'Fuen 1',3:'VOLVO V40',         4:'P1', 5:'DMF',        8:'08/2026',9:'',      11:99.00, 12:100,13:9.90});   // henuz launch olmadi
 push({13:'total',14:0});
 
 const vsHit = findCell_(g,'VS CURRENT PORTFOLIO - NEW',0);
@@ -130,6 +136,16 @@ eq(vs.byType.P10.ytdCount, 1, 'P10 YTD = 1 (Mart sayildi, Temmuz sayilmadi)');
 eq(Math.round(vs.total.ytdTurnover*100)/100, 74.59, 'YTD ciro = 15.68 + 58.91 k€');
 eq(vs.total.planYtdCount, 3, 'Plan tarafi ayri sayildi (01,02,05 <= Haziran)');
 eq(Math.round(vs.total.planYtdTurnover*100)/100, 92.34, 'Ciro YTD PLANI = 15.68+58.91+17.75 k€');
+
+/* TOPS proje listesi (kullanici talebi) */
+eq(vs.projects.length, 4, 'TOPS: 4 proje satiri toplandi');
+eq(vs.projects[0].model, 'OPEL ASTRA K (B16)', 'TOPS: en buyuk cirolu proje basta');
+eq(vs.projects[0].turnover, 58.91, 'TOPS: ciro k€ olarak tasindi');
+eq(vs.projects[0].segment, '2PK+CSC', 'TOPS: Segment sutunu okundu');
+eq(vs.projects[0].type, 'P10', 'TOPS: proje tipi tasindi');
+eq(vs.projects[0].realMonth, 3, 'TOPS: Real launch ayi (Mart)');
+eq(vs.projects[3].model, 'VOLVO V40', 'TOPS: en kucuk ciro sonda');
+eq(vs.projects[3].realMonth, null, 'TOPS: launch olmamis projede Real ayi bos');
 
 /* ---------- 5) REMAN blogu: Type sutunu yanlis doldurulmus ---------- */
 console.log('\n5) VS Current Portfolio - REMAN — Type sutununda A0/A1/A2 var');

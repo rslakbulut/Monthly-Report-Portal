@@ -83,6 +83,13 @@ function mapHeaderGroups_(headerRow, fromCol) {
 }
 
 /** Grup listesinde etiketi ARANAN metni iceren grubu dondurur. */
+/** Hucreyi GOSTERIM icin metne cevirir (normText_ aksine buyuk harfe cevirmez). */
+function cellText_(v) {
+  if (v === null || v === undefined) return '';
+  if (isErrorCell_(v)) return '';
+  return String(v).replace(/\s+/g, ' ').trim();
+}
+
 function pickGroup_(groups, needle) {
   var target = normText_(needle);
   for (var i = 0; i < groups.length; i++) {

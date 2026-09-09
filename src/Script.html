@@ -9,7 +9,10 @@
    istedi. Yalniz arayuz kelimeleri (Year, Month, sites, back...) cevrilir. */
 
 var BOOT=null, DATA=null;
-var F={status:'ALL',type:'ALL',customer:'ALL',tableView:'count'};   // tableView: 'count' | 'money'
+/* ro/site: kapsam daraltma — KPI'lar, grafik ve listeler hepsi bu kapsama gore
+   yeniden hesaplanir (kullanici: "RO ve site secimlerine gore dinamik update
+   olmali"). q: serbest metin aramasi. */
+var F={status:'ALL',type:'ALL',customer:'ALL',tableView:'count',ro:'ALL',site:'ALL',q:''};
 var NAV={level:'ro',expandedRo:null,ro:null,siteIdx:null};          // 'ro' | 'site'
 
 /* ---------- helpers ---------- */
@@ -53,6 +56,11 @@ var ICON_CHECK=svg('<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline poin
 var ICON_ALERT=svg('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>'+
   '<path d="M12 9v4"/><path d="M12 17h.01"/>',13);
 var ICON_MINUS=svg('<path d="M5 12h14"/>',13);
+var ICON_TEAM=svg('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'+
+  '<path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',18);
+var ICON_X=svg('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',13);
+var ICON_BARS=svg('<path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/>'+
+  '<rect x="12" y="8" width="3" height="10"/><rect x="17" y="4" width="3" height="14"/>',17);
 
 /* ---------- bayraklar ----------
    Emoji bayraklar (🇹🇷 vb.) Windows'ta HIC render edilmiyor (iki harfli kod
@@ -210,7 +218,8 @@ var T={
   readingPeriod:'Reading the monthly report…',rendering:'Preparing the dashboard…',ready:'Ready',
   skipToContent:'Skip to content',language:'Language',noPeriodYet:'No period registered yet. Open Settings and run the Gmail scan, or add this month’s spreadsheet link manually.',
   settingsIntro:'The monthly report arrives as a new spreadsheet each month. The Gmail scan finds it automatically; if it doesn’t, add the link manually.',
-  regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.'},
+  regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.',
+  search:'Search',searchPh:'Search site or RO…',headcount:'Headcount',people:'people',inSelection:'in the current selection',topProjects:'Top projects',segment:'Segment',planCol:'Plan',realCol:'Real',clear:'Clear',selection:'Selection',drillHint:'Click a bar to go deeper',allSites:'All sites',team:'Team',noProjects:'No project rows in this scope',results:'results',noMatch:'Nothing matched',budgetVsDone:'Budget Year vs Launch Done'},
  tr:{whatAmILookingAt:'Bu ekran ne anlatıyor',year:'Yıl',month:'Ay',productType:'Ürün tipi',
   projectType:'Proje tipi',customer:'Müşteri',all:'Tümü',allROs:'Tüm RO’lar',sites:'site',site:'Site',
   projects:'proje',of:'/',byRO:'Bölgesel organizasyona göre',clickRow:'Site’ları görmek için satıra tıklayın',
@@ -228,7 +237,8 @@ var T={
   readingPeriod:'Aylık rapor okunuyor…',rendering:'Pano hazırlanıyor…',ready:'Hazır',
   skipToContent:'İçeriğe geç',language:'Dil',noPeriodYet:'Henüz kayıtlı dönem yok. Ayarlar’ı açıp Gmail taramasını çalıştırın ya da bu ayın spreadsheet linkini elle ekleyin.',
   settingsIntro:'Aylık rapor her ay yeni bir spreadsheet olarak geliyor. Gmail taraması onu otomatik buluyor; bulamazsa linki elle ekleyin.',
-  regionalOrgs:'bölgesel organizasyon',scanningSheets:'48 sayfa taranıyor, ilk yükleme biraz sürebilir.'},
+  regionalOrgs:'bölgesel organizasyon',scanningSheets:'48 sayfa taranıyor, ilk yükleme biraz sürebilir.',
+  search:'Ara',searchPh:'Site veya RO ara…',headcount:'Çalışan sayısı',people:'kişi',inSelection:'seçili kapsamda',topProjects:'TOP projeler',segment:'Segment',planCol:'Plan',realCol:'Gerçek',clear:'Temizle',selection:'Seçim',drillHint:'Detay için bir çubuğa tıklayın',allSites:'Tüm site’lar',team:'Ekip',noProjects:'Bu kapsamda proje satırı yok',results:'sonuç',noMatch:'Eşleşme yok',budgetVsDone:'Budget Year — Launch Done'},
  fr:{whatAmILookingAt:'Que suis-je en train de voir',year:'Année',month:'Mois',productType:'Type de produit',
   projectType:'Type de projet',customer:'Client',all:'Tous',allROs:'Tous les RO',sites:'sites',site:'Site',
   projects:'projets',of:'sur',byRO:'Par organisation régionale',clickRow:'Cliquez sur une ligne pour voir ses sites',
@@ -246,7 +256,8 @@ var T={
   readingPeriod:'Lecture du rapport mensuel…',rendering:'Préparation du tableau de bord…',ready:'Prêt',
   skipToContent:'Aller au contenu',language:'Langue',noPeriodYet:'Aucune période enregistrée. Ouvrez Paramètres et lancez l’analyse Gmail, ou ajoutez le lien du fichier manuellement.',
   settingsIntro:'Le rapport mensuel arrive chaque mois dans un nouveau fichier. L’analyse Gmail le trouve automatiquement ; sinon, ajoutez le lien manuellement.',
-  regionalOrgs:'organisations régionales',scanningSheets:'analyse de 48 feuilles, le premier chargement peut prendre un moment.'},
+  regionalOrgs:'organisations régionales',scanningSheets:'analyse de 48 feuilles, le premier chargement peut prendre un moment.',
+  search:'Rechercher',searchPh:'Rechercher un site ou un RO…',headcount:'Effectif',people:'personnes',inSelection:'dans la sélection actuelle',topProjects:'Principaux projets',segment:'Segment',planCol:'Plan',realCol:'Réel',clear:'Effacer',selection:'Sélection',drillHint:'Cliquez sur une barre pour approfondir',allSites:'Tous les sites',team:'Équipe',noProjects:'Aucun projet dans ce périmètre',results:'résultats',noMatch:'Aucun résultat',budgetVsDone:'Budget Year vs Launch Done'},
  de:{whatAmILookingAt:'Was sehe ich hier',year:'Jahr',month:'Monat',productType:'Produkttyp',
   projectType:'Projekttyp',customer:'Kunde',all:'Alle',allROs:'Alle ROs',sites:'Standorte',site:'Standort',
   projects:'Projekte',of:'von',byRO:'Nach Regionalorganisation',clickRow:'Zeile anklicken, um Standorte zu sehen',
@@ -264,7 +275,8 @@ var T={
   readingPeriod:'Monatsbericht wird gelesen…',rendering:'Dashboard wird vorbereitet…',ready:'Bereit',
   skipToContent:'Zum Inhalt springen',language:'Sprache',noPeriodYet:'Noch keine Periode registriert. Öffnen Sie die Einstellungen und starten Sie den Gmail-Scan, oder fügen Sie den Link manuell hinzu.',
   settingsIntro:'Der Monatsbericht kommt jeden Monat als neue Datei. Der Gmail-Scan findet sie automatisch; andernfalls den Link manuell hinzufügen.',
-  regionalOrgs:'Regionalorganisationen',scanningSheets:'48 Blätter werden gescannt, der erste Ladevorgang kann etwas dauern.'},
+  regionalOrgs:'Regionalorganisationen',scanningSheets:'48 Blätter werden gescannt, der erste Ladevorgang kann etwas dauern.',
+  search:'Suchen',searchPh:'Site oder RO suchen…',headcount:'Mitarbeiterzahl',people:'Personen',inSelection:'in der aktuellen Auswahl',topProjects:'Top-Projekte',segment:'Segment',planCol:'Plan',realCol:'Ist',clear:'Zurücksetzen',selection:'Auswahl',drillHint:'Für Details auf einen Balken klicken',allSites:'Alle Sites',team:'Team',noProjects:'Keine Projektzeilen in diesem Bereich',results:'Treffer',noMatch:'Keine Treffer',budgetVsDone:'Budget Year vs Launch Done'},
  es:{whatAmILookingAt:'Qué estoy viendo',year:'Año',month:'Mes',productType:'Tipo de producto',
   projectType:'Tipo de proyecto',customer:'Cliente',all:'Todos',allROs:'Todos los RO',sites:'plantas',site:'Planta',
   projects:'proyectos',of:'de',byRO:'Por organización regional',clickRow:'Haz clic en una fila para ver sus plantas',
@@ -282,7 +294,8 @@ var T={
   readingPeriod:'Leyendo el informe mensual…',rendering:'Preparando el panel…',ready:'Listo',
   skipToContent:'Ir al contenido',language:'Idioma',noPeriodYet:'Aún no hay período registrado. Abre Ajustes y ejecuta el escaneo de Gmail, o añade el enlace manualmente.',
   settingsIntro:'El informe mensual llega cada mes como un archivo nuevo. El escaneo de Gmail lo encuentra automáticamente; si no, añade el enlace manualmente.',
-  regionalOrgs:'organizaciones regionales',scanningSheets:'escaneando 48 hojas, la primera carga puede tardar un momento.'},
+  regionalOrgs:'organizaciones regionales',scanningSheets:'escaneando 48 hojas, la primera carga puede tardar un momento.',
+  search:'Buscar',searchPh:'Buscar sitio o RO…',headcount:'Plantilla',people:'personas',inSelection:'en la selección actual',topProjects:'Principales proyectos',segment:'Segmento',planCol:'Plan',realCol:'Real',clear:'Limpiar',selection:'Selección',drillHint:'Haga clic en una barra para profundizar',allSites:'Todos los sitios',team:'Equipo',noProjects:'No hay proyectos en este alcance',results:'resultados',noMatch:'Sin resultados',budgetVsDone:'Budget Year vs Launch Done'},
  it:{whatAmILookingAt:'Cosa sto guardando',year:'Anno',month:'Mese',productType:'Tipo di prodotto',
   projectType:'Tipo di progetto',customer:'Cliente',all:'Tutti',allROs:'Tutti i RO',sites:'siti',site:'Sito',
   projects:'progetti',of:'su',byRO:'Per organizzazione regionale',clickRow:'Clicca una riga per vedere i siti',
@@ -300,7 +313,8 @@ var T={
   readingPeriod:'Lettura del report mensile…',rendering:'Preparazione della dashboard…',ready:'Pronto',
   skipToContent:'Vai al contenuto',language:'Lingua',noPeriodYet:'Nessun periodo registrato. Apri Impostazioni ed esegui la scansione Gmail, oppure aggiungi il link manualmente.',
   settingsIntro:'Il report mensile arriva ogni mese come nuovo file. La scansione Gmail lo trova automaticamente; altrimenti aggiungi il link manualmente.',
-  regionalOrgs:'organizzazioni regionali',scanningSheets:'scansione di 48 fogli, il primo caricamento può richiedere un momento.'},
+  regionalOrgs:'organizzazioni regionali',scanningSheets:'scansione di 48 fogli, il primo caricamento può richiedere un momento.',
+  search:'Cerca',searchPh:'Cerca sito o RO…',headcount:'Organico',people:'persone',inSelection:'nella selezione attuale',topProjects:'Progetti principali',segment:'Segmento',planCol:'Piano',realCol:'Reale',clear:'Azzera',selection:'Selezione',drillHint:'Clicca una barra per approfondire',allSites:'Tutti i siti',team:'Team',noProjects:'Nessun progetto in questo ambito',results:'risultati',noMatch:'Nessun risultato',budgetVsDone:'Budget Year vs Launch Done'},
  pt:{whatAmILookingAt:'O que estou a ver',year:'Ano',month:'Mês',productType:'Tipo de produto',
   projectType:'Tipo de projeto',customer:'Cliente',all:'Todos',allROs:'Todos os RO',sites:'unidades',site:'Unidade',
   projects:'projetos',of:'de',byRO:'Por organização regional',clickRow:'Clique numa linha para ver as unidades',
@@ -318,7 +332,8 @@ var T={
   readingPeriod:'A ler o relatório mensal…',rendering:'A preparar o painel…',ready:'Pronto',
   skipToContent:'Ir para o conteúdo',language:'Idioma',noPeriodYet:'Ainda não há período registado. Abra Definições e execute a análise do Gmail, ou adicione o link manualmente.',
   settingsIntro:'O relatório mensal chega todos os meses como um novo ficheiro. A análise do Gmail encontra-o automaticamente; caso contrário, adicione o link manualmente.',
-  regionalOrgs:'organizações regionais',scanningSheets:'a analisar 48 folhas, o primeiro carregamento pode demorar um momento.'},
+  regionalOrgs:'organizações regionais',scanningSheets:'a analisar 48 folhas, o primeiro carregamento pode demorar um momento.',
+  search:'Pesquisar',searchPh:'Pesquisar site ou RO…',headcount:'Efetivo',people:'pessoas',inSelection:'na seleção atual',topProjects:'Principais projetos',segment:'Segmento',planCol:'Plano',realCol:'Real',clear:'Limpar',selection:'Seleção',drillHint:'Clique numa barra para detalhar',allSites:'Todos os sites',team:'Equipa',noProjects:'Sem projetos neste âmbito',results:'resultados',noMatch:'Sem resultados',budgetVsDone:'Budget Year vs Launch Done'},
  nl:{whatAmILookingAt:'Wat zie ik hier',year:'Jaar',month:'Maand',productType:'Producttype',
   projectType:'Projecttype',customer:'Klant',all:'Alle',allROs:'Alle ROs',sites:'locaties',site:'Locatie',
   projects:'projecten',of:'van',byRO:'Per regionale organisatie',clickRow:'Klik op een rij voor de locaties',
@@ -336,7 +351,8 @@ var T={
   readingPeriod:'Maandrapport lezen…',rendering:'Dashboard voorbereiden…',ready:'Klaar',
   skipToContent:'Naar inhoud',language:'Taal',noPeriodYet:'Nog geen periode geregistreerd. Open Instellingen en start de Gmail-scan, of voeg de link handmatig toe.',
   settingsIntro:'Het maandrapport komt elke maand als een nieuw bestand. De Gmail-scan vindt het automatisch; zo niet, voeg de link handmatig toe.',
-  regionalOrgs:'regionale organisaties',scanningSheets:'48 bladen worden gescand, de eerste keer laden kan even duren.'},
+  regionalOrgs:'regionale organisaties',scanningSheets:'48 bladen worden gescand, de eerste keer laden kan even duren.',
+  search:'Zoeken',searchPh:'Zoek site of RO…',headcount:'Personeelsbestand',people:'personen',inSelection:'in de huidige selectie',topProjects:'Topprojecten',segment:'Segment',planCol:'Plan',realCol:'Werkelijk',clear:'Wissen',selection:'Selectie',drillHint:'Klik op een balk voor details',allSites:'Alle sites',team:'Team',noProjects:'Geen projecten in dit bereik',results:'resultaten',noMatch:'Geen resultaten',budgetVsDone:'Budget Year vs Launch Done'},
  pl:{whatAmILookingAt:'Na co patrzę',year:'Rok',month:'Miesiąc',productType:'Typ produktu',
   projectType:'Typ projektu',customer:'Klient',all:'Wszystkie',allROs:'Wszystkie RO',sites:'zakłady',site:'Zakład',
   projects:'projekty',of:'z',byRO:'Wg organizacji regionalnej',clickRow:'Kliknij wiersz, aby zobaczyć zakłady',
@@ -354,7 +370,8 @@ var T={
   readingPeriod:'Odczyt raportu miesięcznego…',rendering:'Przygotowanie pulpitu…',ready:'Gotowe',
   skipToContent:'Przejdź do treści',language:'Język',noPeriodYet:'Brak zarejestrowanego okresu. Otwórz Ustawienia i uruchom skan Gmail lub dodaj link ręcznie.',
   settingsIntro:'Raport miesięczny przychodzi co miesiąc jako nowy plik. Skan Gmail znajduje go automatycznie; jeśli nie, dodaj link ręcznie.',
-  regionalOrgs:'organizacje regionalne',scanningSheets:'skanowanie 48 arkuszy, pierwsze ładowanie może chwilę potrwać.'},
+  regionalOrgs:'organizacje regionalne',scanningSheets:'skanowanie 48 arkuszy, pierwsze ładowanie może chwilę potrwać.',
+  search:'Szukaj',searchPh:'Szukaj site lub RO…',headcount:'Liczba pracowników',people:'osób',inSelection:'w bieżącym wyborze',topProjects:'Największe projekty',segment:'Segment',planCol:'Plan',realCol:'Rzeczywisty',clear:'Wyczyść',selection:'Wybór',drillHint:'Kliknij słupek, aby przejść głębiej',allSites:'Wszystkie site',team:'Zespół',noProjects:'Brak projektów w tym zakresie',results:'wyników',noMatch:'Brak wyników',budgetVsDone:'Budget Year vs Launch Done'},
  cs:{whatAmILookingAt:'Na co se dívám',year:'Rok',month:'Měsíc',productType:'Typ produktu',
   projectType:'Typ projektu',customer:'Zákazník',all:'Vše',allROs:'Všechny RO',sites:'závody',site:'Závod',
   projects:'projekty',of:'z',byRO:'Podle regionální organizace',clickRow:'Kliknutím na řádek zobrazíte závody',
@@ -372,7 +389,8 @@ var T={
   readingPeriod:'Čtení měsíční zprávy…',rendering:'Příprava přehledu…',ready:'Hotovo',
   skipToContent:'Přejít na obsah',language:'Jazyk',noPeriodYet:'Zatím není registrováno žádné období. Otevřete Nastavení a spusťte skenování Gmailu, nebo přidejte odkaz ručně.',
   settingsIntro:'Měsíční zpráva přichází každý měsíc jako nový soubor. Skenování Gmailu ji najde automaticky; jinak přidejte odkaz ručně.',
-  regionalOrgs:'regionální organizace',scanningSheets:'skenuje se 48 listů, první načtení může chvíli trvat.'},
+  regionalOrgs:'regionální organizace',scanningSheets:'skenuje se 48 listů, první načtení může chvíli trvat.',
+  search:'Hledat',searchPh:'Hledat site nebo RO…',headcount:'Počet lidí',people:'lidí',inSelection:'ve vybraném rozsahu',topProjects:'Nejvýznamnější projekty',segment:'Segment',planCol:'Plán',realCol:'Skutečnost',clear:'Vymazat',selection:'Výběr',drillHint:'Klikněte na sloupec pro detail',allSites:'Všechny site',team:'Tým',noProjects:'V tomto rozsahu nejsou projekty',results:'výsledků',noMatch:'Žádné výsledky',budgetVsDone:'Budget Year vs Launch Done'},
  ro:{whatAmILookingAt:'Ce văd aici',year:'An',month:'Lună',productType:'Tip produs',
   projectType:'Tip proiect',customer:'Client',all:'Toate',allROs:'Toate RO',sites:'situri',site:'Sit',
   projects:'proiecte',of:'din',byRO:'După organizația regională',clickRow:'Faceți clic pe un rând pentru situri',
@@ -390,7 +408,8 @@ var T={
   readingPeriod:'Se citește raportul lunar…',rendering:'Se pregătește tabloul…',ready:'Gata',
   skipToContent:'Salt la conținut',language:'Limbă',noPeriodYet:'Nicio perioadă înregistrată. Deschideți Setări și rulați scanarea Gmail, sau adăugați linkul manual.',
   settingsIntro:'Raportul lunar sosește în fiecare lună ca fișier nou. Scanarea Gmail îl găsește automat; altfel, adăugați linkul manual.',
-  regionalOrgs:'organizații regionale',scanningSheets:'se scanează 48 de foi, prima încărcare poate dura un moment.'},
+  regionalOrgs:'organizații regionale',scanningSheets:'se scanează 48 de foi, prima încărcare poate dura un moment.',
+  search:'Caută',searchPh:'Caută site sau RO…',headcount:'Număr de angajați',people:'persoane',inSelection:'în selecția curentă',topProjects:'Cele mai mari proiecte',segment:'Segment',planCol:'Plan',realCol:'Real',clear:'Șterge',selection:'Selecție',drillHint:'Faceți clic pe o bară pentru detalii',allSites:'Toate site-urile',team:'Echipă',noProjects:'Niciun proiect în acest domeniu',results:'rezultate',noMatch:'Niciun rezultat',budgetVsDone:'Budget Year vs Launch Done'},
  hu:{whatAmILookingAt:'Mit látok itt',year:'Év',month:'Hónap',productType:'Terméktípus',
   projectType:'Projekttípus',customer:'Vevő',all:'Összes',allROs:'Összes RO',sites:'telephely',site:'Telephely',
   projects:'projekt',of:'/',byRO:'Regionális szervezet szerint',clickRow:'Kattintson egy sorra a telephelyekért',
@@ -408,7 +427,8 @@ var T={
   readingPeriod:'Havi jelentés olvasása…',rendering:'Irányítópult előkészítése…',ready:'Kész',
   skipToContent:'Ugrás a tartalomra',language:'Nyelv',noPeriodYet:'Még nincs regisztrált időszak. Nyissa meg a Beállításokat és futtassa a Gmail keresést, vagy adja hozzá a linket kézzel.',
   settingsIntro:'A havi jelentés minden hónapban új fájlként érkezik. A Gmail keresés automatikusan megtalálja; ha nem, adja hozzá a linket kézzel.',
-  regionalOrgs:'regionális szervezet',scanningSheets:'48 munkalap beolvasása, az első betöltés eltarthat egy ideig.'},
+  regionalOrgs:'regionális szervezet',scanningSheets:'48 munkalap beolvasása, az első betöltés eltarthat egy ideig.',
+  search:'Keresés',searchPh:'Site vagy RO keresése…',headcount:'Létszám',people:'fő',inSelection:'a jelenlegi kijelölésben',topProjects:'Top projektek',segment:'Szegmens',planCol:'Terv',realCol:'Tény',clear:'Törlés',selection:'Kijelölés',drillHint:'Kattintson egy sávra a részletekért',allSites:'Összes site',team:'Csapat',noProjects:'Nincs projekt ebben a körben',results:'találat',noMatch:'Nincs találat',budgetVsDone:'Budget Year vs Launch Done'},
  ru:{whatAmILookingAt:'Что я вижу',year:'Год',month:'Месяц',productType:'Тип продукта',
   projectType:'Тип проекта',customer:'Клиент',all:'Все',allROs:'Все RO',sites:'площадки',site:'Площадка',
   projects:'проектов',of:'из',byRO:'По региональной организации',clickRow:'Нажмите на строку, чтобы увидеть площадки',
@@ -426,7 +446,8 @@ var T={
   readingPeriod:'Чтение месячного отчёта…',rendering:'Подготовка панели…',ready:'Готово',
   skipToContent:'Перейти к содержимому',language:'Язык',noPeriodYet:'Период ещё не зарегистрирован. Откройте Настройки и запустите сканирование Gmail или добавьте ссылку вручную.',
   settingsIntro:'Месячный отчёт приходит каждый месяц новым файлом. Сканирование Gmail находит его автоматически; иначе добавьте ссылку вручную.',
-  regionalOrgs:'региональных организаций',scanningSheets:'сканируется 48 листов, первая загрузка может занять время.'},
+  regionalOrgs:'региональных организаций',scanningSheets:'сканируется 48 листов, первая загрузка может занять время.',
+  search:'Поиск',searchPh:'Поиск площадки или RO…',headcount:'Численность',people:'чел.',inSelection:'в текущей выборке',topProjects:'Ключевые проекты',segment:'Сегмент',planCol:'План',realCol:'Факт',clear:'Сбросить',selection:'Выбор',drillHint:'Нажмите на столбец для детализации',allSites:'Все площадки',team:'Команда',noProjects:'В этой выборке нет проектов',results:'результатов',noMatch:'Ничего не найдено',budgetVsDone:'Budget Year vs Launch Done'},
  zh:{whatAmILookingAt:'这个页面在看什么',year:'年份',month:'月份',productType:'产品类型',
   projectType:'项目类型',customer:'客户',all:'全部',allROs:'全部 RO',sites:'工厂',site:'工厂',
   projects:'个项目',of:'/',byRO:'按区域组织',clickRow:'点击行查看其工厂',
@@ -444,7 +465,8 @@ var T={
   readingPeriod:'正在读取月度报告…',rendering:'正在准备仪表板…',ready:'就绪',
   skipToContent:'跳到内容',language:'语言',noPeriodYet:'尚未注册期间。请打开设置并运行 Gmail 扫描，或手动添加链接。',
   settingsIntro:'月度报告每月以新文件形式送达。Gmail 扫描会自动找到它；若未找到，请手动添加链接。',
-  regionalOrgs:'个区域组织',scanningSheets:'正在扫描 48 个工作表，首次加载可能需要一些时间。'},
+  regionalOrgs:'个区域组织',scanningSheets:'正在扫描 48 个工作表，首次加载可能需要一些时间。',
+  search:'搜索',searchPh:'搜索工厂或 RO…',headcount:'员工人数',people:'人',inSelection:'在当前选择范围内',topProjects:'重点项目',segment:'细分',planCol:'计划',realCol:'实际',clear:'清除',selection:'已选',drillHint:'点击柱状条查看下级',allSites:'所有工厂',team:'团队',noProjects:'此范围内没有项目',results:'条结果',noMatch:'无匹配结果',budgetVsDone:'Budget Year vs Launch Done'},
  ja:{whatAmILookingAt:'この画面について',year:'年',month:'月',productType:'製品タイプ',
   projectType:'プロジェクトタイプ',customer:'顧客',all:'すべて',allROs:'すべての RO',sites:'拠点',site:'拠点',
   projects:'件',of:'/',byRO:'地域組織別',clickRow:'行をクリックすると拠点が表示されます',
@@ -462,7 +484,8 @@ var T={
   readingPeriod:'月次レポートを読み込み中…',rendering:'ダッシュボードを準備中…',ready:'準備完了',
   skipToContent:'本文へスキップ',language:'言語',noPeriodYet:'期間が未登録です。設定を開いて Gmail スキャンを実行するか、リンクを手動で追加してください。',
   settingsIntro:'月次レポートは毎月新しいファイルとして届きます。Gmail スキャンが自動的に見つけます。見つからない場合はリンクを手動で追加してください。',
-  regionalOrgs:'の地域組織',scanningSheets:'48 シートをスキャン中です。初回の読み込みには少し時間がかかります。'},
+  regionalOrgs:'の地域組織',scanningSheets:'48 シートをスキャン中です。初回の読み込みには少し時間がかかります。',
+  search:'検索',searchPh:'サイトまたは RO を検索…',headcount:'人員数',people:'人',inSelection:'現在の選択範囲',topProjects:'主要プロジェクト',segment:'セグメント',planCol:'計画',realCol:'実績',clear:'クリア',selection:'選択',drillHint:'バーをクリックして詳細へ',allSites:'すべてのサイト',team:'チーム',noProjects:'この範囲にプロジェクトはありません',results:'件',noMatch:'一致なし',budgetVsDone:'Budget Year vs Launch Done'},
  ko:{whatAmILookingAt:'이 화면 안내',year:'연도',month:'월',productType:'제품 유형',
   projectType:'프로젝트 유형',customer:'고객',all:'전체',allROs:'전체 RO',sites:'사업장',site:'사업장',
   projects:'개 프로젝트',of:'/',byRO:'지역 조직별',clickRow:'행을 클릭하면 사업장이 표시됩니다',
@@ -480,7 +503,8 @@ var T={
   readingPeriod:'월간 보고서 읽는 중…',rendering:'대시보드 준비 중…',ready:'준비 완료',
   skipToContent:'본문으로 건너뛰기',language:'언어',noPeriodYet:'등록된 기간이 없습니다. 설정을 열고 Gmail 스캔을 실행하거나 링크를 수동으로 추가하세요.',
   settingsIntro:'월간 보고서는 매달 새 파일로 도착합니다. Gmail 스캔이 자동으로 찾습니다. 찾지 못하면 링크를 수동으로 추가하세요.',
-  regionalOrgs:'개 지역 조직',scanningSheets:'48개 시트를 스캔 중이며 첫 로드는 다소 시간이 걸릴 수 있습니다.'},
+  regionalOrgs:'개 지역 조직',scanningSheets:'48개 시트를 스캔 중이며 첫 로드는 다소 시간이 걸릴 수 있습니다.',
+  search:'검색',searchPh:'사이트 또는 RO 검색…',headcount:'인원수',people:'명',inSelection:'현재 선택 범위',topProjects:'주요 프로젝트',segment:'세그먼트',planCol:'계획',realCol:'실적',clear:'초기화',selection:'선택',drillHint:'막대를 클릭하면 하위로 이동',allSites:'모든 사이트',team:'팀',noProjects:'이 범위에 프로젝트가 없습니다',results:'건',noMatch:'일치 항목 없음',budgetVsDone:'Budget Year vs Launch Done'},
  ar:{whatAmILookingAt:'ما الذي أنظر إليه',year:'السنة',month:'الشهر',productType:'نوع المنتج',
   projectType:'نوع المشروع',customer:'العميل',all:'الكل',allROs:'كل RO',sites:'مواقع',site:'الموقع',
   projects:'مشاريع',of:'من',byRO:'حسب المنظمة الإقليمية',clickRow:'انقر على صف لعرض مواقعه',
@@ -498,7 +522,8 @@ var T={
   readingPeriod:'جارٍ قراءة التقرير الشهري…',rendering:'جارٍ تجهيز اللوحة…',ready:'جاهز',
   skipToContent:'انتقل إلى المحتوى',language:'اللغة',noPeriodYet:'لا توجد فترة مسجلة بعد. افتح الإعدادات وشغّل فحص Gmail، أو أضف الرابط يدويًا.',
   settingsIntro:'يصل التقرير الشهري كل شهر كملف جديد. يجده فحص Gmail تلقائيًا؛ وإلا فأضف الرابط يدويًا.',
-  regionalOrgs:'منظمات إقليمية',scanningSheets:'يتم فحص 48 ورقة، وقد يستغرق التحميل الأول لحظة.'}
+  regionalOrgs:'منظمات إقليمية',scanningSheets:'يتم فحص 48 ورقة، وقد يستغرق التحميل الأول لحظة.',
+  search:'بحث',searchPh:'ابحث عن موقع أو RO…',headcount:'عدد الموظفين',people:'أشخاص',inSelection:'في التحديد الحالي',topProjects:'أهم المشاريع',segment:'القطاع',planCol:'الخطة',realCol:'الفعلي',clear:'مسح',selection:'التحديد',drillHint:'انقر على شريط للتعمق',allSites:'كل المواقع',team:'الفريق',noProjects:'لا توجد مشاريع في هذا النطاق',results:'نتائج',noMatch:'لا توجد نتائج',budgetVsDone:'Budget Year vs Launch Done'}
 };
 var LANG='en', LOCALE='en-US';
 function t(k){ var d=T[LANG]||T.en; return (d[k]!=null?d[k]:(T.en[k]!=null?T.en[k]:k)); }
@@ -523,7 +548,7 @@ function applyLang(code){
   buildLangMenu();
   /* ay adlari da dile bagli — donem secicisini secimi koruyarak yeniden kur */
   if(BOOT&&BOOT.periods&&BOOT.periods.length&&DATA&&DATA.period) buildPeriodSelects(DATA.period.key);
-  if(DATA){ buildFilterSegs(); render(); }
+  if(DATA){ buildFilterSegs(); buildRoSiteSelects(); render(); }
 }
 function buildLangMenu(){
   $('langMenu').innerHTML=LANGS.map(function(l){
@@ -563,6 +588,9 @@ var GLOSSARY=[
  ['Sites reported','How many of the 48 sites have a sheet with data in this period. A low number means the picture is incomplete, not that performance is bad.','Sheet presence per site in the selected month’s spreadsheet.'],
  ['NEW / REMAN','NEW covers new product projects. REMAN covers remanufacturing — used parts restored and sold again. The All filter adds both together.','Column pair repeated across Sections 3 and 4.'],
  ['P1 / P10 / TTM','P1 = projects with development work. P10 (written PCO in some sheets) = projects without development. TTM = an OEM product taken straight to the aftermarket.','Row labels in Section 4; the “Type” column in the detail tables.'],
+ ['Headcount','How many people the site names in its monthly report — the project team behind these launches. The same person holding two roles is counted once. It follows the RO and site selection: pick a RO and the number is that RO’s team.','Section 2 “HUMAN RESOURCES”: the distinct names listed against Project Manager and the R&D / Process / Quality / Purchasing / Supply chain PTM rows.'],
+ ['O.I (Order Intake)','Order Intake — the turnover the projects bring in, in M€. This dashboard writes O.I where the sheet writes Turnover; they are the same figure.','Section 3 “ORDER INTAKE” for the yearly figure; the “Turnover (k€)” column of the detail tables for everything counted row by row.'],
+ ['Top projects','The biggest projects by O.I inside the current selection, largest first. Segment, planned and real launch dates come straight from the sheet row — an empty Real date means the project has not launched yet.','The VS / OES Current Portfolio tables: Model, Segment, Launch Sheet Date (Plan / Real) and Turnover (k€).'],
  ['VS / OES','VS = Valeo Service customers. OES = the OEM’s service arm. Both axes add up to the same total, from different angles.','Row labels in Sections 3 and 4; block names in the detail tables.']
 ];
 function fillGlossary(hi,query){
@@ -621,12 +649,13 @@ function siteMetrics(site){
 }
 function sumMetrics(list){
   var acc={budgetCount:0,budgetYTD:0,budgetTurnover:0,realCount:0,realTurnoverM:0,
-           planTurnoverM:0,portfolioTurnoverM:0,portfolioCount:0,behind:0,reported:0};
+           planTurnoverM:0,portfolioTurnoverM:0,portfolioCount:0,behind:0,reported:0,headcount:0};
   list.forEach(function(s){
     var m=siteMetrics(s);
     ['budgetCount','budgetYTD','budgetTurnover','realCount','realTurnoverM','planTurnoverM',
      'portfolioTurnoverM','portfolioCount']
       .forEach(function(k){ if(m[k]!=null) acc[k]+=m[k]; });
+    acc.headcount+=s.headcount||0;
     if(m.delta!=null&&m.delta<0) acc.behind++;
     if(s.status!=='no-data') acc.reported++;
   });
@@ -634,6 +663,28 @@ function sumMetrics(list){
   return acc;
 }
 function sitesOfRo(ro){ return (DATA.sites||[]).filter(function(s){ return s.ro===ro; }); }
+function siteKey(s){ return s.key||s.sheet; }
+/* Aktif RO/site secimine gore daraltilmis site listesi — tum ekran bunun uzerinden
+   hesaplanir. Secim yoksa tum site'lar. */
+function scopedSites(){
+  var list=DATA.sites||[];
+  if(F.ro!=='ALL') list=list.filter(function(s){ return s.ro===F.ro; });
+  if(F.site!=='ALL') list=list.filter(function(s){ return siteKey(s)===F.site; });
+  return list;
+}
+function totalHeadcount(){
+  var n=0; (DATA.sites||[]).forEach(function(s){ n+=s.headcount||0; }); return n;
+}
+/* Serbest metin aramasi: site adi, sayfa adi, RO kodu ve RO adi. */
+function searchHits(q){
+  var n=q.trim().toLowerCase(); if(!n) return [];
+  return (DATA.sites||[]).filter(function(s){
+    return (s.site||'').toLowerCase().indexOf(n)>-1 ||
+           (s.sheet||'').toLowerCase().indexOf(n)>-1 ||
+           (s.ro||'').toLowerCase().indexOf(n)>-1 ||
+           (BOOT.roLabels[s.ro]||'').toLowerCase().indexOf(n)>-1;
+  });
+}
 function hasReman(){
   return (DATA.sites||[]).some(function(s){
     return (s.detail&&s.detail.blocks||[]).some(function(b){ return b.status==='REMAN'&&b.total.count>0; });
@@ -701,7 +752,7 @@ function statusPill(st){
 function render(){
   if(!DATA) return;
   if(DATA.error){ $('view').innerHTML='<div class="notice err">'+esc(DATA.error)+'</div>'; return; }
-  buildFilterSegs();
+  buildFilterSegs(); renderSelStrip();
   if(NAV.level==='ro') renderRoLevel();
   else renderSiteLevel();
   if(window.innerWidth<=768)
@@ -740,10 +791,20 @@ function kpiCard(o){
     '<div class="kpi-foot"><span>'+o.footL+'</span>'+(o.footR||'')+'</div>'+
   '</div>';
 }
+/* "Sites reported" paydasi kapsama gore degisir: tum RO'larda 48, bir RO
+   secilince o RO'nun kayitli site sayisi, tek site secilince 1. */
+function scopeSiteCount(){
+  if(F.site!=='ALL') return 1;
+  if(F.ro!=='ALL') return (BOOT.roCounts&&BOOT.roCounts[F.ro])||scopedSites().length||1;
+  return BOOT.siteCount;
+}
+/* "1 sites" olmasin; kucuk harfle satir icinde kullanilir. */
+function sitesWord(n){ return (n===1?t('site'):t('sites')).toLocaleLowerCase(LOCALE); }
 function kpiRow(a){
   var pctYear=pct(a.realTurnoverM,a.budgetTurnover);
   var pctPlan=pct(a.realTurnoverM,a.planTurnoverM);
-  var pctSites=pct(a.reported,BOOT.siteCount);
+  var siteTotal=scopeSiteCount();
+  var pctSites=pct(a.reported,siteTotal);
   return '<div class="kpis">'+
     kpiCard({
       hue:'var(--ro-PDE)', icon:ICON_TARGET, label:'Budget Year', gloss:'Budget Year',
@@ -763,13 +824,185 @@ function kpiRow(a){
     })+
     kpiCard({
       hue:'var(--ro-PTA)', icon:ICON_PLANT, label:'Sites reported', gloss:'Sites reported',
-      value:nf(a.reported)+'<span class="unit">/ '+BOOT.siteCount+'</span>',
+      value:nf(a.reported)+'<span class="unit">/ '+siteTotal+'</span>',
       sub:(a.behind? '<b>'+a.behind+'</b> '+esc(t('sitesBehind')) : esc(t('noSiteBehind'))),
       meter:pctSites||0,
       footL:esc(cap(t('reporting'))),
       footR:'<span>'+(pctSites==null?'—':pctSites+'%')+'</span>'
     })+
+    /* Headcount — Bolum 2 HUMAN RESOURCES'taki benzersiz kisi sayisi.
+       Olcer, secili kapsamin TUM site'lar icindeki payini gosterir. */
+    kpiCard({
+      hue:'var(--ro-PDC)', icon:ICON_TEAM, label:'Headcount', gloss:'Headcount',
+      value:nf(a.headcount)+'<span class="unit">'+esc(t('people'))+'</span>',
+      sub:esc(scopeLabel()),
+      meter:pct(a.headcount,totalHeadcount())||0,
+      footL:esc(cap(t('inSelection'))),
+      footR:'<span>'+nf(a.reported)+' '+esc(sitesWord(a.reported))+'</span>'
+    })+
   '</div>';
+}
+/* Aktif kapsamin tek satirlik adi — KPI altinda ve secim seridinde kullanilir. */
+function scopeLabel(){
+  if(F.site!=='ALL'){
+    var hit=(DATA.sites||[]).filter(function(s){ return siteKey(s)===F.site; })[0];
+    if(hit) return hit.site;
+  }
+  if(F.ro!=='ALL') return F.ro+' — '+(BOOT.roLabels[F.ro]||'');
+  return t('allROs');
+}
+
+/* ---------- secim seridi ---------- */
+/* Hangi kapsamda bakildigi filtrelerin hemen altinda gorunur; her cip kendi
+   filtresini temizler. */
+function chip(key,label,value){
+  return '<button class="selchip" type="button" data-clear="'+key+'">'+
+    '<span class="selchip-k">'+esc(label)+'</span><span class="selchip-v">'+esc(value)+'</span>'+
+    ICON_X+'</button>';
+}
+function renderSelStrip(){
+  var el=$('selStrip'); if(!el) return;
+  var out='';
+  if(F.ro!=='ALL')       out+=chip('ro','RO',F.ro+' · '+(BOOT.roLabels[F.ro]||''));
+  if(F.site!=='ALL')     out+=chip('site',t('site'),scopeLabel());
+  if(F.status!=='ALL')   out+=chip('status',t('productType'),F.status);
+  if(F.type!=='ALL')     out+=chip('type',t('projectType'),F.type);
+  if(F.customer!=='ALL') out+=chip('customer',t('customer'),F.customer);
+  if(F.q.trim())         out+=chip('q',t('search'),F.q.trim());
+  if(!out){ el.hidden=true; el.innerHTML=''; return; }
+  el.hidden=false;
+  el.innerHTML='<span class="selstrip-l">'+esc(t('selection'))+'</span>'+out+
+    '<button class="selclear" type="button" data-clear="all">'+esc(t('clear'))+'</button>';
+  el.querySelectorAll('[data-clear]').forEach(function(b){
+    b.onclick=function(){
+      var k=b.getAttribute('data-clear');
+      if(k==='all'){ F.ro='ALL'; F.site='ALL'; F.status='ALL'; F.type='ALL'; F.customer='ALL'; F.q=''; }
+      else if(k==='q') F.q='';
+      else F[k]='ALL';
+      if(k==='all'||k==='ro'||k==='site'){ NAV.level='ro'; NAV.expandedRo=null; }
+      $('inpSearch').value=F.q;
+      buildRoSiteSelects(); render();
+    };
+  });
+}
+
+/* ---------- grafik: Budget Year vs Launch Done, RO -> site drill-down ----------
+   docs/grafikler.md Chart.js diyor; burada bilerek kutuphanesiz cizim yapiliyor:
+   Apps Script web app'i kurumsal agda CDN'e erisemeyebiliyor ve panonun diger
+   tum gorselleri (donut, sparkline, bullet bar) zaten ayni satir ici SVG/CSS
+   dilinde. Paletin kendisi grafikler.md'nin dedigi gibi marka renklerinden
+   turuyor (--ro-*, dogrulanmis 7 tonluk kategorik palet). */
+function chartRows(){
+  if(F.ro==='ALL'){
+    var out=[];
+    BOOT.roOrder.forEach(function(ro){
+      var list=sitesOfRo(ro); if(!list.length) return;
+      var a=sumMetrics(list);
+      out.push({k:ro, label:ro, sub:BOOT.roLabels[ro]||'', color:roColor(ro),
+                budget:a.budgetTurnover||0, done:a.realTurnoverM||0, level:'ro'});
+    });
+    return out;
+  }
+  /* Bir RO secili: cubuklar artik o RO'nun site'lari (is arkadasi talebi:
+     "site isimleri de bar olarak gorunsun"). */
+  return scopedSites().map(function(st){
+    var m=siteMetrics(st);
+    return {k:siteKey(st), label:st.site, sub:st.sheet, color:roColor(st.ro),
+            budget:m.budgetTurnover||0, done:m.realTurnoverM||0, level:'site', site:st};
+  });
+}
+function chartPanel(){
+  var rows=chartRows();
+  if(!rows.length) return '';
+  rows.sort(function(a,b){ return b.budget-a.budget; });
+  var max=0; rows.forEach(function(r){ max=Math.max(max,r.budget,r.done); });
+  if(max<=0) max=1;
+  var bars=rows.map(function(r){
+    var p=pct(r.done,r.budget);
+    return '<button class="ch-row" type="button" data-ck="'+esc(r.k)+'" data-cl="'+r.level+'" '+
+      'style="--c:'+r.color+'" title="'+esc(r.label+' · '+r.sub)+'">'+
+      '<span class="ch-lab"><b>'+esc(r.label)+'</b><i>'+esc(r.sub)+'</i></span>'+
+      '<span class="ch-bars">'+
+        '<span class="ch-b budget" style="width:'+(r.budget/max*100).toFixed(1)+'%"></span>'+
+        '<span class="ch-b done" style="width:'+(r.done/max*100).toFixed(1)+'%"></span>'+
+      '</span>'+
+      /* moneyTag icindeki M€ span'i sutun flex'inde ayri satira dusuyordu —
+         tek bir satir ici kapsayiciya alindi. */
+      '<span class="ch-val"><span class="ch-num">'+moneyTag(r.done)+'</span>'+
+        '<i>/ '+m2(r.budget)+' M€'+(p==null?'':' · '+p+'%')+'</i></span>'+
+    '</button>';
+  }).join('');
+  return '<div class="section-head"><h2 class="section-title">'+ICON_BARS+' '+
+      '<span lang="en">'+esc(t('budgetVsDone'))+'</span></h2>'+
+      '<span class="section-note">'+esc(t('drillHint'))+'</span></div>'+
+    '<div class="chart">'+
+      '<div class="ch-key"><span><i class="sw budget"></i><span lang="en">Budget Year</span></span>'+
+        '<span><i class="sw done"></i><span lang="en">Launch Done</span></span></div>'+
+      bars+'</div>';
+}
+
+/* ---------- TOPS: en buyuk cirolu projeler ----------
+   Kaynak: "2026 VS/OES Current Portfolio" tablolarindaki Model / Segment /
+   Launch Sheet Date / Turnover (k€) sutunlari (kullanici tarifi). Ciro burada
+   sayfanin kendi birimiyle (k€) gosterilir — proje basina M€ tek ondalikta
+   hepsini 0.0 yapardi. */
+function topProjectsOf(list){
+  var out=[];
+  list.forEach(function(st){
+    (st.topProjects||[]).forEach(function(p){
+      if(!statusMatches_(p.status)) return;
+      if(F.customer!=='ALL'&&p.customer!==F.customer) return;
+      if(F.type!=='ALL'&&p.type!==F.type) return;
+      out.push({p:p,site:st});
+    });
+  });
+  out.sort(function(a,b){ return (b.p.turnover||0)-(a.p.turnover||0); });
+  return out.slice(0,12);
+}
+function topProjectsPanel(list,showSite){
+  var rows=topProjectsOf(list);
+  var head='<h3>'+esc(t('topProjects'))+' <span class="p-note" lang="en">O.I (k€)</span></h3>';
+  if(!rows.length)
+    return '<div class="panel tops">'+head+'<p class="empty">'+esc(t('noProjects'))+'</p></div>';
+  var html='<div class="panel tops">'+head+
+    '<div class="tops-head'+(showSite?' with-site':'')+'">'+
+      '<span>Model</span><span>'+esc(t('segment'))+'</span>'+
+      (showSite?'<span>'+esc(t('site'))+'</span>':'')+
+      '<span class="r">'+esc(t('planCol'))+'</span><span class="r">'+esc(t('realCol'))+'</span>'+
+      '<span class="r" lang="en">O.I</span></div>';
+  rows.forEach(function(r){
+    var p=r.p, launched=!!p.realMonth;
+    html+='<div class="tops-row'+(showSite?' with-site':'')+'" style="--ro-color:'+roColor(r.site.ro)+'">'+
+      '<span class="tp-model"><b>'+esc(p.model||'—')+'</b>'+
+        (p.type?'<i class="tp-type">'+esc(p.type)+'</i>':'')+'</span>'+
+      '<span class="tp-seg">'+esc(p.segment||'—')+'</span>'+
+      (showSite?'<span class="tp-site">'+esc(r.site.site)+'</span>':'')+
+      '<span class="r dim">'+esc(p.planRaw||'—')+'</span>'+
+      '<span class="r '+(launched?'ok':'dim')+'">'+esc(p.realRaw||'—')+'</span>'+
+      '<span class="r tp-oi">'+nf(p.turnover,1)+'</span>'+
+    '</div>';
+  });
+  return html+'</div>';
+}
+
+/* ---------- arama sonuclari ---------- */
+function searchResultsHtml(hits){
+  if(!hits.length)
+    return '<div class="notice">'+esc(t('noMatch'))+' — “'+esc(F.q)+'”</div>';
+  var html='<div class="section-head"><h2 class="section-title">'+esc(t('search'))+
+    ' — “'+esc(F.q.trim())+'”</h2><span class="section-note">'+hits.length+' '+
+    esc(t('results'))+'</span></div><div class="sitelist">';
+  hits.forEach(function(st){
+    var m=siteMetrics(st);
+    html+='<button class="site-row search-row" type="button" data-sk="'+esc(siteKey(st))+'" '+
+      'style="--ro-color:'+roColor(st.ro)+'">'+
+      '<span class="site-name">'+(siteFlag(st)||'<i></i>')+'<span>'+esc(st.site)+'</span></span>'+
+      '<span class="sr-ro">'+roRegionChip(st.ro)+esc(st.ro)+' · '+esc(BOOT.roLabels[st.ro]||'')+'</span>'+
+      '<span class="tbl-v r" data-label="Launch Done">'+money(m.realTurnoverM)+'</span>'+
+      '<span class="r" data-label="Launch Delay">'+deltaPill(m.delta)+'</span>'+
+    '</button>';
+  });
+  return html+'</div>';
 }
 
 /* ---------- level 1: RO karsilastirma kartlari ---------- */
@@ -786,7 +1019,7 @@ function roRowHtml(r){
     '<span class="ro-id">'+
       '<span class="ro-code">'+roRegionChip(r.ro)+esc(r.ro)+'</span>'+
       '<span class="ro-name">'+esc(BOOT.roLabels[r.ro]||'')+'</span>'+
-      '<span class="ro-sites">'+r.list.length+' '+esc(t('sites'))+'</span>'+
+      '<span class="ro-sites">'+r.list.length+' '+esc(sitesWord(r.list.length))+'</span>'+
     '</span>'+
     '<span class="ro-bar">'+
       '<span class="ro-bar-top">'+
@@ -828,7 +1061,7 @@ function siteListHtml(list,ro){
     '<div class="tbl-toggle"><span class="flabel">'+esc(t('tableShows'))+'</span>'+
       '<div class="seg seg-sm" id="segTblView">'+
       '<button type="button" data-tv="count" aria-pressed="'+(!isMoney)+'">'+esc(cap(t('projects')))+'</button>'+
-      '<button type="button" data-tv="money" aria-pressed="'+isMoney+'">'+esc(cap(t('turnover')))+' (M€)</button>'+
+      '<button type="button" data-tv="money" aria-pressed="'+isMoney+'" lang="en">O.I (M€)</button>'+
     '</div></div>'+
     '<div class="site-head">'+
       '<span>'+esc(t('site'))+'</span><span>Real Launches / Budget YTD</span>'+
@@ -860,24 +1093,55 @@ function siteListHtml(list,ro){
 }
 
 function renderRoLevel(){
-  crumb([{t:t('allROs')}]);
-  var all=DATA.sites||[];
+  var trail=[{t:t('allROs'), action:(F.ro==='ALL'&&F.site==='ALL')?null:function(){
+    F.ro='ALL'; F.site='ALL'; NAV.expandedRo=null; buildRoSiteSelects(); }}];
+  if(F.ro!=='ALL'){
+    var roStep={t:F.ro+' — '+(BOOT.roLabels[F.ro]||'')};
+    if(F.site!=='ALL') roStep.action=function(){ F.site='ALL'; buildRoSiteSelects(); };
+    trail.push(roStep);
+  }
+  if(F.site!=='ALL') trail.push({t:scopeLabel()});
+  crumb(trail);
+  var scope=scopedSites();
+  var q=F.q.trim();
   var rows=[];
   BOOT.roOrder.forEach(function(ro){
-    var list=sitesOfRo(ro); if(!list.length) return;
+    var list=scope.filter(function(st){ return st.ro===ro; });
+    if(!list.length) return;
     rows.push({ro:ro,list:list,a:sumMetrics(list)});
   });
   rows.sort(function(x,y){ return (x.a.delta||0)-(y.a.delta||0); });   // en geride olan once
+  /* Tek RO secildiyse listesi kapali kalmasin */
+  if(F.ro!=='ALL'&&!NAV.expandedRo) NAV.expandedRo=F.ro;
 
-  var html=kpiRow(sumMetrics(all));
-  html+='<div class="section-head"><h2 class="section-title">'+esc(t('byRO'))+'</h2>'+
-        '<span class="section-note">'+esc(t('clickRow'))+'</span></div><div class="rolist">';
-  rows.forEach(function(r){
-    html+=roRowHtml(r);
-    if(NAV.expandedRo===r.ro) html+=siteListHtml(r.list,r.ro);
-  });
-  html+='</div>'+noticeBlock();
+  var html=kpiRow(sumMetrics(scope));
+  if(q){ html+=searchResultsHtml(searchHits(q))+noticeBlock(); }
+  else {
+    html+=chartPanel();
+    html+='<div class="section-head"><h2 class="section-title">'+esc(t('byRO'))+'</h2>'+
+          '<span class="section-note">'+esc(t('clickRow'))+'</span></div><div class="rolist">';
+    rows.forEach(function(r){
+      html+=roRowHtml(r);
+      if(NAV.expandedRo===r.ro) html+=siteListHtml(r.list,r.ro);
+    });
+    html+='</div>';
+    if(F.ro!=='ALL') html+='<div class="panels one">'+topProjectsPanel(scope,F.site==='ALL')+'</div>';
+    html+=noticeBlock();
+  }
   $('view').innerHTML=html;
+  /* grafik cubuklari: RO seviyesinde RO'ya iner, site seviyesinde site detayina */
+  $('view').querySelectorAll('.ch-row[data-ck]').forEach(function(b){
+    b.onclick=function(){
+      var k=b.getAttribute('data-ck');
+      if(b.getAttribute('data-cl')==='ro'){
+        F.ro=k; F.site='ALL'; NAV.expandedRo=k; buildRoSiteSelects(); render();
+      } else { openSiteByKey(k); }
+      window.scrollTo({top:0,behavior:'smooth'});
+    };
+  });
+  $('view').querySelectorAll('.search-row[data-sk]').forEach(function(b){
+    b.onclick=function(){ openSiteByKey(b.getAttribute('data-sk')); };
+  });
   $('view').querySelectorAll('.ro-row[data-ro]').forEach(function(b){
     b.onclick=function(){
       var ro=b.getAttribute('data-ro');
@@ -912,6 +1176,18 @@ function custTotals(s,c){
     if(!statusMatches_(b.status)||b.customer!==c) return; addM(acc,b.total);
   });
   return acc;
+}
+/* Arama sonucu / grafik cubugu -> site detayi. NAV.siteIdx o RO'nun TAM
+   listesindeki sirasi oldugu icin index oradan aliniyor (kapsamdan degil). */
+function openSiteByKey(key){
+  var hit=(DATA.sites||[]).filter(function(s){ return siteKey(s)===key; })[0];
+  if(!hit) return;
+  var list=sitesOfRo(hit.ro);
+  var idx=-1;
+  for(var i=0;i<list.length;i++){ if(siteKey(list[i])===key){ idx=i; break; } }
+  if(idx<0) return;
+  NAV.level='site'; NAV.ro=hit.ro; NAV.siteIdx=idx;
+  render(); window.scrollTo({top:0,behavior:'smooth'});
 }
 function goBackToRo(){
   NAV.level='ro'; NAV.expandedRo=NAV.ro; render();
@@ -1005,10 +1281,23 @@ function renderSiteLevel(){
     '<div class="panel"><h3>'+esc(t('byCustomer'))+' — Launch Done (M€)</h3>'+stack+'</div>'+
     '<div class="panel"><h3>'+esc(t('portfolioFunnel'))+'</h3>'+funnel+'</div>'+
     (indHtml?'<div class="panel" style="grid-column:1/-1"><h3>'+esc(t('indicators'))+'</h3>'+indHtml+'</div>':'')+
+    '<div class="wide">'+topProjectsPanel([s],false)+'</div>'+
+    teamPanel(s)+
   '</div>';
 
   $('view').innerHTML=html;
   $('btnBack').onclick=goBackToRo;
+}
+/* Bolum 2 HUMAN RESOURCES — headcount'un nereden geldigi gorunur olsun. */
+function teamPanel(s){
+  var roles=s.hrRoles||[];
+  if(!roles.length) return '';
+  return '<div class="panel"><h3>'+esc(t('team'))+' <span class="p-note">'+
+      nf(s.headcount)+' '+esc(t('people'))+'</span></h3><div class="team">'+
+    roles.map(function(r){
+      return '<div class="team-row"><span class="tm-role">'+esc(r.role)+'</span>'+
+             '<span class="tm-person">'+esc(r.person)+'</span></div>';
+    }).join('')+'</div></div>';
 }
 function fnRow(label,val,max,cls){
   return '<div class="fn-row"><div><div style="font-size:12px;color:var(--text-dim);margin-bottom:5px;font-weight:600">'+
@@ -1053,8 +1342,59 @@ function buildFilterSegs(){
   seg($('segCustomer'),[{v:'ALL',t:t('all')},{v:'VS',t:'VS'},{v:'OES',t:'OES'}],F.customer,
       function(v){ F.customer=v; render(); });
 }
+/* RO ve Site secicileri — Site listesi secili RO'ya gore daralir. */
+function buildRoSiteSelects(){
+  var sites=DATA.sites||[];
+  var opts=['<option value="ALL">'+esc(t('allROs'))+'</option>'];
+  BOOT.roOrder.forEach(function(ro){
+    if(!sites.some(function(s){ return s.ro===ro; })) return;
+    opts.push('<option value="'+ro+'"'+(F.ro===ro?' selected':'')+'>'+
+      ro+' — '+esc(BOOT.roLabels[ro]||'')+'</option>');
+  });
+  $('selRo').innerHTML=opts.join('');
+
+  var pool=(F.ro==='ALL')?sites:sites.filter(function(s){ return s.ro===F.ro; });
+  pool=pool.slice().sort(function(a,b){ return (a.site||'').localeCompare(b.site||'',LOCALE); });
+  if(F.site!=='ALL'&&!pool.some(function(s){ return siteKey(s)===F.site; })) F.site='ALL';
+  $('selSite').innerHTML=['<option value="ALL">'+esc(t('allSites'))+'</option>'].concat(
+    pool.map(function(s){
+      return '<option value="'+esc(siteKey(s))+'"'+(F.site===siteKey(s)?' selected':'')+'>'+
+        esc(s.site)+'</option>';
+    })).join('');
+
+  $('selRo').onchange=function(){
+    F.ro=this.value; F.site='ALL';
+    NAV.level='ro'; NAV.expandedRo=(F.ro==='ALL'?null:F.ro);
+    buildRoSiteSelects(); render();
+  };
+  $('selSite').onchange=function(){
+    F.site=this.value;
+    if(F.site!=='ALL'){
+      var hit=sites.filter(function(s){ return siteKey(s)===F.site; })[0];
+      if(hit&&F.ro==='ALL'){ F.ro=hit.ro; buildRoSiteSelects(); }
+    }
+    NAV.level='ro'; NAV.expandedRo=(F.ro==='ALL'?null:F.ro);
+    render();
+  };
+}
+function initSearch(){
+  var el=$('inpSearch'); if(!el||el._wired) return; el._wired=true;
+  var timer=null;
+  el.oninput=function(){
+    var v=this.value;
+    clearTimeout(timer);
+    timer=setTimeout(function(){
+      F.q=v;
+      if(F.q.trim()&&NAV.level==='site'){ NAV.level='ro'; }
+      if(DATA) render();
+    },160);
+  };
+  el.onkeydown=function(e){ if(e.key==='Escape'){ this.value=''; F.q=''; if(DATA) render(); } };
+}
 function buildFilters(){
   buildFilterSegs();
+  buildRoSiteSelects();
+  initSearch();
   $('filters').hidden=false;
 }
 
@@ -1224,6 +1564,7 @@ function finishLoad(key,meta,sites){
   DATA={ period:meta.period, reportMonth:maxMonth, sites:out,
          missingSites:meta.missingSites||[], unknownSheets:meta.unknownSheets||[] };
   NAV={level:'ro',expandedRo:null,ro:null,siteIdx:null};
+  F.ro='ALL'; F.site='ALL'; F.q=''; if($('inpSearch')) $('inpSearch').value='';
   buildFilters(); render(); splashHide();
 }
 /* Ay adi secili dile gore yerellestirilir; sunucu etiketi yalniz yedek. */
