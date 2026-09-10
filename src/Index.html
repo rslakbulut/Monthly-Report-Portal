@@ -99,7 +99,12 @@
 </div>
 
 <main>
-  <nav class="crumb" id="crumb" aria-label="Breadcrumb"></nav>
+  <div class="crumbrow">
+    <nav class="crumb" id="crumb" aria-label="Breadcrumb"></nav>
+    <!-- Verinin ne kadar taze oldugu her zaman gorunur; snapshot'tan
+         okundugu icin "su an" olmayabilir. -->
+    <span class="stamp" id="dataStamp" aria-live="polite" hidden></span>
+  </div>
   <div id="view"><div class="spinner" role="status">Loading…</div></div>
 </main>
 
@@ -139,6 +144,7 @@
       <button class="btn" id="btnScan" type="button" data-i18n="scanNow">Scan now</button>
       <button class="btn ghost" id="btnSaveQuery" type="button" data-i18n="saveQuery">Save query</button>
       <button class="btn ghost" id="btnTrigger" type="button" data-i18n="installScan">Install daily scan</button>
+      <button class="btn ghost" id="btnSnapTrigger" type="button">Install hourly refresh</button>
     </div>
     <div class="fgroup">
       <label class="flabel" for="inpUrl" data-i18n="addPeriodManually">Add a period manually (Sheets link)</label>
@@ -149,5 +155,8 @@
   </div>
 </dialog>
 
+<!-- Sunucudan gomulen acilis paketi: bootstrap + hazir snapshot.
+     Bu blok sayesinde acilista google.script.run turu YOK. -->
+<script>var PRELOAD = <?!= preload ?>;</script>
 <?!= include('WorldMapData'); ?>
 <?!= include('Script'); ?>

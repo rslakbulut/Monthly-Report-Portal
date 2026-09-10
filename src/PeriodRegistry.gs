@@ -138,7 +138,10 @@ function addPeriodByUrl(url) {
   }
   var r = registerSpreadsheetId_(id, 'manual');
   if (!r.ok) return { error: r.reason };
-  return { ok: true, message: r.name + ' -> ' + r.key + (r.isNew ? ' (added)' : ' (updated)') };
+  /* key de doner: Ayarlar ekrani hemen ardindan bu donemin snapshot'ini
+     kuruyor, boylece donemi ilk acan kullanici beklemiyor. */
+  return { ok: true, key: r.key,
+           message: r.name + ' -> ' + r.key + (r.isNew ? ' (added)' : ' (updated)') };
 }
 
 /**

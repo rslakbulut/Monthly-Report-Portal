@@ -45,9 +45,49 @@ function cacheGet_(cache, key) {
   return JSON.parse(parts.join(''));
 }
 
+/**
+ * JSON'u <script> icine gomulebilir hale getirir.
+ *
+ * `</script>` bir metin degerinin ICINDE gecerse tarayici script blogunu orada
+ * kapatir; "<" kacisi bunu engeller. U+2028/2029 de JS'te satir sonu sayildigi
+ * icin ayrica kacirilir.
+ */
+function jsonForInline_(obj) {
+  return JSON.stringify(obj)
+    .replace(/</g, '\\u003c')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+/**
+ * Acilista gereken HER SEYI tek pakette toplar: bootstrap + en guncel donemin
+ * hazir snapshot'i. Snapshot varsa istemci hicbir sunucu turu yapmadan
+ * ekrani cizebiliyor — acilis ekranindaki uzun bekleme buradan kalkiyor.
+ *
+ * Snapshot yoksa (o ay ilk kez aciliyorsa) `snapshot` null doner ve istemci
+ * eski parcali okuma yoluna duser; o yol ayda bir kez calisir.
+ */
+function preloadPayload_() {
+  var boot;
+  try { boot = getBootstrap(); }
+  catch (e) { return { error: 'Could not load start-up data: ' + e.message }; }
+  if (boot.error) return boot;
+
+  var snapshot = null;
+  if (boot.periods && boot.periods.length) {
+    try { snapshot = loadOverview_(boot.periods[0].key); } catch (e) { snapshot = null; }
+  }
+  return { boot: boot, snapshot: snapshot };
+}
+
 function doGet() {
-  return HtmlService.createTemplateFromFile('Index')
-    .evaluate()
+  var tpl = HtmlService.createTemplateFromFile('Index');
+  var payload;
+  try { payload = preloadPayload_(); }
+  catch (e) { payload = { error: 'Start-up failed: ' + e.message }; }
+  tpl.preload = jsonForInline_(payload);
+
+  return tpl.evaluate()
     .setTitle('Valeo RO Monthly Report')
     // HtmlService <head> icindeki meta viewport'u siler; sunucu tarafinda verilmeli.
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
@@ -209,6 +249,10 @@ function uiRemovePeriod(key) {
 function uiSetGmailQuery(q) {
   var deny = requireAdmin_(); if (deny) return deny;
   return { ok: true, query: setGmailQuery(q) };
+}
+function uiInstallSnapshotTrigger() {
+  var deny = requireAdmin_(); if (deny) return deny;
+  return { ok: true, message: installSnapshotTrigger() };
 }
 function uiInstallTrigger() {
   var deny = requireAdmin_(); if (deny) return deny;

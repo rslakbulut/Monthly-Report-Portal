@@ -59,6 +59,8 @@ var ICON_MINUS=svg('<path d="M5 12h14"/>',13);
 var ICON_TEAM=svg('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'+
   '<path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',18);
 var ICON_X=svg('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',13);
+var ICON_REFRESH=svg('<path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/>'+
+  '<path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/>',13);
 var ICON_BARS=svg('<path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/>'+
   '<rect x="12" y="8" width="3" height="10"/><rect x="17" y="4" width="3" height="14"/>',17);
 
@@ -219,7 +221,8 @@ var T={
   skipToContent:'Skip to content',language:'Language',noPeriodYet:'No period registered yet. Open Settings and run the Gmail scan, or add this month’s spreadsheet link manually.',
   settingsIntro:'The monthly report arrives as a new spreadsheet each month. The Gmail scan finds it automatically; if it doesn’t, add the link manually.',
   regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.',
-  search:'Search',searchPh:'Search site or RO…',headcount:'Headcount',people:'people',inSelection:'in the current selection',topProjects:'Top projects',segment:'Segment',planCol:'Plan',realCol:'Real',clear:'Clear',selection:'Selection',drillHint:'Click a bar to go deeper',allSites:'All sites',team:'Team',noProjects:'No project rows in this scope',results:'results',noMatch:'Nothing matched',budgetVsDone:'Budget Year vs Launch Done'},
+  search:'Search',searchPh:'Search site or RO…',headcount:'Headcount',people:'people',inSelection:'in the current selection',topProjects:'Top projects',segment:'Segment',planCol:'Plan',realCol:'Real',clear:'Clear',selection:'Selection',drillHint:'Click a bar to go deeper',allSites:'All sites',team:'Team',noProjects:'No project rows in this scope',results:'results',noMatch:'Nothing matched',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'Data as of',refreshData:'Refresh data',loadingDetails:'Loading details…',refreshing:'Rebuilding…',justNow:'just now',minutesAgo:'min ago',hoursAgo:'h ago'},
  tr:{whatAmILookingAt:'Bu ekran ne anlatıyor',year:'Yıl',month:'Ay',productType:'Ürün tipi',
   projectType:'Proje tipi',customer:'Müşteri',all:'Tümü',allROs:'Tüm RO’lar',sites:'site',site:'Site',
   projects:'proje',of:'/',byRO:'Bölgesel organizasyona göre',clickRow:'Site’ları görmek için satıra tıklayın',
@@ -238,7 +241,8 @@ var T={
   skipToContent:'İçeriğe geç',language:'Dil',noPeriodYet:'Henüz kayıtlı dönem yok. Ayarlar’ı açıp Gmail taramasını çalıştırın ya da bu ayın spreadsheet linkini elle ekleyin.',
   settingsIntro:'Aylık rapor her ay yeni bir spreadsheet olarak geliyor. Gmail taraması onu otomatik buluyor; bulamazsa linki elle ekleyin.',
   regionalOrgs:'bölgesel organizasyon',scanningSheets:'48 sayfa taranıyor, ilk yükleme biraz sürebilir.',
-  search:'Ara',searchPh:'Site veya RO ara…',headcount:'Çalışan sayısı',people:'kişi',inSelection:'seçili kapsamda',topProjects:'TOP projeler',segment:'Segment',planCol:'Plan',realCol:'Gerçek',clear:'Temizle',selection:'Seçim',drillHint:'Detay için bir çubuğa tıklayın',allSites:'Tüm site’lar',team:'Ekip',noProjects:'Bu kapsamda proje satırı yok',results:'sonuç',noMatch:'Eşleşme yok',budgetVsDone:'Budget Year — Launch Done'},
+  search:'Ara',searchPh:'Site veya RO ara…',headcount:'Çalışan sayısı',people:'kişi',inSelection:'seçili kapsamda',topProjects:'TOP projeler',segment:'Segment',planCol:'Plan',realCol:'Gerçek',clear:'Temizle',selection:'Seçim',drillHint:'Detay için bir çubuğa tıklayın',allSites:'Tüm site’lar',team:'Ekip',noProjects:'Bu kapsamda proje satırı yok',results:'sonuç',noMatch:'Eşleşme yok',budgetVsDone:'Budget Year — Launch Done',
+  dataAsOf:'Veri şu an itibarıyla',refreshData:'Veriyi yenile',loadingDetails:'Detaylar yükleniyor…',refreshing:'Yeniden kuruluyor…',justNow:'az önce',minutesAgo:'dk önce',hoursAgo:'sa önce'},
  fr:{whatAmILookingAt:'Que suis-je en train de voir',year:'Année',month:'Mois',productType:'Type de produit',
   projectType:'Type de projet',customer:'Client',all:'Tous',allROs:'Tous les RO',sites:'sites',site:'Site',
   projects:'projets',of:'sur',byRO:'Par organisation régionale',clickRow:'Cliquez sur une ligne pour voir ses sites',
@@ -257,7 +261,8 @@ var T={
   skipToContent:'Aller au contenu',language:'Langue',noPeriodYet:'Aucune période enregistrée. Ouvrez Paramètres et lancez l’analyse Gmail, ou ajoutez le lien du fichier manuellement.',
   settingsIntro:'Le rapport mensuel arrive chaque mois dans un nouveau fichier. L’analyse Gmail le trouve automatiquement ; sinon, ajoutez le lien manuellement.',
   regionalOrgs:'organisations régionales',scanningSheets:'analyse de 48 feuilles, le premier chargement peut prendre un moment.',
-  search:'Rechercher',searchPh:'Rechercher un site ou un RO…',headcount:'Effectif',people:'personnes',inSelection:'dans la sélection actuelle',topProjects:'Principaux projets',segment:'Segment',planCol:'Plan',realCol:'Réel',clear:'Effacer',selection:'Sélection',drillHint:'Cliquez sur une barre pour approfondir',allSites:'Tous les sites',team:'Équipe',noProjects:'Aucun projet dans ce périmètre',results:'résultats',noMatch:'Aucun résultat',budgetVsDone:'Budget Year vs Launch Done'},
+  search:'Rechercher',searchPh:'Rechercher un site ou un RO…',headcount:'Effectif',people:'personnes',inSelection:'dans la sélection actuelle',topProjects:'Principaux projets',segment:'Segment',planCol:'Plan',realCol:'Réel',clear:'Effacer',selection:'Sélection',drillHint:'Cliquez sur une barre pour approfondir',allSites:'Tous les sites',team:'Équipe',noProjects:'Aucun projet dans ce périmètre',results:'résultats',noMatch:'Aucun résultat',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'Données au',refreshData:'Actualiser',loadingDetails:'Chargement des détails…',refreshing:'Reconstruction…',justNow:'à l’instant',minutesAgo:'min',hoursAgo:'h'},
  de:{whatAmILookingAt:'Was sehe ich hier',year:'Jahr',month:'Monat',productType:'Produkttyp',
   projectType:'Projekttyp',customer:'Kunde',all:'Alle',allROs:'Alle ROs',sites:'Standorte',site:'Standort',
   projects:'Projekte',of:'von',byRO:'Nach Regionalorganisation',clickRow:'Zeile anklicken, um Standorte zu sehen',
@@ -276,7 +281,8 @@ var T={
   skipToContent:'Zum Inhalt springen',language:'Sprache',noPeriodYet:'Noch keine Periode registriert. Öffnen Sie die Einstellungen und starten Sie den Gmail-Scan, oder fügen Sie den Link manuell hinzu.',
   settingsIntro:'Der Monatsbericht kommt jeden Monat als neue Datei. Der Gmail-Scan findet sie automatisch; andernfalls den Link manuell hinzufügen.',
   regionalOrgs:'Regionalorganisationen',scanningSheets:'48 Blätter werden gescannt, der erste Ladevorgang kann etwas dauern.',
-  search:'Suchen',searchPh:'Site oder RO suchen…',headcount:'Mitarbeiterzahl',people:'Personen',inSelection:'in der aktuellen Auswahl',topProjects:'Top-Projekte',segment:'Segment',planCol:'Plan',realCol:'Ist',clear:'Zurücksetzen',selection:'Auswahl',drillHint:'Für Details auf einen Balken klicken',allSites:'Alle Sites',team:'Team',noProjects:'Keine Projektzeilen in diesem Bereich',results:'Treffer',noMatch:'Keine Treffer',budgetVsDone:'Budget Year vs Launch Done'},
+  search:'Suchen',searchPh:'Site oder RO suchen…',headcount:'Mitarbeiterzahl',people:'Personen',inSelection:'in der aktuellen Auswahl',topProjects:'Top-Projekte',segment:'Segment',planCol:'Plan',realCol:'Ist',clear:'Zurücksetzen',selection:'Auswahl',drillHint:'Für Details auf einen Balken klicken',allSites:'Alle Sites',team:'Team',noProjects:'Keine Projektzeilen in diesem Bereich',results:'Treffer',noMatch:'Keine Treffer',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'Daten vom',refreshData:'Daten aktualisieren',loadingDetails:'Details werden geladen…',refreshing:'Wird neu erstellt…',justNow:'gerade eben',minutesAgo:'Min.',hoursAgo:'Std.'},
  es:{whatAmILookingAt:'Qué estoy viendo',year:'Año',month:'Mes',productType:'Tipo de producto',
   projectType:'Tipo de proyecto',customer:'Cliente',all:'Todos',allROs:'Todos los RO',sites:'plantas',site:'Planta',
   projects:'proyectos',of:'de',byRO:'Por organización regional',clickRow:'Haz clic en una fila para ver sus plantas',
@@ -295,7 +301,8 @@ var T={
   skipToContent:'Ir al contenido',language:'Idioma',noPeriodYet:'Aún no hay período registrado. Abre Ajustes y ejecuta el escaneo de Gmail, o añade el enlace manualmente.',
   settingsIntro:'El informe mensual llega cada mes como un archivo nuevo. El escaneo de Gmail lo encuentra automáticamente; si no, añade el enlace manualmente.',
   regionalOrgs:'organizaciones regionales',scanningSheets:'escaneando 48 hojas, la primera carga puede tardar un momento.',
-  search:'Buscar',searchPh:'Buscar sitio o RO…',headcount:'Plantilla',people:'personas',inSelection:'en la selección actual',topProjects:'Principales proyectos',segment:'Segmento',planCol:'Plan',realCol:'Real',clear:'Limpiar',selection:'Selección',drillHint:'Haga clic en una barra para profundizar',allSites:'Todos los sitios',team:'Equipo',noProjects:'No hay proyectos en este alcance',results:'resultados',noMatch:'Sin resultados',budgetVsDone:'Budget Year vs Launch Done'},
+  search:'Buscar',searchPh:'Buscar sitio o RO…',headcount:'Plantilla',people:'personas',inSelection:'en la selección actual',topProjects:'Principales proyectos',segment:'Segmento',planCol:'Plan',realCol:'Real',clear:'Limpiar',selection:'Selección',drillHint:'Haga clic en una barra para profundizar',allSites:'Todos los sitios',team:'Equipo',noProjects:'No hay proyectos en este alcance',results:'resultados',noMatch:'Sin resultados',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'Datos a',refreshData:'Actualizar datos',loadingDetails:'Cargando detalles…',refreshing:'Reconstruyendo…',justNow:'ahora mismo',minutesAgo:'min',hoursAgo:'h'},
  it:{whatAmILookingAt:'Cosa sto guardando',year:'Anno',month:'Mese',productType:'Tipo di prodotto',
   projectType:'Tipo di progetto',customer:'Cliente',all:'Tutti',allROs:'Tutti i RO',sites:'siti',site:'Sito',
   projects:'progetti',of:'su',byRO:'Per organizzazione regionale',clickRow:'Clicca una riga per vedere i siti',
@@ -314,7 +321,8 @@ var T={
   skipToContent:'Vai al contenuto',language:'Lingua',noPeriodYet:'Nessun periodo registrato. Apri Impostazioni ed esegui la scansione Gmail, oppure aggiungi il link manualmente.',
   settingsIntro:'Il report mensile arriva ogni mese come nuovo file. La scansione Gmail lo trova automaticamente; altrimenti aggiungi il link manualmente.',
   regionalOrgs:'organizzazioni regionali',scanningSheets:'scansione di 48 fogli, il primo caricamento può richiedere un momento.',
-  search:'Cerca',searchPh:'Cerca sito o RO…',headcount:'Organico',people:'persone',inSelection:'nella selezione attuale',topProjects:'Progetti principali',segment:'Segmento',planCol:'Piano',realCol:'Reale',clear:'Azzera',selection:'Selezione',drillHint:'Clicca una barra per approfondire',allSites:'Tutti i siti',team:'Team',noProjects:'Nessun progetto in questo ambito',results:'risultati',noMatch:'Nessun risultato',budgetVsDone:'Budget Year vs Launch Done'},
+  search:'Cerca',searchPh:'Cerca sito o RO…',headcount:'Organico',people:'persone',inSelection:'nella selezione attuale',topProjects:'Progetti principali',segment:'Segmento',planCol:'Piano',realCol:'Reale',clear:'Azzera',selection:'Selezione',drillHint:'Clicca una barra per approfondire',allSites:'Tutti i siti',team:'Team',noProjects:'Nessun progetto in questo ambito',results:'risultati',noMatch:'Nessun risultato',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'Dati al',refreshData:'Aggiorna dati',loadingDetails:'Caricamento dettagli…',refreshing:'Ricostruzione…',justNow:'adesso',minutesAgo:'min fa',hoursAgo:'h fa'},
  pt:{whatAmILookingAt:'O que estou a ver',year:'Ano',month:'Mês',productType:'Tipo de produto',
   projectType:'Tipo de projeto',customer:'Cliente',all:'Todos',allROs:'Todos os RO',sites:'unidades',site:'Unidade',
   projects:'projetos',of:'de',byRO:'Por organização regional',clickRow:'Clique numa linha para ver as unidades',
@@ -333,7 +341,8 @@ var T={
   skipToContent:'Ir para o conteúdo',language:'Idioma',noPeriodYet:'Ainda não há período registado. Abra Definições e execute a análise do Gmail, ou adicione o link manualmente.',
   settingsIntro:'O relatório mensal chega todos os meses como um novo ficheiro. A análise do Gmail encontra-o automaticamente; caso contrário, adicione o link manualmente.',
   regionalOrgs:'organizações regionais',scanningSheets:'a analisar 48 folhas, o primeiro carregamento pode demorar um momento.',
-  search:'Pesquisar',searchPh:'Pesquisar site ou RO…',headcount:'Efetivo',people:'pessoas',inSelection:'na seleção atual',topProjects:'Principais projetos',segment:'Segmento',planCol:'Plano',realCol:'Real',clear:'Limpar',selection:'Seleção',drillHint:'Clique numa barra para detalhar',allSites:'Todos os sites',team:'Equipa',noProjects:'Sem projetos neste âmbito',results:'resultados',noMatch:'Sem resultados',budgetVsDone:'Budget Year vs Launch Done'},
+  search:'Pesquisar',searchPh:'Pesquisar site ou RO…',headcount:'Efetivo',people:'pessoas',inSelection:'na seleção atual',topProjects:'Principais projetos',segment:'Segmento',planCol:'Plano',realCol:'Real',clear:'Limpar',selection:'Seleção',drillHint:'Clique numa barra para detalhar',allSites:'Todos os sites',team:'Equipa',noProjects:'Sem projetos neste âmbito',results:'resultados',noMatch:'Sem resultados',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'Dados de',refreshData:'Atualizar dados',loadingDetails:'A carregar detalhes…',refreshing:'A reconstruir…',justNow:'agora mesmo',minutesAgo:'min atrás',hoursAgo:'h atrás'},
  nl:{whatAmILookingAt:'Wat zie ik hier',year:'Jaar',month:'Maand',productType:'Producttype',
   projectType:'Projecttype',customer:'Klant',all:'Alle',allROs:'Alle ROs',sites:'locaties',site:'Locatie',
   projects:'projecten',of:'van',byRO:'Per regionale organisatie',clickRow:'Klik op een rij voor de locaties',
@@ -352,7 +361,8 @@ var T={
   skipToContent:'Naar inhoud',language:'Taal',noPeriodYet:'Nog geen periode geregistreerd. Open Instellingen en start de Gmail-scan, of voeg de link handmatig toe.',
   settingsIntro:'Het maandrapport komt elke maand als een nieuw bestand. De Gmail-scan vindt het automatisch; zo niet, voeg de link handmatig toe.',
   regionalOrgs:'regionale organisaties',scanningSheets:'48 bladen worden gescand, de eerste keer laden kan even duren.',
-  search:'Zoeken',searchPh:'Zoek site of RO…',headcount:'Personeelsbestand',people:'personen',inSelection:'in de huidige selectie',topProjects:'Topprojecten',segment:'Segment',planCol:'Plan',realCol:'Werkelijk',clear:'Wissen',selection:'Selectie',drillHint:'Klik op een balk voor details',allSites:'Alle sites',team:'Team',noProjects:'Geen projecten in dit bereik',results:'resultaten',noMatch:'Geen resultaten',budgetVsDone:'Budget Year vs Launch Done'},
+  search:'Zoeken',searchPh:'Zoek site of RO…',headcount:'Personeelsbestand',people:'personen',inSelection:'in de huidige selectie',topProjects:'Topprojecten',segment:'Segment',planCol:'Plan',realCol:'Werkelijk',clear:'Wissen',selection:'Selectie',drillHint:'Klik op een balk voor details',allSites:'Alle sites',team:'Team',noProjects:'Geen projecten in dit bereik',results:'resultaten',noMatch:'Geen resultaten',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'Gegevens van',refreshData:'Gegevens vernieuwen',loadingDetails:'Details laden…',refreshing:'Opnieuw opbouwen…',justNow:'zojuist',minutesAgo:'min geleden',hoursAgo:'u geleden'},
  pl:{whatAmILookingAt:'Na co patrzę',year:'Rok',month:'Miesiąc',productType:'Typ produktu',
   projectType:'Typ projektu',customer:'Klient',all:'Wszystkie',allROs:'Wszystkie RO',sites:'zakłady',site:'Zakład',
   projects:'projekty',of:'z',byRO:'Wg organizacji regionalnej',clickRow:'Kliknij wiersz, aby zobaczyć zakłady',
@@ -371,7 +381,8 @@ var T={
   skipToContent:'Przejdź do treści',language:'Język',noPeriodYet:'Brak zarejestrowanego okresu. Otwórz Ustawienia i uruchom skan Gmail lub dodaj link ręcznie.',
   settingsIntro:'Raport miesięczny przychodzi co miesiąc jako nowy plik. Skan Gmail znajduje go automatycznie; jeśli nie, dodaj link ręcznie.',
   regionalOrgs:'organizacje regionalne',scanningSheets:'skanowanie 48 arkuszy, pierwsze ładowanie może chwilę potrwać.',
-  search:'Szukaj',searchPh:'Szukaj site lub RO…',headcount:'Liczba pracowników',people:'osób',inSelection:'w bieżącym wyborze',topProjects:'Największe projekty',segment:'Segment',planCol:'Plan',realCol:'Rzeczywisty',clear:'Wyczyść',selection:'Wybór',drillHint:'Kliknij słupek, aby przejść głębiej',allSites:'Wszystkie site',team:'Zespół',noProjects:'Brak projektów w tym zakresie',results:'wyników',noMatch:'Brak wyników',budgetVsDone:'Budget Year vs Launch Done'},
+  search:'Szukaj',searchPh:'Szukaj site lub RO…',headcount:'Liczba pracowników',people:'osób',inSelection:'w bieżącym wyborze',topProjects:'Największe projekty',segment:'Segment',planCol:'Plan',realCol:'Rzeczywisty',clear:'Wyczyść',selection:'Wybór',drillHint:'Kliknij słupek, aby przejść głębiej',allSites:'Wszystkie site',team:'Zespół',noProjects:'Brak projektów w tym zakresie',results:'wyników',noMatch:'Brak wyników',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'Dane z',refreshData:'Odśwież dane',loadingDetails:'Ładowanie szczegółów…',refreshing:'Przebudowa…',justNow:'przed chwilą',minutesAgo:'min temu',hoursAgo:'godz. temu'},
  cs:{whatAmILookingAt:'Na co se dívám',year:'Rok',month:'Měsíc',productType:'Typ produktu',
   projectType:'Typ projektu',customer:'Zákazník',all:'Vše',allROs:'Všechny RO',sites:'závody',site:'Závod',
   projects:'projekty',of:'z',byRO:'Podle regionální organizace',clickRow:'Kliknutím na řádek zobrazíte závody',
@@ -390,7 +401,8 @@ var T={
   skipToContent:'Přejít na obsah',language:'Jazyk',noPeriodYet:'Zatím není registrováno žádné období. Otevřete Nastavení a spusťte skenování Gmailu, nebo přidejte odkaz ručně.',
   settingsIntro:'Měsíční zpráva přichází každý měsíc jako nový soubor. Skenování Gmailu ji najde automaticky; jinak přidejte odkaz ručně.',
   regionalOrgs:'regionální organizace',scanningSheets:'skenuje se 48 listů, první načtení může chvíli trvat.',
-  search:'Hledat',searchPh:'Hledat site nebo RO…',headcount:'Počet lidí',people:'lidí',inSelection:'ve vybraném rozsahu',topProjects:'Nejvýznamnější projekty',segment:'Segment',planCol:'Plán',realCol:'Skutečnost',clear:'Vymazat',selection:'Výběr',drillHint:'Klikněte na sloupec pro detail',allSites:'Všechny site',team:'Tým',noProjects:'V tomto rozsahu nejsou projekty',results:'výsledků',noMatch:'Žádné výsledky',budgetVsDone:'Budget Year vs Launch Done'},
+  search:'Hledat',searchPh:'Hledat site nebo RO…',headcount:'Počet lidí',people:'lidí',inSelection:'ve vybraném rozsahu',topProjects:'Nejvýznamnější projekty',segment:'Segment',planCol:'Plán',realCol:'Skutečnost',clear:'Vymazat',selection:'Výběr',drillHint:'Klikněte na sloupec pro detail',allSites:'Všechny site',team:'Tým',noProjects:'V tomto rozsahu nejsou projekty',results:'výsledků',noMatch:'Žádné výsledky',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'Data k',refreshData:'Obnovit data',loadingDetails:'Načítání detailů…',refreshing:'Přestavuje se…',justNow:'právě teď',minutesAgo:'min zpět',hoursAgo:'h zpět'},
  ro:{whatAmILookingAt:'Ce văd aici',year:'An',month:'Lună',productType:'Tip produs',
   projectType:'Tip proiect',customer:'Client',all:'Toate',allROs:'Toate RO',sites:'situri',site:'Sit',
   projects:'proiecte',of:'din',byRO:'După organizația regională',clickRow:'Faceți clic pe un rând pentru situri',
@@ -409,7 +421,8 @@ var T={
   skipToContent:'Salt la conținut',language:'Limbă',noPeriodYet:'Nicio perioadă înregistrată. Deschideți Setări și rulați scanarea Gmail, sau adăugați linkul manual.',
   settingsIntro:'Raportul lunar sosește în fiecare lună ca fișier nou. Scanarea Gmail îl găsește automat; altfel, adăugați linkul manual.',
   regionalOrgs:'organizații regionale',scanningSheets:'se scanează 48 de foi, prima încărcare poate dura un moment.',
-  search:'Caută',searchPh:'Caută site sau RO…',headcount:'Număr de angajați',people:'persoane',inSelection:'în selecția curentă',topProjects:'Cele mai mari proiecte',segment:'Segment',planCol:'Plan',realCol:'Real',clear:'Șterge',selection:'Selecție',drillHint:'Faceți clic pe o bară pentru detalii',allSites:'Toate site-urile',team:'Echipă',noProjects:'Niciun proiect în acest domeniu',results:'rezultate',noMatch:'Niciun rezultat',budgetVsDone:'Budget Year vs Launch Done'},
+  search:'Caută',searchPh:'Caută site sau RO…',headcount:'Număr de angajați',people:'persoane',inSelection:'în selecția curentă',topProjects:'Cele mai mari proiecte',segment:'Segment',planCol:'Plan',realCol:'Real',clear:'Șterge',selection:'Selecție',drillHint:'Faceți clic pe o bară pentru detalii',allSites:'Toate site-urile',team:'Echipă',noProjects:'Niciun proiect în acest domeniu',results:'rezultate',noMatch:'Niciun rezultat',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'Date la',refreshData:'Reîmprospătează',loadingDetails:'Se încarcă detaliile…',refreshing:'Se reconstruiește…',justNow:'chiar acum',minutesAgo:'min în urmă',hoursAgo:'h în urmă'},
  hu:{whatAmILookingAt:'Mit látok itt',year:'Év',month:'Hónap',productType:'Terméktípus',
   projectType:'Projekttípus',customer:'Vevő',all:'Összes',allROs:'Összes RO',sites:'telephely',site:'Telephely',
   projects:'projekt',of:'/',byRO:'Regionális szervezet szerint',clickRow:'Kattintson egy sorra a telephelyekért',
@@ -428,7 +441,8 @@ var T={
   skipToContent:'Ugrás a tartalomra',language:'Nyelv',noPeriodYet:'Még nincs regisztrált időszak. Nyissa meg a Beállításokat és futtassa a Gmail keresést, vagy adja hozzá a linket kézzel.',
   settingsIntro:'A havi jelentés minden hónapban új fájlként érkezik. A Gmail keresés automatikusan megtalálja; ha nem, adja hozzá a linket kézzel.',
   regionalOrgs:'regionális szervezet',scanningSheets:'48 munkalap beolvasása, az első betöltés eltarthat egy ideig.',
-  search:'Keresés',searchPh:'Site vagy RO keresése…',headcount:'Létszám',people:'fő',inSelection:'a jelenlegi kijelölésben',topProjects:'Top projektek',segment:'Szegmens',planCol:'Terv',realCol:'Tény',clear:'Törlés',selection:'Kijelölés',drillHint:'Kattintson egy sávra a részletekért',allSites:'Összes site',team:'Csapat',noProjects:'Nincs projekt ebben a körben',results:'találat',noMatch:'Nincs találat',budgetVsDone:'Budget Year vs Launch Done'},
+  search:'Keresés',searchPh:'Site vagy RO keresése…',headcount:'Létszám',people:'fő',inSelection:'a jelenlegi kijelölésben',topProjects:'Top projektek',segment:'Szegmens',planCol:'Terv',realCol:'Tény',clear:'Törlés',selection:'Kijelölés',drillHint:'Kattintson egy sávra a részletekért',allSites:'Összes site',team:'Csapat',noProjects:'Nincs projekt ebben a körben',results:'találat',noMatch:'Nincs találat',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'Adatok ekkor',refreshData:'Adatok frissítése',loadingDetails:'Részletek betöltése…',refreshing:'Újraépítés…',justNow:'az imént',minutesAgo:'perce',hoursAgo:'órája'},
  ru:{whatAmILookingAt:'Что я вижу',year:'Год',month:'Месяц',productType:'Тип продукта',
   projectType:'Тип проекта',customer:'Клиент',all:'Все',allROs:'Все RO',sites:'площадки',site:'Площадка',
   projects:'проектов',of:'из',byRO:'По региональной организации',clickRow:'Нажмите на строку, чтобы увидеть площадки',
@@ -447,7 +461,8 @@ var T={
   skipToContent:'Перейти к содержимому',language:'Язык',noPeriodYet:'Период ещё не зарегистрирован. Откройте Настройки и запустите сканирование Gmail или добавьте ссылку вручную.',
   settingsIntro:'Месячный отчёт приходит каждый месяц новым файлом. Сканирование Gmail находит его автоматически; иначе добавьте ссылку вручную.',
   regionalOrgs:'региональных организаций',scanningSheets:'сканируется 48 листов, первая загрузка может занять время.',
-  search:'Поиск',searchPh:'Поиск площадки или RO…',headcount:'Численность',people:'чел.',inSelection:'в текущей выборке',topProjects:'Ключевые проекты',segment:'Сегмент',planCol:'План',realCol:'Факт',clear:'Сбросить',selection:'Выбор',drillHint:'Нажмите на столбец для детализации',allSites:'Все площадки',team:'Команда',noProjects:'В этой выборке нет проектов',results:'результатов',noMatch:'Ничего не найдено',budgetVsDone:'Budget Year vs Launch Done'},
+  search:'Поиск',searchPh:'Поиск площадки или RO…',headcount:'Численность',people:'чел.',inSelection:'в текущей выборке',topProjects:'Ключевые проекты',segment:'Сегмент',planCol:'План',realCol:'Факт',clear:'Сбросить',selection:'Выбор',drillHint:'Нажмите на столбец для детализации',allSites:'Все площадки',team:'Команда',noProjects:'В этой выборке нет проектов',results:'результатов',noMatch:'Ничего не найдено',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'Данные на',refreshData:'Обновить данные',loadingDetails:'Загрузка деталей…',refreshing:'Перестроение…',justNow:'только что',minutesAgo:'мин назад',hoursAgo:'ч назад'},
  zh:{whatAmILookingAt:'这个页面在看什么',year:'年份',month:'月份',productType:'产品类型',
   projectType:'项目类型',customer:'客户',all:'全部',allROs:'全部 RO',sites:'工厂',site:'工厂',
   projects:'个项目',of:'/',byRO:'按区域组织',clickRow:'点击行查看其工厂',
@@ -466,7 +481,8 @@ var T={
   skipToContent:'跳到内容',language:'语言',noPeriodYet:'尚未注册期间。请打开设置并运行 Gmail 扫描，或手动添加链接。',
   settingsIntro:'月度报告每月以新文件形式送达。Gmail 扫描会自动找到它；若未找到，请手动添加链接。',
   regionalOrgs:'个区域组织',scanningSheets:'正在扫描 48 个工作表，首次加载可能需要一些时间。',
-  search:'搜索',searchPh:'搜索工厂或 RO…',headcount:'员工人数',people:'人',inSelection:'在当前选择范围内',topProjects:'重点项目',segment:'细分',planCol:'计划',realCol:'实际',clear:'清除',selection:'已选',drillHint:'点击柱状条查看下级',allSites:'所有工厂',team:'团队',noProjects:'此范围内没有项目',results:'条结果',noMatch:'无匹配结果',budgetVsDone:'Budget Year vs Launch Done'},
+  search:'搜索',searchPh:'搜索工厂或 RO…',headcount:'员工人数',people:'人',inSelection:'在当前选择范围内',topProjects:'重点项目',segment:'细分',planCol:'计划',realCol:'实际',clear:'清除',selection:'已选',drillHint:'点击柱状条查看下级',allSites:'所有工厂',team:'团队',noProjects:'此范围内没有项目',results:'条结果',noMatch:'无匹配结果',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'数据截至',refreshData:'刷新数据',loadingDetails:'正在加载明细…',refreshing:'正在重建…',justNow:'刚刚',minutesAgo:'分钟前',hoursAgo:'小时前'},
  ja:{whatAmILookingAt:'この画面について',year:'年',month:'月',productType:'製品タイプ',
   projectType:'プロジェクトタイプ',customer:'顧客',all:'すべて',allROs:'すべての RO',sites:'拠点',site:'拠点',
   projects:'件',of:'/',byRO:'地域組織別',clickRow:'行をクリックすると拠点が表示されます',
@@ -485,7 +501,8 @@ var T={
   skipToContent:'本文へスキップ',language:'言語',noPeriodYet:'期間が未登録です。設定を開いて Gmail スキャンを実行するか、リンクを手動で追加してください。',
   settingsIntro:'月次レポートは毎月新しいファイルとして届きます。Gmail スキャンが自動的に見つけます。見つからない場合はリンクを手動で追加してください。',
   regionalOrgs:'の地域組織',scanningSheets:'48 シートをスキャン中です。初回の読み込みには少し時間がかかります。',
-  search:'検索',searchPh:'サイトまたは RO を検索…',headcount:'人員数',people:'人',inSelection:'現在の選択範囲',topProjects:'主要プロジェクト',segment:'セグメント',planCol:'計画',realCol:'実績',clear:'クリア',selection:'選択',drillHint:'バーをクリックして詳細へ',allSites:'すべてのサイト',team:'チーム',noProjects:'この範囲にプロジェクトはありません',results:'件',noMatch:'一致なし',budgetVsDone:'Budget Year vs Launch Done'},
+  search:'検索',searchPh:'サイトまたは RO を検索…',headcount:'人員数',people:'人',inSelection:'現在の選択範囲',topProjects:'主要プロジェクト',segment:'セグメント',planCol:'計画',realCol:'実績',clear:'クリア',selection:'選択',drillHint:'バーをクリックして詳細へ',allSites:'すべてのサイト',team:'チーム',noProjects:'この範囲にプロジェクトはありません',results:'件',noMatch:'一致なし',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'データ基準',refreshData:'データを更新',loadingDetails:'詳細を読み込み中…',refreshing:'再構築中…',justNow:'たった今',minutesAgo:'分前',hoursAgo:'時間前'},
  ko:{whatAmILookingAt:'이 화면 안내',year:'연도',month:'월',productType:'제품 유형',
   projectType:'프로젝트 유형',customer:'고객',all:'전체',allROs:'전체 RO',sites:'사업장',site:'사업장',
   projects:'개 프로젝트',of:'/',byRO:'지역 조직별',clickRow:'행을 클릭하면 사업장이 표시됩니다',
@@ -504,7 +521,8 @@ var T={
   skipToContent:'본문으로 건너뛰기',language:'언어',noPeriodYet:'등록된 기간이 없습니다. 설정을 열고 Gmail 스캔을 실행하거나 링크를 수동으로 추가하세요.',
   settingsIntro:'월간 보고서는 매달 새 파일로 도착합니다. Gmail 스캔이 자동으로 찾습니다. 찾지 못하면 링크를 수동으로 추가하세요.',
   regionalOrgs:'개 지역 조직',scanningSheets:'48개 시트를 스캔 중이며 첫 로드는 다소 시간이 걸릴 수 있습니다.',
-  search:'검색',searchPh:'사이트 또는 RO 검색…',headcount:'인원수',people:'명',inSelection:'현재 선택 범위',topProjects:'주요 프로젝트',segment:'세그먼트',planCol:'계획',realCol:'실적',clear:'초기화',selection:'선택',drillHint:'막대를 클릭하면 하위로 이동',allSites:'모든 사이트',team:'팀',noProjects:'이 범위에 프로젝트가 없습니다',results:'건',noMatch:'일치 항목 없음',budgetVsDone:'Budget Year vs Launch Done'},
+  search:'검색',searchPh:'사이트 또는 RO 검색…',headcount:'인원수',people:'명',inSelection:'현재 선택 범위',topProjects:'주요 프로젝트',segment:'세그먼트',planCol:'계획',realCol:'실적',clear:'초기화',selection:'선택',drillHint:'막대를 클릭하면 하위로 이동',allSites:'모든 사이트',team:'팀',noProjects:'이 범위에 프로젝트가 없습니다',results:'건',noMatch:'일치 항목 없음',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'데이터 기준',refreshData:'데이터 새로고침',loadingDetails:'세부 정보 불러오는 중…',refreshing:'다시 만드는 중…',justNow:'방금',minutesAgo:'분 전',hoursAgo:'시간 전'},
  ar:{whatAmILookingAt:'ما الذي أنظر إليه',year:'السنة',month:'الشهر',productType:'نوع المنتج',
   projectType:'نوع المشروع',customer:'العميل',all:'الكل',allROs:'كل RO',sites:'مواقع',site:'الموقع',
   projects:'مشاريع',of:'من',byRO:'حسب المنظمة الإقليمية',clickRow:'انقر على صف لعرض مواقعه',
@@ -523,7 +541,8 @@ var T={
   skipToContent:'انتقل إلى المحتوى',language:'اللغة',noPeriodYet:'لا توجد فترة مسجلة بعد. افتح الإعدادات وشغّل فحص Gmail، أو أضف الرابط يدويًا.',
   settingsIntro:'يصل التقرير الشهري كل شهر كملف جديد. يجده فحص Gmail تلقائيًا؛ وإلا فأضف الرابط يدويًا.',
   regionalOrgs:'منظمات إقليمية',scanningSheets:'يتم فحص 48 ورقة، وقد يستغرق التحميل الأول لحظة.',
-  search:'بحث',searchPh:'ابحث عن موقع أو RO…',headcount:'عدد الموظفين',people:'أشخاص',inSelection:'في التحديد الحالي',topProjects:'أهم المشاريع',segment:'القطاع',planCol:'الخطة',realCol:'الفعلي',clear:'مسح',selection:'التحديد',drillHint:'انقر على شريط للتعمق',allSites:'كل المواقع',team:'الفريق',noProjects:'لا توجد مشاريع في هذا النطاق',results:'نتائج',noMatch:'لا توجد نتائج',budgetVsDone:'Budget Year vs Launch Done'}
+  search:'بحث',searchPh:'ابحث عن موقع أو RO…',headcount:'عدد الموظفين',people:'أشخاص',inSelection:'في التحديد الحالي',topProjects:'أهم المشاريع',segment:'القطاع',planCol:'الخطة',realCol:'الفعلي',clear:'مسح',selection:'التحديد',drillHint:'انقر على شريط للتعمق',allSites:'كل المواقع',team:'الفريق',noProjects:'لا توجد مشاريع في هذا النطاق',results:'نتائج',noMatch:'لا توجد نتائج',budgetVsDone:'Budget Year vs Launch Done',
+  dataAsOf:'البيانات حتى',refreshData:'تحديث البيانات',loadingDetails:'جارٍ تحميل التفاصيل…',refreshing:'جارٍ إعادة البناء…',justNow:'الآن',minutesAgo:'د مضت',hoursAgo:'س مضت'}
 };
 var LANG='en', LOCALE='en-US';
 function t(k){ var d=T[LANG]||T.en; return (d[k]!=null?d[k]:(T.en[k]!=null?T.en[k]:k)); }
@@ -752,7 +771,7 @@ function statusPill(st){
 function render(){
   if(!DATA) return;
   if(DATA.error){ $('view').innerHTML='<div class="notice err">'+esc(DATA.error)+'</div>'; return; }
-  buildFilterSegs(); renderSelStrip();
+  buildFilterSegs(); renderSelStrip(); renderStamp();
   if(NAV.level==='ro') renderRoLevel();
   else renderSiteLevel();
   if(window.innerWidth<=768)
@@ -962,8 +981,11 @@ function topProjectsOf(list){
 function topProjectsPanel(list,showSite){
   var rows=topProjectsOf(list);
   var head='<h3>'+esc(t('topProjects'))+' <span class="p-note" lang="en">O.I (k€)</span></h3>';
-  if(!rows.length)
-    return '<div class="panel tops">'+head+'<p class="empty">'+esc(t('noProjects'))+'</p></div>';
+  if(!rows.length){
+    /* Agir yari arka planda geliyor — "proje yok" demek yaniltici olurdu. */
+    var msg=(DATA&&!DATA.hasDetails)?t('loadingDetails'):t('noProjects');
+    return '<div class="panel tops">'+head+'<p class="empty">'+esc(msg)+'</p></div>';
+  }
   var html='<div class="panel tops">'+head+
     '<div class="tops-head'+(showSite?' with-site':'')+'">'+
       '<span>Model</span><span>'+esc(t('segment'))+'</span>'+
@@ -1494,13 +1516,156 @@ function showToast(msg,type){
   },2700);
 }
 
+/* ---------- snapshot cozme ----------
+   Sunucu olculeri yer kazanmak icin sabit sirali DIZI olarak yaziyor
+   (Snapshot.gs "PAKETLEME"). Burada eski obje sekline geri cevriliyor,
+   boylece arayuzun geri kalani snapshot'tan mi parcali okumadan mi geldigini
+   hic bilmiyor. Alan sirasi Snapshot.gs MEASURE_FIELDS ile AYNI olmali. */
+var MEASURE_FIELDS=['count','turnover','ytdCount','ytdTurnover','planYtdCount','planYtdTurnover'];
+function unpackMeasure(a){
+  var m=emptyM();
+  if(!a) return m;
+  for(var i=0;i<MEASURE_FIELDS.length;i++) m[MEASURE_FIELDS[i]]=a[i]||0;
+  return m;
+}
+function unpackSite(p){
+  var blocks=(p.bl||[]).map(function(b){
+    var byType={};
+    ['P1','P10','TTM'].forEach(function(t){ byType[t]=unpackMeasure(b.y&&b.y[t]); });
+    return { customer:b.c, status:b.s, byType:byType, total:unpackMeasure(b.t) };
+  });
+  var total=emptyM();
+  blocks.forEach(function(b){ addM(total,b.total); });
+  return {
+    ro:p.ro, site:p.site, key:p.key, sheet:p.sheet, month:p.month, status:p.status,
+    headcount:p.hc||0,
+    budgetCount:p.bc, budgetYTDCount:p.by, budgetTurnover:p.bt,
+    detail:{blocks:blocks,total:total},
+    /* agir yari sonra gelir (prefetchDetails) */
+    indicators:{}, hrRoles:[], topProjects:[], warnings:[], mismatch:[]
+  };
+}
+/** Snapshot -> DATA. Acilista hicbir sunucu turu yapilmadan cagrilir. */
+function useSnapshot(snap){
+  splashSet(96,'rendering');
+  DATA={ period:snap.period, reportMonth:snap.reportMonth,
+         sites:(snap.sites||[]).map(unpackSite),
+         missingSites:snap.missingSites||[], unknownSheets:snap.unknownSheets||[],
+         builtAt:snap.builtAt||null, hasDetails:false };
+  NAV={level:'ro',expandedRo:null,ro:null,siteIdx:null};
+  F.ro='ALL'; F.site='ALL'; F.q=''; if($('inpSearch')) $('inpSearch').value='';
+  buildFilters(); render(); splashHide();
+  prefetchDetails(snap.period.key);
+}
+/** Agir yari: ilk boyamadan SONRA, arka planda. Kullanici beklemez. */
+function prefetchDetails(key){
+  if(!hasServer()) return;
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(!res||res.error||!res.details) return;
+      mergeDetails(res.details);
+    })
+    /* Detay gelmezse ekran calismaya devam eder; yalniz TOPS/ekip bos kalir. */
+    .withFailureHandler(function(){})
+    .getPeriodDetails(key);
+}
+function mergeDetails(list){
+  if(!DATA) return;
+  var byKey={};
+  list.forEach(function(d){ byKey[d.key]=d; });
+  DATA.sites.forEach(function(st){
+    var d=byKey[st.key]; if(!d) return;
+    st.indicators=d.indicators||{}; st.hrRoles=d.hrRoles||[];
+    st.topProjects=d.topProjects||[]; st.warnings=d.warnings||[]; st.mismatch=d.mismatch||[];
+  });
+  DATA.hasDetails=true;
+  /* Yalniz detayin gorundugu ekranlarda yeniden ciz — kullanici RO listesinde
+     gezinirken ekranin altindan kaymasi rahatsiz edici olurdu. */
+  if(NAV.level==='site'||F.ro!=='ALL') render();
+}
+/** Veri tazelik damgasi (ust seritte). */
+function renderStamp(){
+  var el=$('dataStamp'); if(!el) return;
+  if(!DATA||!DATA.builtAt){ el.hidden=true; return; }
+  var d=new Date(DATA.builtAt);
+  if(isNaN(d.getTime())){ el.hidden=true; return; }
+  var mins=Math.round((Date.now()-d.getTime())/60000);
+  var rel=mins<2?t('justNow')
+        :(mins<60?mins+' '+t('minutesAgo')
+        :Math.round(mins/60)+' '+t('hoursAgo'));
+  var abs=d.toLocaleString(LOCALE,{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'});
+  el.hidden=false;
+  el.innerHTML='<span class="stamp-dot" aria-hidden="true"></span>'+
+    esc(t('dataAsOf'))+' <b>'+esc(abs)+'</b> <i>('+esc(rel)+')</i>'+
+    (BOOT&&BOOT.isAdmin?'<button type="button" id="btnRefreshData">'+ICON_REFRESH+
+      esc(t('refreshData'))+'</button>':'');
+  var rb=$('btnRefreshData');
+  if(rb) rb.onclick=refreshDataNow;
+}
+function refreshDataNow(){
+  if(!hasServer()||!DATA) return;
+  var rb=$('btnRefreshData');
+  if(rb){ rb.disabled=true; rb.innerHTML=ICON_REFRESH+esc(t('refreshing')); }
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||r.error){ showToast((r&&r.error)||'Refresh failed','error'); renderStamp(); return; }
+      showToast(r.message||'Refreshed','success');
+      reloadPeriod(DATA.period.key);
+    })
+    .withFailureHandler(function(e){
+      showToast('Server error: '+((e&&e.message)||e),'error'); renderStamp();
+    })
+    .uiRefreshPeriod(DATA.period.key);
+}
+function hasServer(){
+  return typeof google!=='undefined'&&google.script&&google.script.run;
+}
+
 /* ---------- loading ----------
    48 sayfa tek cagrida okunurken Apps Script zaman asimina girip HTTP 502
    veriyordu ve ilerleme cubugu tek bir degerde donuyordu. Artik once ucuz bir
    meta cagrisi yapiliyor, sonra sayfalar CHUNK_SIZE'lik parcalar halinde
    sirayla cekiliyor — her parca sonrasi ilerleme gercek ilerlemeyi gosteriyor. */
 var CHUNK_SIZE=8;
+/**
+ * Donem yukleme. ONCE hazir snapshot denenir (tek hizli cagri); yalniz o donem
+ * icin henuz snapshot uretilmemisse eski parca parca okuma yoluna dusulur.
+ * Parcali yol artik istisna: ayda bir, yeni dosya kayda girdiginde.
+ */
 function loadPeriod(key){
+  if(!hasServer()){ loadPeriodChunked(key); return; }
+  splashSet(40,'readingPeriod');
+  $('view').innerHTML='<div class="spinner" role="status">'+esc(t('readingPeriod'))+'</div>';
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(res&&res.snapshot){ useSnapshot(res.snapshot); return; }
+      if(res&&res.error){
+        $('view').innerHTML='<div class="notice err">'+esc(res.error)+'</div>';
+        splashHide(); return;
+      }
+      loadPeriodChunked(key);          // needsBuild
+    })
+    .withFailureHandler(function(){ loadPeriodChunked(key); })
+    .getPeriodSnapshot(key);
+}
+/** Yenile sonrasi: acilis ekranini gostermeden ayni donemi tekrar cek. */
+function reloadPeriod(key){
+  if(!hasServer()) return;
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(res&&res.snapshot){
+        var keepNav={level:NAV.level,expandedRo:NAV.expandedRo,ro:NAV.ro,siteIdx:NAV.siteIdx};
+        var keepF={ro:F.ro,site:F.site,q:F.q};
+        useSnapshot(res.snapshot);
+        NAV=keepNav; F.ro=keepF.ro; F.site=keepF.site; F.q=keepF.q;
+        if($('inpSearch')) $('inpSearch').value=F.q;
+        buildRoSiteSelects(); render();
+      }
+    })
+    .withFailureHandler(function(){})
+    .getPeriodSnapshot(key);
+}
+function loadPeriodChunked(key){
   splashSet(30,'readingPeriod');
   $('view').innerHTML='<div class="spinner" role="status">'+esc(t('readingPeriod'))+'</div>';
   google.script.run
@@ -1562,7 +1727,8 @@ function finishLoad(key,meta,sites){
     if(s.month&&s.month<maxMonth&&s.status==='ok') s.status='behind-schedule';
   });
   DATA={ period:meta.period, reportMonth:maxMonth, sites:out,
-         missingSites:meta.missingSites||[], unknownSheets:meta.unknownSheets||[] };
+         missingSites:meta.missingSites||[], unknownSheets:meta.unknownSheets||[],
+         builtAt:new Date().toISOString(), hasDetails:true };
   NAV={level:'ro',expandedRo:null,ro:null,siteIdx:null};
   F.ro='ALL'; F.site='ALL'; F.q=''; if($('inpSearch')) $('inpSearch').value='';
   buildFilters(); render(); splashHide();
@@ -1602,7 +1768,44 @@ function buildPeriodSelects(defaultKey){
   };
 }
 
+function applyBootstrap(res){
+  BOOT=res;
+  if($('inpQuery')) $('inpQuery').value=res.gmailQuery||'';
+  /* Settings sadece yetkili hesaplarda gorunur — asil kontrol Code.gs'te
+     (requireAdmin_), bu yalniz gereksiz bir butonu gizleyen UX katmani. */
+  $('btnSettings').hidden=!res.isAdmin;
+}
+function noPeriodYet(){
+  $('view').innerHTML='<div class="notice">'+esc(t('noPeriodYet'))+'</div>';
+  splashHide();
+}
+/**
+ * Acilis.
+ *
+ * HIZLI YOL: sunucu (doGet) bootstrap'i ve hazir snapshot'i sayfaya gomdugu
+ * icin burada hicbir google.script.run turu yapilmiyor — ekran dogrudan
+ * ciziliyor. Eskiden burasi 8 ardisik sunucu turu yapiyordu ve acilis
+ * ekraninda 30-60 sn bekleniyordu.
+ *
+ * YEDEK YOL: gomulu paket yoksa (onizleme, ya da snapshot henuz uretilmemis
+ * bir donem) eski cagri sirasi aynen calisir.
+ */
 function boot(){
+  var pre=(typeof PRELOAD!=='undefined')?PRELOAD:null;
+  if(pre&&!pre.error&&pre.boot&&!pre.boot.error){
+    applyBootstrap(pre.boot);
+    if(!pre.boot.periods.length){ noPeriodYet(); return; }
+    buildPeriodSelects(pre.boot.periods[0].key);
+    if(pre.snapshot){ useSnapshot(pre.snapshot); return; }
+    loadPeriod(pre.boot.periods[0].key);
+    return;
+  }
+  if(pre&&pre.error){
+    $('view').innerHTML='<div class="notice err">'+esc(pre.error)+'</div>';
+    splashHide(); return;
+  }
+  if(!hasServer()){ splashHide(); return; }
+
   splashSet(24,'loadingData');
   google.script.run
     .withSuccessHandler(function(res){
@@ -1610,14 +1813,8 @@ function boot(){
         $('view').innerHTML='<div class="notice err">'+esc(res&&res.error||'Could not load start-up data')+'</div>';
         splashHide(); return;
       }
-      BOOT=res; $('inpQuery').value=res.gmailQuery||'';
-      /* Settings sadece yetkili hesaplarda gorunur — asil kontrol Code.gs'te
-         (requireAdmin_), bu yalniz gereksiz bir butonu gizleyen UX katmani. */
-      $('btnSettings').hidden=!res.isAdmin;
-      if(!res.periods.length){
-        $('view').innerHTML='<div class="notice">'+esc(t('noPeriodYet'))+'</div>';
-        splashHide(); return;
-      }
+      applyBootstrap(res);
+      if(!res.periods.length){ noPeriodYet(); return; }
       buildPeriodSelects(res.periods[0].key);
       loadPeriod(res.periods[0].key);
     })
@@ -1645,6 +1842,22 @@ function initTheme(){
 
 /* ---------- panels ---------- */
 function logS(m){ $('settingsLog').textContent=m; }
+/**
+ * Yeni kaydedilen bir donemin snapshot'ini hemen kurar.
+ * Bu yapilmazsa o donemi ilk acan kullanici parcali okuma yolunu (ve uzun
+ * beklemeyi) ustlenir; burada bekleyen kisi zaten yonetici.
+ */
+function buildSnapshotFor(key, done){
+  logS('Building snapshot for '+key+'… (reading 48 sheets, this takes a moment)');
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||r.error) logS('Snapshot could not be built: '+((r&&r.error)||'unknown'));
+      else logS(r.message);
+      done();
+    })
+    .withFailureHandler(function(e){ logS('Snapshot build failed: '+((e&&e.message)||e)); done(); })
+    .uiRefreshPeriod(key);
+}
 function initPanels(){
   $('glossSearch').oninput=function(){ fillGlossary(null,this.value); };
   $('btnGloss').onclick=function(){ openGloss(null); };
@@ -1661,7 +1874,9 @@ function initPanels(){
              (lines.length?lines.join('\n'):'No new period found.')+
              ((r.errors||[]).length?'\n\nSkipped:\n'+r.errors.join('\n'):''));
         showToast(r.threadCount+' threads scanned — '+(lines.length||0)+' period(s) found','success');
-        boot();
+        var fresh=(r.found||[]).filter(function(f){ return f.isNew; })[0];
+        if(fresh) buildSnapshotFor(fresh.key, function(){ boot(); });
+        else boot();
       })
       .withFailureHandler(function(e){ var m=e&&e.message||e; logS('Server error: '+m); showToast('Server error: '+m,'error'); })
       .uiScanGmail();
@@ -1682,12 +1897,21 @@ function initPanels(){
       .withFailureHandler(function(e){ var m=e&&e.message||e; logS('Error: '+m); showToast('Error: '+m,'error'); })
       .uiInstallTrigger();
   };
+  $('btnSnapTrigger').onclick=function(){
+    google.script.run.withSuccessHandler(function(r){
+        if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); showToast(r&&r.error||'Could not install','error'); return; }
+        logS(r.message); showToast(r.message,'success');
+      })
+      .withFailureHandler(function(e){ var m=e&&e.message||e; logS('Error: '+m); showToast('Error: '+m,'error'); })
+      .uiInstallSnapshotTrigger();
+  };
   $('btnAdd').onclick=function(){
     logS('Adding…');
     google.script.run
       .withSuccessHandler(function(r){
         if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); showToast(r&&r.error||'Could not add','error'); return; }
-        logS(r.message); showToast('Period added','success'); $('inpUrl').value=''; boot();
+        logS(r.message); showToast('Period added','success'); $('inpUrl').value='';
+        if(r.key) buildSnapshotFor(r.key, function(){ boot(); }); else boot();
       })
       .withFailureHandler(function(e){ var m=e&&e.message||e; logS('Server error: '+m); showToast('Server error: '+m,'error'); })
       .uiAddPeriod($('inpUrl').value);
