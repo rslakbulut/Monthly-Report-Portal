@@ -1905,6 +1905,17 @@ function initPanels(){
       .withFailureHandler(function(e){ var m=e&&e.message||e; logS('Error: '+m); showToast('Error: '+m,'error'); })
       .uiInstallSnapshotTrigger();
   };
+  /* Gecmis donemlerin snapshot'i yoksa kurar; ilk kez o aya bakan kullanici
+     40-60 sn beklemesin diye. Tek seferde 3 donem (6 dk yurutme siniri). */
+  $('btnEnsureSnaps').onclick=function(){
+    logS('Building snapshots for periods that do not have one yet…');
+    google.script.run.withSuccessHandler(function(r){
+        if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); showToast(r&&r.error||'Failed','error'); return; }
+        logS(r.message); showToast(r.message,'success');
+      })
+      .withFailureHandler(function(e){ var m=e&&e.message||e; logS('Error: '+m); showToast('Error: '+m,'error'); })
+      .uiEnsureSnapshots();
+  };
   $('btnAdd').onclick=function(){
     logS('Adding…');
     google.script.run

@@ -21,10 +21,20 @@
  *              topProjects, warnings). Ilk boyamadan SONRA arka planda cekilir.
  *
  * DEPOLAMA
- * Kalici kopya ScriptProperties'te (yeni OAuth yetkisi gerektirmez), hizli
- * kopya CacheService'te. Ikisi de saveSnapshot_/loadSnapshot_ arkasinda —
- * ileride boyut sikisirsa Drive'da bir JSON dosyasina gecmek bu iki
- * fonksiyonu degistirmekten ibaret.
+ * Kalici kopya DRIVE'da, donem basina iki JSON dosyasi:
+ *   snapshot-<key>.json  (overview)   details-<key>.json  (agir yari)
+ * Hizli kopya CacheService'te. Dosyalar uygulamanin kendi olusturdugu bir
+ * klasorde durur; drive.file yetkisi yalniz bu dosyalari gorur, kullanicinin
+ * Drive'inin geri kalanina erisemez.
+ *
+ * Neden ScriptProperties degil: her ay yeni bir spreadsheet ekleniyor (yilda
+ * 12, her yil +12) ve TUM donemler dashboard'da gorunur olmali. Overview
+ * donem basina ~120KB; ScriptProperties'in TOPLAM 500KB kotasi ancak ~3 donem
+ * alirdi. Drive'da sinir yok: 12 donem/yil x ~250KB = ~3MB/yil.
+ *
+ * ScriptProperties'te yalniz iki kucuk sey kalir: dosya indeksi (key -> fileId)
+ * ve TREND ozeti (donem basina ~1KB; 60 ay = ~60KB). Trend ozeti sayesinde
+ * yillar arasi grafik tek okumayla, dosyalara hic gitmeden cizilebiliyor.
  *
  * PAKETLEME
  * ScriptProperties'in toplam 500KB siniri var. Olculer ({count, turnover,
@@ -33,11 +43,13 @@
  * unpackSite() ile eski sekle geri ceviriyor, boylece arayuz kodu degismiyor.
  */
 
-var PROP_SNAP_PREFIX = 'RO_DASH_SNAP_';        // + <key>  -> overview (parcali)
-var SNAP_PROP_CHUNK = 8000;                    // ScriptProperties deger basina 9KB siniri
+var PROP_SNAP_PREFIX = 'RO_DASH_SNAP_';        // ESKI (ScriptProperties) depo — yalniz temizlik icin
+var PROP_SNAP_INDEX  = 'RO_DASH_SNAP_INDEX';   // {key: {o:fileId, d:fileId}}
+var PROP_SNAP_FOLDER = 'RO_DASH_SNAP_FOLDER';  // Drive klasor id'si
+var PROP_TREND       = 'RO_DASH_TREND';        // {key: {builtAt, ro:{...}}}  — tum donemler
+var SNAP_FOLDER_NAME = 'RO Dashboard Snapshots';
 var SNAP_CACHE_TTL = 21600;                    // 6 saat (CacheService ust siniri)
 var SNAP_VERSION = 1;                          // sekil degisirse artir -> eski snapshot yok sayilir
-var SNAP_KEEP_PERIODS = 2;                     // kalici kopyasi tutulan donem sayisi (bkz. pruneSnapshots_)
 
 /* Olcu alanlarinin SABIT sirasi. Sira degisirse SNAP_VERSION artirilmali. */
 var MEASURE_FIELDS = ['count', 'turnover', 'ytdCount', 'ytdTurnover',
@@ -176,90 +188,194 @@ function buildSnapshot_(key) {
   };
 }
 
-/* ---------- depolama ---------- */
+/* ---------- depolama: Drive dosyalari + cache ---------- */
 
-function propsPut_(base, json) {
+/** Snapshot dosyalarinin durdugu klasor; yoksa olusturulur. */
+function snapFolder_() {
   var props = PropertiesService.getScriptProperties();
-  var chunks = [];
-  for (var i = 0; i < json.length; i += SNAP_PROP_CHUNK) {
-    chunks.push(json.slice(i, i + SNAP_PROP_CHUNK));
+  var id = props.getProperty(PROP_SNAP_FOLDER);
+  if (id) {
+    try { return DriveApp.getFolderById(id); }
+    catch (e) { /* silinmis -> asagida yeniden olusturulur */ }
   }
-  /* Once eski parcalari sil — yeni snapshot kisaysa artik parcalar kalirdi. */
-  propsDelete_(base);
-  var toSet = {};
-  toSet[base + '_n'] = String(chunks.length);
-  for (var c = 0; c < chunks.length; c++) toSet[base + '_' + c] = chunks[c];
-  props.setProperties(toSet, false);
+  var folder = DriveApp.createFolder(SNAP_FOLDER_NAME);
+  props.setProperty(PROP_SNAP_FOLDER, folder.getId());
+  return folder;
 }
 
-function propsGet_(base) {
-  var all = PropertiesService.getScriptProperties().getProperties();
-  var n = parseInt(all[base + '_n'], 10);
-  if (!n) return null;
-  var parts = [];
-  for (var c = 0; c < n; c++) {
-    var p = all[base + '_' + c];
-    if (p == null) return null;
-    parts.push(p);
-  }
-  return parts.join('');
+function snapIndex_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PROP_SNAP_INDEX);
+  if (!raw) return {};
+  try { return JSON.parse(raw) || {}; } catch (e) { return {}; }
 }
 
-function propsDelete_(base) {
-  var props = PropertiesService.getScriptProperties();
-  var all = props.getProperties();
-  for (var k in all) {
-    if (all.hasOwnProperty(k) && k.indexOf(base + '_') === 0) props.deleteProperty(k);
-  }
+function saveSnapIndex_(idx) {
+  PropertiesService.getScriptProperties().setProperty(PROP_SNAP_INDEX, JSON.stringify(idx));
 }
 
 /**
- * Snapshot'i saklar. overview kalici (ScriptProperties) + hizli (cache);
- * details yalniz cache'te — agir, kalici olmasi sart degil, cache bosalirsa
- * tek sayfa okumasiyla yeniden uretilebiliyor.
+ * Bir donemin bir yuvasini (slot: 'o' = overview, 'd' = details) Drive'a yazar.
+ * Dosya varsa icerigi degistirilir, yoksa olusturulur. Dosya elle silinmisse
+ * getFileById hata verir; o durumda yenisi olusturulup indeks tazelenir.
+ */
+function driveWrite_(key, slot, json) {
+  var idx = snapIndex_();
+  var entry = idx[key] || (idx[key] = {});
+  if (entry[slot]) {
+    try {
+      DriveApp.getFileById(entry[slot]).setContent(json);
+      return entry[slot];
+    } catch (e) { entry[slot] = null; }
+  }
+  var name = (slot === 'o' ? 'snapshot-' : 'details-') + key + '.json';
+  var file = snapFolder_().createFile(name, json, 'application/json');
+  entry[slot] = file.getId();
+  saveSnapIndex_(idx);
+  return entry[slot];
+}
+
+function driveRead_(key, slot) {
+  var entry = snapIndex_()[key];
+  if (!entry || !entry[slot]) return null;
+  try { return DriveApp.getFileById(entry[slot]).getBlob().getDataAsString('UTF-8'); }
+  catch (e) { return null; }   // dosya silinmis -> cagiran yeniden kurar
+}
+
+/* ---------- trend: donem basina minik RO ozeti ----------
+   "Her yil +12 spreadsheet ve hepsinin datasi gorunur olmali" (kullanici).
+   60 ayin TAM verisini ayni anda tutmak gereksiz; yillar arasi grafik icin
+   donem basina RO bazinda birkac sayi yetiyor (~1KB). Bu ozet
+   ScriptProperties'te duruyor, yani trend grafigi TEK okumayla ciziliyor. */
+
+/** {NEW:x, REMAN:y} -> x+y  (null/eksik degerler 0 sayilir) */
+function sumStatus_(o) {
+  if (!o) return 0;
+  return (typeof o.NEW === 'number' ? o.NEW : 0) +
+         (typeof o.REMAN === 'number' ? o.REMAN : 0);
+}
+
+/** Paketlenmis overview'dan RO bazinda trend satirlari uretir. */
+function trendRollup_(sites) {
+  var byRo = {};
+  for (var i = 0; i < sites.length; i++) {
+    var p = sites[i];
+    var r = byRo[p.ro] || (byRo[p.ro] = { sites: 0, hc: 0, bc: 0, by: 0, bt: 0,
+                                          rc: 0, rt: 0, pt: 0 });
+    r.sites++;
+    r.hc += p.hc || 0;
+    r.bc += sumStatus_(p.bc && p.bc.TOTAL);      // Budget Year adet
+    r.by += sumStatus_(p.by && p.by.TOTAL);      // Budget YTD adet
+    r.bt += sumStatus_(p.bt && p.bt.TOTAL);      // Budget Year ciro (M€)
+    for (var b = 0; b < (p.bl || []).length; b++) {
+      var t = p.bl[b].t;
+      if (!t) continue;
+      r.rc += t[2] || 0;                          // ytdCount      -> Real Launches
+      r.rt += (t[3] || 0) / 1000;                 // ytdTurnover k€ -> M€
+      r.pt += (t[5] || 0) / 1000;                 // planYtdTurnover
+    }
+  }
+  for (var ro in byRo) {
+    if (!byRo.hasOwnProperty(ro)) continue;
+    byRo[ro].bt = round_(byRo[ro].bt);
+    byRo[ro].rt = round_(byRo[ro].rt);
+    byRo[ro].pt = round_(byRo[ro].pt);
+  }
+  return byRo;
+}
+
+function readTrend_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PROP_TREND);
+  if (!raw) return {};
+  try { return JSON.parse(raw) || {}; } catch (e) { return {}; }
+}
+
+function writeTrendFor_(key, snap) {
+  var all = readTrend_();
+  all[key] = {
+    builtAt: snap.builtAt,
+    month: snap.period.month, year: snap.period.year,
+    label: snap.period.label,
+    ro: trendRollup_(snap.sites)
+  };
+  PropertiesService.getScriptProperties().setProperty(PROP_TREND, JSON.stringify(all));
+}
+
+/**
+ * Snapshot'i saklar: iki Drive dosyasi + cache kopyalari + trend ozeti.
+ * Drive yazimi basarisiz olursa cache kopyasi yine de duruyor; tetikleyici
+ * bir sonraki turda tekrar dener ve hata Ayarlar panelinde gorunur.
  */
 function saveSnapshot_(key, snap) {
   var details = snap.details;
   delete snap.details;
 
   var overviewJson = JSON.stringify(snap);
+  var detailsJson = JSON.stringify(details);
+
   var cache = CacheService.getScriptCache();
   try { cachePut_(cache, 'snapo_' + key, snap, SNAP_CACHE_TTL); } catch (e) {}
   try { cachePut_(cache, 'snapd_' + key, details, SNAP_CACHE_TTL); } catch (e) {}
 
   var stored = true, storeError = null;
   try {
-    pruneSnapshots_();                 // once yer ac, sonra yaz
-    propsPut_(PROP_SNAP_PREFIX + key, overviewJson);
+    driveWrite_(key, 'o', overviewJson);
+    driveWrite_(key, 'd', detailsJson);
+    writeTrendFor_(key, snap);
+    cleanupLegacyProps_();          // eski ScriptProperties deposundan kalanlar
   } catch (e) {
-    /* Kalici kopya yazilamadi (ornegin 500KB kotasi doldu). Olumcul degil:
-       cache kopyasi duruyor ve tetikleyici bir sonraki turda tekrar dener.
-       Gercek boyut Ayarlar panelinde gorunuyor — tahmin yerine olcum. */
     stored = false; storeError = e.message;
   }
 
-  snap.details = details;   // cagirana butun objeyi geri ver
-  return { bytes: overviewJson.length, durable: stored, storeError: storeError };
+  snap.details = details;           // cagirana butun objeyi geri ver
+  return { bytes: overviewJson.length + detailsJson.length,
+           overviewBytes: overviewJson.length,
+           durable: stored, storeError: storeError };
 }
 
-/** overview: once cache, sonra ScriptProperties. Ikisi de yoksa null. */
+/** overview: once cache, sonra Drive. Ikisi de yoksa null. */
 function loadOverview_(key) {
   var hit = null;
   try { hit = cacheGet_(CacheService.getScriptCache(), 'snapo_' + key); } catch (e) {}
   if (hit && hit.v === SNAP_VERSION) return hit;
 
-  var raw = propsGet_(PROP_SNAP_PREFIX + key);
+  var raw = driveRead_(key, 'o');
   if (!raw) return null;
   var obj;
   try { obj = JSON.parse(raw); } catch (e) { return null; }
   if (!obj || obj.v !== SNAP_VERSION) return null;
-  /* Kalicidan geldi -> cache'i tazele ki sonraki okuma daha hizli olsun. */
+  /* Drive'dan geldi -> cache'i tazele ki sonraki okuma daha da hizli olsun. */
   try { cachePut_(CacheService.getScriptCache(), 'snapo_' + key, obj, SNAP_CACHE_TTL); } catch (e) {}
   return obj;
 }
 
 function loadDetails_(key) {
-  try { return cacheGet_(CacheService.getScriptCache(), 'snapd_' + key); } catch (e) { return null; }
+  var hit = null;
+  try { hit = cacheGet_(CacheService.getScriptCache(), 'snapd_' + key); } catch (e) {}
+  if (hit) return hit;
+
+  var raw = driveRead_(key, 'd');
+  if (!raw) return null;
+  var obj;
+  try { obj = JSON.parse(raw); } catch (e) { return null; }
+  try { cachePut_(CacheService.getScriptCache(), 'snapd_' + key, obj, SNAP_CACHE_TTL); } catch (e) {}
+  return obj;
+}
+
+/**
+ * Snapshot'lar ScriptProperties'te tutulurken kalan anahtarlari siler.
+ * Kalici depo Drive'a tasindi; bu anahtarlar 500KB'lik kotayi bosuna
+ * doldurup indeks/trend yazimini engelleyebilir.
+ */
+function cleanupLegacyProps_() {
+  var props = PropertiesService.getScriptProperties();
+  var all = props.getProperties();
+  var n = 0;
+  for (var k in all) {
+    if (all.hasOwnProperty(k) && k.indexOf(PROP_SNAP_PREFIX) === 0) {
+      props.deleteProperty(k); n++;
+    }
+  }
+  return n;
 }
 
 /* ---------- istemci / tetikleyici uclari ---------- */
@@ -328,57 +444,82 @@ function uiRefreshPeriod(key) {
 }
 
 /**
- * En guncel SNAP_KEEP_PERIODS donem disindaki kalici snapshot'lari siler.
+ * Tetikleyici ucu: YALNIZ en guncel donemi tazeler.
  *
- * ScriptProperties'in TOPLAM 500KB kotasi var; her ay yeni bir donem eklendikce
- * eski snapshot'lar birikirse bu kota dolar ve yeni donem hic yazilamaz.
- * Eski donemler zaten degismiyor — gerektiginde yeniden kurulabilirler.
- */
-function pruneSnapshots_() {
-  var periods = listPeriods_();          // en yeniden eskiye
-  var keep = {};
-  for (var i = 0; i < periods.length && i < SNAP_KEEP_PERIODS; i++) {
-    keep[PROP_SNAP_PREFIX + periodKey_(periods[i].year, periods[i].month)] = true;
-  }
-  var props = PropertiesService.getScriptProperties();
-  var all = props.getProperties();
-  var removed = [];
-  for (var k in all) {
-    if (!all.hasOwnProperty(k)) continue;
-    if (k.indexOf(PROP_SNAP_PREFIX) !== 0) continue;
-    /* "RO_DASH_SNAP_2026-06_3" -> taban "RO_DASH_SNAP_2026-06" */
-    var base = k.slice(0, k.lastIndexOf('_'));
-    if (keep[base]) continue;
-    props.deleteProperty(k);
-    if (removed.indexOf(base) === -1) removed.push(base);
-  }
-  return removed;
-}
-
-/**
- * Tetikleyici ucu: en guncel donemlerin snapshot'ini tazeler.
+ * Gecmis aylar donmus — o dosyalar bir daha degismiyor, dolayisiyla saatte bir
+ * yeniden okumak bosa kota harcar. Bu politika sayesinde 5 yil sonra 60 donem
+ * birikse de saatlik maliyet bugunkuyle AYNI kalir (~1 dk).
  *
- * Aylik rapor ayda bir "yenilenmiyor" — site'lar ay ICINDE de duzeltme
- * yapiyor (kullanici geri bildirimi). Bu yuzden tazeleme saatlik; maliyeti
- * gunde ~20-25 dk tetikleyici suresi, Workspace'in 6 sa/gun kotasinin
- * kucuk bir dilimi. Tazeleme arka planda oldugu icin kimse beklemiyor:
- * yenilenene kadar kullanici bir onceki snapshot'i goruyor.
+ * Gecmis donemler kayda girdiginde bir kez kurulur (Ayarlar ekrani ya da
+ * ensureSnapshots); sonra yalniz yonetici acikca isterse yeniden kurulur.
  */
 function refreshAllSnapshots() {
   var periods = listPeriods_();
-  var done = [], failed = [];
-  for (var i = 0; i < periods.length && done.length < SNAP_KEEP_PERIODS; i++) {
+  if (!periods.length) return { refreshed: [], failed: [] };
+  var key = periodKey_(periods[0].year, periods[0].month);
+  try {
+    var res = refreshPeriodSnapshot_(key);
+    if (res.error) return { refreshed: [], failed: [key + ': ' + res.error] };
+    return { refreshed: [key], failed: [] };
+  } catch (e) {
+    return { refreshed: [], failed: [key + ': ' + e.message] };
+  }
+}
+
+/**
+ * Snapshot'i olmayan TUM donemleri kurar (en yeniden eskiye).
+ *
+ * Gecmis bir aya ilk kez bakilacagi zaman kullaniciyi 40-60 sn bekletmemek
+ * icin. Tek calistirmada Apps Script'in 6 dk sinirina takilmamak adina en
+ * fazla `limit` donem isler; kalanlar bir sonraki cagrida kurulur ve sonuc
+ * kac donemin bekledigini soyler.
+ */
+function ensureSnapshots(limit) {
+  var max = limit || 3;
+  var periods = listPeriods_();
+  var idx = snapIndex_();
+  var built = [], pending = 0;
+  for (var i = 0; i < periods.length; i++) {
     var key = periodKey_(periods[i].year, periods[i].month);
+    var entry = idx[key];
+    if (entry && entry.o) continue;              // zaten var
+    if (built.length >= max) { pending++; continue; }
     try {
       var res = refreshPeriodSnapshot_(key);
-      if (res.error) failed.push(key + ': ' + res.error);
-      else done.push(key);
-    } catch (e) {
-      failed.push(key + ': ' + e.message);
-    }
+      if (!res.error) { built.push(key); idx = snapIndex_(); }
+    } catch (e) { /* bu donem atlanir, sonraki cagrida tekrar denenir */ }
   }
-  var pruned = pruneSnapshots_();
-  return { refreshed: done, failed: failed, pruned: pruned };
+  return { built: built, pending: pending };
+}
+
+function uiEnsureSnapshots() {
+  var deny = requireAdmin_(); if (deny) return deny;
+  var r = ensureSnapshots(3);
+  return { ok: true, built: r.built, pending: r.pending,
+           message: r.built.length + ' period(s) built' +
+                    (r.pending ? ', ' + r.pending + ' still pending — run again.' : '.') };
+}
+
+/**
+ * Yillar arasi trend: TUM donemlerin RO bazinda minik ozeti.
+ *
+ * Snapshot dosyalarina hic gidilmez — ozet ScriptProperties'te durdugu icin
+ * tek okumayla doner. 60 ay ~60KB.
+ */
+function getTrend() {
+  try {
+    var all = readTrend_();
+    var out = [];
+    for (var k in all) {
+      if (!all.hasOwnProperty(k)) continue;
+      out.push({ key: k, year: all[k].year, month: all[k].month,
+                 label: all[k].label, builtAt: all[k].builtAt, ro: all[k].ro });
+    }
+    out.sort(function (a, b) { return (a.year - b.year) || (a.month - b.month); });
+    return { periods: out };
+  } catch (e) {
+    return { error: 'Could not read trend: ' + e.message };
+  }
 }
 
 /** Snapshot tazeleme tetikleyicisini kurar (saatte bir). */
