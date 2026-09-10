@@ -190,17 +190,87 @@ function buildSnapshot_(key) {
 
 /* ---------- depolama: Drive dosyalari + cache ---------- */
 
-/** Snapshot dosyalarinin durdugu klasor; yoksa olusturulur. */
-function snapFolder_() {
+/* Neden DriveApp DEGIL, Drive REST API:
+   DriveApp'in createFolder/createFile cagrilari TAM 'drive' yetkisi istiyor
+   ("Specified permissions are not sufficient to call DriveApp.createFolder.
+   Required permissions: .../auth/drive") — yani kullanicinin Drive'inin
+   TAMAMINA erisim. Dar olan 'drive.file' yetkisi ise REST API ile calisiyor ve
+   yalniz uygulamanin KENDI olusturdugu dosyalari gorur. Kullaniciya verilen
+   soz bu: panonun kendi snapshot dosyalari disinda hicbir seye erisilmiyor.
+   UrlFetchApp icin gereken script.external_request yetkisi zaten vardi. */
+function driveApi_(url, options) {
+  var opt = options || {};
+  opt.muteHttpExceptions = true;
+  opt.headers = opt.headers || {};
+  opt.headers.Authorization = 'Bearer ' + ScriptApp.getOAuthToken();
+  var res = UrlFetchApp.fetch(url, opt);
+  var code = res.getResponseCode();
+  if (code < 200 || code >= 300) {
+    throw new Error('Drive API ' + code + ': ' + res.getContentText().slice(0, 300));
+  }
+  return res;
+}
+
+var DRIVE_V3 = 'https://www.googleapis.com/drive/v3/files';
+var DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
+
+function driveGetMeta_(id) {
+  var res = driveApi_(DRIVE_V3 + '/' + encodeURIComponent(id) +
+                      '?fields=id,name,trashed,webViewLink', { method: 'get' });
+  return JSON.parse(res.getContentText());
+}
+
+function driveCreateFolder_(name) {
+  var res = driveApi_(DRIVE_V3 + '?fields=id,name,webViewLink', {
+    method: 'post', contentType: 'application/json',
+    payload: JSON.stringify({ name: name, mimeType: 'application/vnd.google-apps.folder' })
+  });
+  return JSON.parse(res.getContentText());
+}
+
+/** Icerikli dosya olusturur (multipart: once metadata, sonra govde). */
+function driveCreateFile_(name, content, parentId) {
+  var boundary = '----roDash' + Date.now();
+  var meta = { name: name, mimeType: 'application/json' };
+  if (parentId) meta.parents = [parentId];
+  var body =
+    '--' + boundary + '\r\n' +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+    JSON.stringify(meta) + '\r\n' +
+    '--' + boundary + '\r\n' +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+    content + '\r\n' +
+    '--' + boundary + '--';
+  var res = driveApi_(DRIVE_UPLOAD + '?uploadType=multipart&fields=id', {
+    method: 'post', contentType: 'multipart/related; boundary=' + boundary, payload: body
+  });
+  return JSON.parse(res.getContentText()).id;
+}
+
+function driveUpdateFile_(id, content) {
+  driveApi_(DRIVE_UPLOAD + '/' + encodeURIComponent(id) + '?uploadType=media', {
+    method: 'patch', contentType: 'application/json; charset=UTF-8', payload: content
+  });
+}
+
+function driveReadFile_(id) {
+  var res = driveApi_(DRIVE_V3 + '/' + encodeURIComponent(id) + '?alt=media', { method: 'get' });
+  return res.getContentText('UTF-8');
+}
+
+/** Snapshot dosyalarinin durdugu klasorun id'si; yoksa olusturulur. */
+function snapFolderId_() {
   var props = PropertiesService.getScriptProperties();
   var id = props.getProperty(PROP_SNAP_FOLDER);
   if (id) {
-    try { return DriveApp.getFolderById(id); }
-    catch (e) { /* silinmis -> asagida yeniden olusturulur */ }
+    try {
+      var meta = driveGetMeta_(id);
+      if (meta && !meta.trashed) return id;
+    } catch (e) { /* silinmis/erisilemez -> asagida yenisi olusturulur */ }
   }
-  var folder = DriveApp.createFolder(SNAP_FOLDER_NAME);
-  props.setProperty(PROP_SNAP_FOLDER, folder.getId());
-  return folder;
+  var created = driveCreateFolder_(SNAP_FOLDER_NAME);
+  props.setProperty(PROP_SNAP_FOLDER, created.id);
+  return created.id;
 }
 
 function snapIndex_() {
@@ -222,14 +292,11 @@ function driveWrite_(key, slot, json) {
   var idx = snapIndex_();
   var entry = idx[key] || (idx[key] = {});
   if (entry[slot]) {
-    try {
-      DriveApp.getFileById(entry[slot]).setContent(json);
-      return entry[slot];
-    } catch (e) { entry[slot] = null; }
+    try { driveUpdateFile_(entry[slot], json); return entry[slot]; }
+    catch (e) { entry[slot] = null; }   // dosya silinmis -> yenisi olusturulur
   }
   var name = (slot === 'o' ? 'snapshot-' : 'details-') + key + '.json';
-  var file = snapFolder_().createFile(name, json, 'application/json');
-  entry[slot] = file.getId();
+  entry[slot] = driveCreateFile_(name, json, snapFolderId_());
   saveSnapIndex_(idx);
   return entry[slot];
 }
@@ -237,7 +304,7 @@ function driveWrite_(key, slot, json) {
 function driveRead_(key, slot) {
   var entry = snapIndex_()[key];
   if (!entry || !entry[slot]) return null;
-  try { return DriveApp.getFileById(entry[slot]).getBlob().getDataAsString('UTF-8'); }
+  try { return driveReadFile_(entry[slot]); }
   catch (e) { return null; }   // dosya silinmis -> cagiran yeniden kurar
 }
 
@@ -316,11 +383,15 @@ function saveSnapshot_(key, snap) {
   try { cachePut_(cache, 'snapo_' + key, snap, SNAP_CACHE_TTL); } catch (e) {}
   try { cachePut_(cache, 'snapd_' + key, details, SNAP_CACHE_TTL); } catch (e) {}
 
+  /* Trend ozeti ScriptProperties'te — Drive'dan bagimsiz. Drive yazimi
+     basarisiz olsa bile trend guncellenmeli, yoksa yillar arasi grafik
+     bos kalirdi. */
+  try { writeTrendFor_(key, snap); } catch (e) {}
+
   var stored = true, storeError = null;
   try {
     driveWrite_(key, 'o', overviewJson);
     driveWrite_(key, 'd', detailsJson);
-    writeTrendFor_(key, snap);
     cleanupLegacyProps_();          // eski ScriptProperties deposundan kalanlar
   } catch (e) {
     stored = false; storeError = e.message;
@@ -571,15 +642,15 @@ function checkSetup() {
   // 3) Drive yetkisi + klasor  (asil "yetki calisti mi" testi burasi)
   var folderOk = false;
   try {
-    var folder = snapFolder_();
+    var fid = snapFolderId_();
+    var meta = driveGetMeta_(fid);
     folderOk = true;
-    log('3) Drive klasoru : OK — "' + folder.getName() + '"');
-    log('   Klasor linki  : ' + folder.getUrl());
+    log('3) Drive klasoru : OK — "' + meta.name + '"');
+    log('   Klasor linki  : ' + (meta.webViewLink || ('https://drive.google.com/drive/folders/' + fid)));
   } catch (e) {
     log('3) Drive klasoru : HATA — ' + e.message);
-    log('   !! drive.file yetkisi verilmemis olabilir. Bu fonksiyonu calistirirken');
-    log('      yetkilendirme ekrani cikmadiysa, deploy eden hesapla giris yaptiginizdan');
-    log('      emin olun.');
+    log('   !! drive.file yetkisi henuz verilmemis. Editorde herhangi bir fonksiyonu');
+    log('      calistirdiginizda cikan yetkilendirme ekranini onaylayin.');
   }
 
   // 4) Snapshot dosyalari
