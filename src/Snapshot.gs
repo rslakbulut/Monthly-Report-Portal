@@ -533,3 +533,98 @@ function installSnapshotTrigger() {
   ScriptApp.newTrigger('refreshAllSnapshots').timeBased().everyHours(1).create();
   return 'Snapshot refresh trigger installed (hourly).';
 }
+
+/**
+ * TESHIS: kurulumun gercekten calisip calismadigini yazar.
+ *
+ * Neden gerekli: bu dosyadaki fonksiyonlar hata firlatmiyor, hatayi bir sonuc
+ * nesnesi olarak donduruyor. Bu yuzden editorde "Yurutme tamamlandi" yazmasi
+ * isin BASARILI oldugu anlamina gelmiyor — sonuc gorunmedigi icin fark
+ * edilmiyor. checkSetup her adimi Yurutme gunlugune yazar.
+ *
+ * Apps Script editorunde calistirin, sonra "Yurutme gunlugu"nu okuyun.
+ */
+function checkSetup() {
+  function log(s) { console.log(s); }
+  log('=== RO Dashboard — kurulum kontrolu ===');
+
+  // 1) Kimlik
+  var active = '', effective = '';
+  try { active = Session.getActiveUser().getEmail() || '(bos)'; } catch (e) { active = 'HATA: ' + e.message; }
+  try { effective = Session.getEffectiveUser().getEmail() || '(bos)'; } catch (e) { effective = 'HATA: ' + e.message; }
+  log('1) Calistiran hesap : ' + active);
+  log('   Etkin hesap      : ' + effective);
+  log('   Yonetici mi      : ' + (isAuthorizedAdmin_() ? 'EVET' : 'HAYIR'));
+
+  // 2) Kayitli donemler
+  var periods = listPeriods_();
+  log('2) Kayitli donem sayisi: ' + periods.length);
+  if (!periods.length) {
+    log('   !! Hic donem kayitli degil. Ayarlar ekranindan Gmail taramasi calistirin');
+    log('      ya da spreadsheet linkini elle ekleyin. Snapshot kurulamaz.');
+    return;
+  }
+  for (var i = 0; i < periods.length; i++) {
+    log('   - ' + periodKey_(periods[i].year, periods[i].month) + '  ' + periods[i].name);
+  }
+
+  // 3) Drive yetkisi + klasor  (asil "yetki calisti mi" testi burasi)
+  var folderOk = false;
+  try {
+    var folder = snapFolder_();
+    folderOk = true;
+    log('3) Drive klasoru : OK — "' + folder.getName() + '"');
+    log('   Klasor linki  : ' + folder.getUrl());
+  } catch (e) {
+    log('3) Drive klasoru : HATA — ' + e.message);
+    log('   !! drive.file yetkisi verilmemis olabilir. Bu fonksiyonu calistirirken');
+    log('      yetkilendirme ekrani cikmadiysa, deploy eden hesapla giris yaptiginizdan');
+    log('      emin olun.');
+  }
+
+  // 4) Snapshot dosyalari
+  var idx = snapIndex_();
+  var haveOverview = 0, haveDetails = 0;
+  for (var k in idx) {
+    if (!idx.hasOwnProperty(k)) continue;
+    if (idx[k].o) haveOverview++;
+    if (idx[k].d) haveDetails++;
+  }
+  log('4) Snapshot dosyasi olan donem: ' + haveOverview + ' / ' + periods.length +
+      '  (detay: ' + haveDetails + ')');
+  if (!haveOverview && folderOk) {
+    log('   !! Hic snapshot yok. refreshAllSnapshots calistirin (guncel ay icin)');
+    log('      veya ensureSnapshots (tum donemler icin).');
+  }
+
+  // 5) En guncel donem gercekten okunabiliyor mu
+  var newest = periodKey_(periods[0].year, periods[0].month);
+  var ov = null;
+  try { ov = loadOverview_(newest); } catch (e) { log('5) HATA: ' + e.message); }
+  if (ov) {
+    log('5) Guncel donem (' + newest + ') : OK');
+    log('   Kurulma zamani : ' + ov.builtAt);
+    log('   Site sayisi    : ' + (ov.sites || []).length);
+    log('   Sayfasi olmayan: ' + (ov.missingSites || []).length);
+  } else {
+    log('5) Guncel donem (' + newest + ') : SNAPSHOT YOK');
+    log('   Dashboard su an eski yavas yoldan yukleniyor demektir.');
+  }
+
+  // 6) Tetikleyiciler
+  var trig = ScriptApp.getProjectTriggers();
+  var names = [];
+  for (var t = 0; t < trig.length; t++) names.push(trig[t].getHandlerFunction());
+  log('6) Kurulu tetikleyiciler: ' + (names.length ? names.join(', ') : '(yok)'));
+  if (names.indexOf('refreshAllSnapshots') === -1) {
+    log('   !! Saatlik tazeleme kurulu degil. installSnapshotTrigger calistirin.');
+  }
+
+  // 7) Trend ozeti
+  var trend = readTrend_();
+  var tKeys = [];
+  for (var tk in trend) { if (trend.hasOwnProperty(tk)) tKeys.push(tk); }
+  log('7) Trend ozeti olan donem: ' + tKeys.length + (tKeys.length ? ' (' + tKeys.join(', ') + ')' : ''));
+
+  log('=== bitti ===');
+}
