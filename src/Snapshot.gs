@@ -639,6 +639,35 @@ function checkSetup() {
     log('   - ' + periodKey_(periods[i].year, periods[i].month) + '  ' + periods[i].name);
   }
 
+  // 2b) Token'a GERCEKTEN verilen yetkiler
+  /* "Yetki sormadi" ile "yetki var" ayni sey degil. Apps Script izin ekranini
+     yalniz tanidigi servisler (DriveApp gibi) icin cikariyor; biz Drive'a
+     dogrudan REST ile gittigimiz icin ekran cikmayabiliyor. Tek kesin kanit
+     token'in tasidigi scope listesi. */
+  try {
+    var tRes = UrlFetchApp.fetch(
+      'https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=' +
+      encodeURIComponent(ScriptApp.getOAuthToken()), { muteHttpExceptions: true });
+    var info = JSON.parse(tRes.getContentText());
+    var scopes = String(info.scope || '').split(' ');
+    var hasDriveFile = false, hasDriveFull = false;
+    for (var sc = 0; sc < scopes.length; sc++) {
+      if (scopes[sc].indexOf('/auth/drive.file') !== -1) hasDriveFile = true;
+      if (scopes[sc].replace(/\/$/, '').slice(-11) === '/auth/drive') hasDriveFull = true;
+    }
+    log('2b) Verilen Drive yetkisi:');
+    log('    drive.file (dar, istenen) : ' + (hasDriveFile ? 'VAR' : 'YOK'));
+    log('    drive (tam)               : ' + (hasDriveFull ? 'VAR' : 'yok'));
+    if (!hasDriveFile && !hasDriveFull) {
+      log('    !! Token Drive yetkisi tasimıyor. Cozum: myaccount.google.com/permissions');
+      log('       adresinden bu uygulamanin erisimini KALDIRIN, sonra bu fonksiyonu');
+      log('       tekrar calistirin — izin ekrani o zaman cikar.');
+    }
+    log('    (tum yetkiler: ' + scopes.join(' | ') + ')');
+  } catch (e) {
+    log('2b) Yetki listesi okunamadi: ' + e.message);
+  }
+
   // 3) Drive yetkisi + klasor  (asil "yetki calisti mi" testi burasi)
   var folderOk = false;
   try {
