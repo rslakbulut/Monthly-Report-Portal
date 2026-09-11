@@ -11,6 +11,26 @@ hâlidir. Kod örnekleri kopyalanabilir; `src/Snapshot.gs` gerçek uygulamasıd�
 
 ---
 
+## 0. Bu size uyar mı? — önce bunu kontrol edin
+
+Bu yaklaşım **belirli bir yavaşlık türünü** çözer. Üç sorunun üçüne birden "evet"
+diyorsanız uyar:
+
+1. **Yavaşlık sunucu tarafında mı?** Tarayıcı konsolunda `google.script.run`
+   çağrıları saniyelerce sürüyor mu? (Ekran çizimi yavaşsa, dev bir tablo DOM'a
+   basılıyorsa ya da dış bir API bekleniyorsa sorun başka yerdedir.)
+2. **Aynı sonuç herkes için aynı mı?** Kullanıcıya göre değişen, kişiye özel
+   hesaplanan bir ekran değilse evet. (Her kullanıcı için farklı hesap yapılıyorsa
+   snapshot tek başına yetmez — kullanıcı bazlı anahtarlama gerekir.)
+3. **Veri saniye saniye canlı olmak zorunda değil mi?** Birkaç dakika/saat bayat
+   olabiliyorsa evet. (Canlı stok, anlık sensör verisi gibi bir şeyse bu yaklaşım
+   uygun değildir.)
+
+Üçü de evetse devam edin. Değilse §1'deki teşhis adımı yine de işe yarar — ama
+çözüm farklı olacaktır.
+
+---
+
 ## 1. Önce teşhis: zaman nereye gidiyor?
 
 Tahmin etmeyin, sayın. Üç soru:
@@ -444,6 +464,32 @@ console.log('veri ekranda: ' + Math.round(performance.now() - t0) + 'ms');
 ```
 
 Ayrıca sayın: açılışta kaç `google.script.run` çağrısı yapıldı? Hedef **0**.
+
+---
+
+## 6b. Neyi kopyalarsınız, neyi kendiniz yazarsınız
+
+Bu doküman hazır bir modül değil. Veri modeliniz farklıysa bazı parçalar aynen
+çalışır, bazıları sizin işinize göre yeniden yazılır:
+
+| Parça | Durum |
+|---|---|
+| `doGet` + `jsonForInline_` gömme | **Aynen kopyalanır** — veriden bağımsız |
+| Drive REST yardımcıları (`driveApi_`, `driveCreateFile_`, …) | **Aynen kopyalanır** |
+| Tetikleyici kurulumu | **Aynen kopyalanır** |
+| `checkSetup()` + izole yazma testi | **Aynen kopyalanır** |
+| Cache parçalama (100 KB) | **Aynen kopyalanır** |
+| §4 Tuzaklar | **Aynen geçerli** — bunlar platform gerçeği, veri modeliyle ilgisi yok |
+| İstemcideki `boot()` / hızlı-yol dalı | Küçük uyarlama — kendi `render()` çağrınız |
+| **`buildSnapshot_()` gövdesi** | **Tamamen sizin** — kendi okuma/hesaplama mantığınız |
+| overview / details ayrımı | **Sizin kararınız** — ilk ekranda ne var, tıklayınca ne açılıyor |
+| Paketleme (dizi olarak yazma) | **Yalnız boyut sorun olursa** — önce ölçün |
+
+Yani şablon şu: **iskelet ve tuzaklar hazır, "pahalı iş" kutusunu siz doldurursunuz.**
+
+Pratik kullanım: bu dosyayı kendi kod tabanınızla birlikte bir AI oturumuna verip
+"şu dashboard'a bu playbook'u uygula" demek en hızlı yol. Doküman bunun için
+yazıldı — hangi kararların size ait olduğunu açıkça söylüyor.
 
 ---
 
