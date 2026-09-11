@@ -48,6 +48,14 @@ var PROP_SNAP_INDEX  = 'RO_DASH_SNAP_INDEX';   // {key: {o:fileId, d:fileId}}
 var PROP_SNAP_FOLDER = 'RO_DASH_SNAP_FOLDER';  // Drive klasor id'si
 var PROP_TREND       = 'RO_DASH_TREND';        // {key: {builtAt, ro:{...}}}  — tum donemler
 var PROP_LAST_STORE_ERR = 'RO_DASH_LAST_STORE_ERR';   // son kalici yazma hatasi (teshis)
+
+/* ESKI depo anahtarlari: RO_DASH_SNAP_<yil>-<ay>_<parca no>
+   DIKKAT: sadece PROP_SNAP_PREFIX ile "baslayan" anahtarlari silmek
+   PROP_SNAP_INDEX ve PROP_SNAP_FOLDER'i DA siliyordu (ikisi de ayni onekle
+   basliyor). Sonuc: dosyalar Drive'a yaziliyor, hemen ardindan adresleri
+   siliniyordu — her calistirmada yeni klasor aciliyor ve "0 snapshot"
+   goruluyordu. Desen artik donem anahtari sart kosuyor. */
+var LEGACY_SNAP_KEY = /^RO_DASH_SNAP_\d{4}-\d{2}_/;
 var SNAP_FOLDER_NAME = 'RO Dashboard Snapshots';
 var SNAP_CACHE_TTL = 21600;                    // 6 saat (CacheService ust siniri)
 var SNAP_VERSION = 1;                          // sekil degisirse artir -> eski snapshot yok sayilir
@@ -281,9 +289,28 @@ function snapFolderId_() {
       if (driveApiCode_(e) !== 404) throw e;
     }
   }
+  /* Once ADIYLA ara: id kaybolduysa (yukaridaki hata gibi) var olan klasoru
+     benimse, bir yenisini acma. drive.file kapsaminda list yalniz uygulamanin
+     kendi olusturdugu dosyalari dondurur — yani tam aradigimiz klasoru. */
+  var found = findSnapFolderByName_();
+  if (found) { props.setProperty(PROP_SNAP_FOLDER, found); return found; }
+
   var created = driveCreateFolder_(SNAP_FOLDER_NAME);
   props.setProperty(PROP_SNAP_FOLDER, created.id);
   return created.id;
+}
+
+/** Uygulamanin gorebildigi klasorler arasinda snapshot klasorunu adiyla bulur. */
+function findSnapFolderByName_() {
+  var q = "mimeType='application/vnd.google-apps.folder' and name='" +
+          SNAP_FOLDER_NAME.replace(/'/g, "\\'") + "' and trashed=false";
+  try {
+    var res = driveApi_(DRIVE_V3 + '?q=' + encodeURIComponent(q) +
+                        '&fields=files(id,name,createdTime)&pageSize=20&orderBy=createdTime',
+                        { method: 'get' });
+    var files = JSON.parse(res.getContentText()).files || [];
+    return files.length ? files[0].id : null;   // en eskisi = asil klasor
+  } catch (e) { return null; }
 }
 
 function snapIndex_() {
@@ -462,7 +489,7 @@ function cleanupLegacyProps_() {
   var all = props.getProperties();
   var n = 0;
   for (var k in all) {
-    if (all.hasOwnProperty(k) && k.indexOf(PROP_SNAP_PREFIX) === 0) {
+    if (all.hasOwnProperty(k) && LEGACY_SNAP_KEY.test(k)) {
       props.deleteProperty(k); n++;
     }
   }
@@ -822,4 +849,59 @@ function testDriveWrite() {
   }
 
   log('=== bitti ===  (test dosyalari klasorde kaldi, silebilirsiniz)');
+}
+
+/**
+ * ONARIM: Drive'daki snapshot dosyalarindan indeksi yeniden kurar.
+ *
+ * Indeks (key -> fileId) ScriptProperties'te duruyordu ve cleanupLegacyProps_
+ * onek hatasi yuzunden siliniyordu; dosyalar Drive'a yazilmis ama adresleri
+ * kaybolmus olabilir. Bu fonksiyon klasoru tarar, snapshot-<key>.json ve
+ * details-<key>.json adlarindan donem anahtarini cikarip indeksi yeniden yazar.
+ * Ayni donemin birden fazla kopyasi varsa EN YENISI alinir.
+ */
+function repairIndex() {
+  function log(s) { console.log(s); }
+  log('=== Indeks onarimi ===');
+
+  var fid;
+  try { fid = snapFolderId_(); log('Klasor: ' + fid); }
+  catch (e) { log('Klasor okunamadi: ' + e.message); return; }
+
+  var files = [], pageToken = null;
+  try {
+    do {
+      var url = DRIVE_V3 + '?q=' + encodeURIComponent("'" + fid + "' in parents and trashed=false") +
+                '&fields=nextPageToken,files(id,name,modifiedTime,size)&pageSize=200' +
+                (pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : '');
+      var res = JSON.parse(driveApi_(url, { method: 'get' }).getContentText());
+      files = files.concat(res.files || []);
+      pageToken = res.nextPageToken;
+    } while (pageToken);
+  } catch (e) {
+    log('Dosyalar listelenemedi: ' + e.message);
+    return;
+  }
+  log('Klasordeki dosya sayisi: ' + files.length);
+
+  var idx = snapIndex_(), added = 0;
+  var pat = /^(snapshot|details)-(\d{4}-\d{2})\.json$/;
+  var best = {};   // key+slot -> en yeni dosya
+  for (var i = 0; i < files.length; i++) {
+    var m = pat.exec(files[i].name);
+    if (!m) continue;
+    var slot = (m[1] === 'snapshot') ? 'o' : 'd';
+    var id = m[2] + '|' + slot;
+    if (!best[id] || files[i].modifiedTime > best[id].modifiedTime) best[id] = files[i];
+  }
+  for (var bk in best) {
+    if (!best.hasOwnProperty(bk)) continue;
+    var parts = bk.split('|');
+    var entry = idx[parts[0]] || (idx[parts[0]] = {});
+    if (entry[parts[1]] !== best[bk].id) { entry[parts[1]] = best[bk].id; added++; }
+    log('  ' + best[bk].name + '  -> ' + best[bk].id + '  (' + (best[bk].size || '?') + ' bayt)');
+  }
+  saveSnapIndex_(idx);
+  log('Indekse yazilan/duzeltilen kayit: ' + added);
+  log('=== bitti ===  checkSetup ile dogrulayin.');
 }
