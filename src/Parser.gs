@@ -219,6 +219,16 @@ function parseDetailBlock_(grid, startRow, spec, year, reportMonth, warnings) {
     var real = realCol !== null ? parsePeriodCell_(row[realCol], year) : { ok: false };
     var plan = planCol !== null ? parsePeriodCell_(row[planCol], year) : { ok: false };
 
+    /* "Launch Sheet Date Plan / Real" ikilisinde sol hucre bazen YIL yaziyor
+       (ornek: 2026 | JAN). Kullanici karari: bu bir veri girisi hatasidir — o
+       site sayfaya yanlislikla yil yazmis; olmasi gereken W14 / W15 gibi iki
+       hafta (ya da iki ay adi) idi. Boyle bir satirda PLAN bilgisi YOKTUR;
+       plan tarafi Real ile ayni kabul edilir, yani proje planina gore
+       zamaninda sayilir. Yil zaten spreadsheet adindan geliyor, hucreden degil.
+       Bu duzeltme olmadan plan cozulemiyor ve Budget YTD cirosu 0.0 M€
+       cikiyordu (canlida PTE ve PDA'da gorulen durum). */
+    if (plan.reason === 'year only, no month') plan = real;
+
     // Ne tarih ne ciro varsa bu satir veri degil (bos sablon satiri)
     if (!real.ok && !plan.ok && turnover === 0) continue;
     res.rows++;

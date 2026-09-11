@@ -147,6 +147,39 @@ eq(vs.projects[0].realMonth, 3, 'TOPS: Real launch ayi (Mart)');
 eq(vs.projects[3].model, 'VOLVO V40', 'TOPS: en kucuk ciro sonda');
 eq(vs.projects[3].realMonth, null, 'TOPS: launch olmamis projede Real ayi bos');
 
+/* ---------- 4b) Plan hucresinde YIL yazan blok (kullanici karari) ---------- */
+/* Bazi site'lar "Launch Sheet Date Plan / Real" ikilisinin SOL hucresine
+   yanlislikla YILI yaziyor (2026 | JAN). Olmasi gereken W14 / W15 gibi iki
+   haftaydi. Kullanici karari: boyle bir satirda plan bilgisi YOKTUR, plan
+   Real ile ayni kabul edilir. Aksi halde plan cozulemiyor ve Budget YTD
+   cirosu 0.0 M€ cikiyor. */
+console.log('\n4b) Plan hucresinde YIL var — plan = Real kabul edilmeli');
+push({});
+push({1:'* 2026 OES Current Portfolio - NEW'});
+push({0:'Milestone',1:'Project Ref. in WishList',2:'Ref',3:'Model',4:'Type',5:'Segment',6:'Difficulty Rate',7:'PRODUCT',
+      8:'Launch Sheet Date Plan / Real',10:'SOP IS Approval date',11:'Sales Price in €',12:'Quantity of pieces per year',13:'Turnover (k€)'});
+/* sol=2026 (YIL, hatali giris), sag=JAN -> plan da Ocak sayilmali */
+push({1:'X',3:'AUDI A3',      4:'P1', 5:'DMF', 8:2026,  9:'JAN', 13:40.00});
+/* sol=2026, sag=W27 (Temmuz) -> ne real ne plan YTD'ye girer (Haziran raporu) */
+push({1:'X',3:'SEAT LEON',    4:'P1', 5:'DMF', 8:2026,  9:'W27', 13:10.00});
+/* normal satir: W14 planlandi (Nisan), W15'te oldu (Nisan) -> ikisi de YTD */
+push({1:'X',3:'SKODA FABIA',  4:'P10',5:'2P',  8:'W14', 9:'W15', 13:25.00});
+push({13:'total',14:0});
+
+const yrHit = findCell_(g,'OES CURRENT PORTFOLIO - NEW',0);
+const yr = parseDetailBlock_(g, yrHit.row, DETAIL_BLOCKS[3], 2026, period, warn);
+eq(yr.rows, 3, 'Plan-yil blogu: 3 satir okundu');
+eq(yr.total.ytdCount, 2, 'Plan-yil blogu: Real YTD = 2 (JAN ve W15; W27 Temmuz haric)');
+eq(yr.total.planYtdCount, 2, 'Plan-yil blogu: plan = Real kabul edildi, plan YTD de 2');
+eq(Math.round(yr.total.planYtdTurnover*100)/100, 65.00,
+   'Plan-yil blogu: plan cirosu 40+25 k€ — yil hucresi yuzunden 0 KALMADI');
+eq(yr.projects[0].planRaw, '2026', 'Plan-yil blogu: ham hucre degeri TOPS listesinde aynen duruyor');
+
+/* W14 -> Nisan (ISO Persembe kurali) dogrulamasi */
+eq(parsePeriodCell_('W14', 2026).month, 4, 'W14 = Nisan (2026 W14 Persembesi 2 Nisan)');
+eq(parsePeriodCell_('W15', 2026).month, 4, 'W15 = Nisan');
+eq(parsePeriodCell_('2026', 2026).reason, 'year only, no month', 'Yalniz yil -> ay yok isareti');
+
 /* ---------- 5) REMAN blogu: Type sutunu yanlis doldurulmus ---------- */
 console.log('\n5) VS Current Portfolio - REMAN — Type sutununda A0/A1/A2 var');
 push({});
