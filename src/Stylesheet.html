@@ -42,7 +42,7 @@
   --sh-3:0 8px 16px -4px rgba(12,22,38,.10), 0 20px 42px -12px rgba(12,22,38,.20);
   --ring:0 0 0 3px rgba(0,114,206,.28);
   --maxw:1320px;
-  --rail-w:64px; --topbar-h:62px;
+  --rail-w:64px; --rail-open:232px; --rail-inner:216px; --topbar-h:62px;
 }
 body.dark-mode {
   --bg:#070d18; --bg-2:#0a1220;
@@ -83,61 +83,72 @@ body{
 .skip-link{position:absolute;left:-9999px;top:0;z-index:200;background:var(--card);color:var(--text);padding:10px 16px;border-radius:0 0 var(--r-sm) 0;font-weight:600}
 .skip-link:focus{left:0}
 
-/* ---------- sol gezinme rayi (docs/sidebar.md) ----------
-   Sabit ikon modu (64px) + grup tiklaninca yandan acilan flyout. Genisleyip
-   daralan sidebar bilerek kullanilmadi — dokuman bu davranisi kaldirmis. */
+/* ---------- sol gezinme rayi ----------
+   SAPMA NOTU: docs/sidebar.md genisleyip daralan sidebar'i kaldirip sabit
+   ikon + flyout desenini benimsemis. Kullanici acikca "mouse uzerine gelince
+   acilsin, cekilince kapansin" istedigi icin hover-genisleme uygulandi.
+
+   Icerik KAYMAZ: body dolgusu 64px'te sabit, ray genisleyince icerigin
+   uzerine biniyor. Aksi halde her hover'da tum sayfa saga kayardi.
+   Dugmeler sabit genislikte (216px) ve ray overflow-x:hidden — boylece
+   genisleme sirasinda metin yeniden akmiyor, sadece gorunur oluyor. */
 body.has-rail{padding-left:var(--rail-w)}
-/* [hidden] UA kuralini display:flex eziyordu — panel gizliyken de aciliyordu
-   (dil menusunde de ayni tuzak yasanmisti). */
-.rail[hidden],.drawer[hidden],.drawer-scrim[hidden],.flyout[hidden]{display:none!important}
+.rail[hidden],.drawer[hidden],.drawer-scrim[hidden]{display:none!important}
 .rail{
   position:fixed; left:0; top:0; bottom:0; width:var(--rail-w); z-index:70;
   background:linear-gradient(180deg,#041b3c,#062a5c);
   border-right:1px solid rgba(255,255,255,.08);
-  display:flex; flex-direction:column; align-items:center;
-  padding:calc(var(--topbar-h) + 10px) 0 14px; gap:6px; overflow-y:auto;
-  scrollbar-width:none;
+  display:flex; flex-direction:column; align-items:flex-start;
+  padding:calc(var(--topbar-h) + 10px) 0 14px; gap:4px;
+  overflow-x:hidden; overflow-y:auto; scrollbar-width:none;
+  transition:width .18s ease, box-shadow .18s ease;
 }
 .rail::-webkit-scrollbar{display:none}
-.rail-items{display:flex; flex-direction:column; align-items:center; gap:6px; width:100%}
+/* focus-within: klavyeyle gezende de acilsin (hover'a bagli islev birakilmaz —
+   jenerik-desenler.md) */
+.rail:hover,.rail:focus-within{
+  width:var(--rail-open); box-shadow:12px 0 40px -16px rgba(4,27,60,.55);
+}
+.rail-items{display:flex; flex-direction:column; gap:4px; width:100%}
 .rail-btn{
-  position:relative; width:48px; min-height:48px;   /* form-kontrolleri.md: 48x48 dokunma hedefi */
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-  background:transparent; border:none; border-radius:12px; cursor:pointer;
-  color:rgba(255,255,255,.66); font:inherit; font-size:10px; font-weight:800;
-  letter-spacing:.04em; transition:background .15s ease, color .15s ease;
+  display:flex; align-items:center; gap:9px; flex:none;
+  width:var(--rail-inner); margin:0 8px; min-height:44px; padding:0 11px;
+  background:transparent; border:none; border-radius:11px; cursor:pointer;
+  color:rgba(255,255,255,.68); font:inherit; text-align:left;
+  transition:background .15s ease, color .15s ease;
 }
 .rail-btn:hover{background:rgba(255,255,255,.12); color:#fff}
 .rail-btn[aria-current="true"]{background:rgba(255,255,255,.16); color:#fff}
-/* Aktif ogeyi sol kenardaki renk cubugu isaretler — renk TEK BASINA anlam
-   tasimasin diye ayrica arka plan da degisiyor. */
-.rail-btn[aria-current="true"]::before{
-  content:''; position:absolute; left:-8px; top:9px; bottom:9px; width:3px;
-  border-radius:0 3px 3px 0; background:var(--rail-color,#fff);
-}
 .rail-dot{width:9px; height:9px; border-radius:3px; background:var(--rail-color,#fff); flex:none}
-.rail-btn svg{display:block}
-.rail-sep{width:30px; height:1px; background:rgba(255,255,255,.14); margin:6px 0; flex:none}
+.rail-btn svg{flex:none; display:block}
+.rail-code{font-size:11px; font-weight:800; letter-spacing:.04em; flex:none; width:26px}
+.rail-name{
+  flex:1 1 auto; min-width:0; font-size:12.5px; font-weight:600;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  opacity:0; transition:opacity .14s ease;
+}
+.rail-chev{
+  flex:none; opacity:0; transition:opacity .14s ease, transform .15s ease;
+  color:rgba(255,255,255,.5);
+}
+.rail:hover .rail-name,.rail:focus-within .rail-name,
+.rail:hover .rail-chev,.rail:focus-within .rail-chev{opacity:1}
+.rail-btn[aria-expanded="true"] .rail-chev{transform:rotate(90deg)}
+.rail-sep{width:30px; height:1px; background:rgba(255,255,255,.14); margin:6px 0 6px 19px; flex:none}
 
-.flyout{
-  position:fixed; left:var(--rail-w); z-index:69; min-width:210px; max-width:260px;
-  max-height:min(70vh,520px); overflow:auto;
-  background:var(--card); border:1px solid var(--border); border-radius:var(--r-md);
-  box-shadow:var(--sh-3); padding:8px;
-  animation:flyIn .16s ease;
+/* Bir RO acilinca site'lari satir ICINDE listelenir (flyout yerine) —
+   yalniz ray genisken gorunur. */
+.rail-sites{display:none; flex-direction:column; width:var(--rail-inner); margin:0 8px 4px; flex:none}
+.rail:hover .rail-sites,.rail:focus-within .rail-sites{display:flex}
+.rail-sites button{
+  display:flex; align-items:center; gap:8px; width:100%; text-align:left;
+  background:none; border:none; font:inherit; font-size:12px; color:rgba(255,255,255,.72);
+  padding:7px 11px 7px 30px; border-radius:9px; cursor:pointer; min-height:34px;
 }
-@keyframes flyIn{from{opacity:0; transform:translateX(-6px)} to{opacity:1; transform:none}}
-.flyout-title{
-  font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.11em;
-  color:var(--text-mute); padding:5px 9px 8px;
-}
-.flyout button{
-  display:flex; align-items:center; gap:9px; width:100%; text-align:left;
-  background:none; border:none; font:inherit; font-size:13px; color:var(--text);
-  padding:8px 9px; border-radius:8px; cursor:pointer; min-height:38px;
-}
-.flyout button:hover{background:var(--sunken)}
-.flyout button .fly-v{margin-left:auto; font-size:11.5px; color:var(--text-mute); font-weight:700}
+.rail-sites button:hover{background:rgba(255,255,255,.12); color:#fff}
+.rail-sites .rs-name{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.rail-sites .rs-v{flex:none; font-size:11px; font-weight:700; color:rgba(255,255,255,.5)}
+.rail-sites .flag{box-shadow:0 0 0 1px rgba(255,255,255,.25)}
 
 /* ---------- sag detay paneli (docs/detay-panel.md) ---------- */
 .drawer-scrim{
@@ -775,7 +786,7 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
 }
 @media (max-width:768px){
   /* Dar ekranda ray gizlenir — RO/Site secicileri ayni isi zaten goruyor. */
-  .rail,.flyout{display:none!important}
+  .rail{display:none!important}
   body.has-rail{padding-left:0}
   .drawer{width:100vw}
   .filters{position:static}
@@ -807,7 +818,7 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
 }
 @media print{
   .topbar,.filters,.crumb button,.tbtn,.kpi-info,.chev,.backbtn,#splash,.selstrip,
-  .stamp button,.rail,.flyout,.drawer,.drawer-scrim{display:none!important}
+  .stamp button,.rail,.drawer,.drawer-scrim{display:none!important}
   body.has-rail{padding-left:0}
   body{background:#fff}
   .kpi,.ro-row,.panel,.tablewrap,.site-row,.chart{break-inside:avoid; box-shadow:none; border:1px solid #ccc}

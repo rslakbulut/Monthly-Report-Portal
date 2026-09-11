@@ -1537,11 +1537,15 @@ function showToast(msg,type){
   },2700);
 }
 
-/* ---------- sol gezinme rayi (docs/sidebar.md) ----------
+/* ---------- sol gezinme rayi ----------
    Menu TEK bir veri yapisindan turer: BOOT.roOrder + o donemde verisi olan
-   site'lar. Ikinci bir liste tutulmaz — RO eklenirse ray kendiliginde
-   guncellenir. */
-var ICON_HOME=svg('<path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/>',17);
+   site'lar. Ikinci bir liste tutulmaz.
+
+   Ray mouse uzerine gelince genisliyor (kullanici talebi). Genisken bir RO'ya
+   tiklamak site'larini satir ICINDE aciyor — eskiden yandan flyout aciliyordu,
+   hover-genislemeyle birlikte iki ayri acilir menu kafa karistirici olurdu. */
+var ICON_HOME=svg('<path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/>',16);
+var RAIL={open:null};   // satir ici acilmis RO
 function railModel(){
   var out=[{ id:'ALL', label:t('allROs'), icon:ICON_HOME, color:'#fff', sites:[] }];
   BOOT.roOrder.forEach(function(ro){
@@ -1552,71 +1556,54 @@ function railModel(){
 }
 function buildRail(){
   if(!DATA||!BOOT) return;
-  var items=railModel();
-  $('railItems').innerHTML=items.map(function(it,i){
+  var html='';
+  railModel().forEach(function(it,i){
     var active=(it.id===F.ro)||(it.id==='ALL'&&F.ro==='ALL');
-    return (i===1?'<span class="rail-sep" aria-hidden="true"></span>':'')+
-      '<button class="rail-btn" type="button" data-rail="'+esc(it.id)+'" '+
+    var open=(RAIL.open===it.id);
+    if(i===1) html+='<span class="rail-sep" aria-hidden="true"></span>';
+    html+='<button class="rail-btn" type="button" data-rail="'+esc(it.id)+'" '+
       'style="--rail-color:'+it.color+'" aria-current="'+active+'" '+
+      (it.id==='ALL'?'':'aria-expanded="'+open+'" ')+
       'title="'+esc(it.label)+'">'+
       (it.icon||'<span class="rail-dot" aria-hidden="true"></span>')+
-      '<span>'+esc(it.id==='ALL'?'ALL':it.id)+'</span></button>';
-  }).join('');
+      '<span class="rail-code">'+esc(it.id==='ALL'?'ALL':it.id)+'</span>'+
+      '<span class="rail-name">'+esc(it.id==='ALL'?t('allROs'):it.label)+'</span>'+
+      (it.id==='ALL'?'':'<span class="rail-chev" aria-hidden="true">'+ICON_CHEVRON_SM+'</span>')+
+    '</button>';
+    if(!open) return;
+    html+='<div class="rail-sites">';
+    it.sites.slice().sort(function(a,b){ return (a.site||'').localeCompare(b.site||'',LOCALE); })
+      .forEach(function(st){
+        var m=siteMetrics(st);
+        html+='<button type="button" data-rsite="'+esc(siteKey(st))+'">'+
+          (siteFlag(st)||'')+'<span class="rs-name">'+esc(st.site)+'</span>'+
+          '<span class="rs-v">'+money(m.realTurnoverM)+'</span></button>';
+      });
+    html+='</div>';
+  });
+  $('railItems').innerHTML=html;
   $('rail').hidden=false;
   document.body.classList.add('has-rail');
+
   $('railItems').querySelectorAll('.rail-btn').forEach(function(b){
-    b.onclick=function(e){
-      e.stopPropagation();
+    b.onclick=function(){
       var id=b.getAttribute('data-rail');
       if(id==='ALL'){
-        closeFlyout();
+        RAIL.open=null;
         F.ro='ALL'; F.site='ALL'; NAV={level:'ro',expandedRo:null,ro:null,siteIdx:null};
         buildRoSiteSelects(); render(); window.scrollTo({top:0,behavior:'smooth'});
         return;
       }
-      /* Ayni RO'ya tekrar tiklamak flyout'u kapatir (ac/kapa) */
-      if(FLY.open===id){ closeFlyout(); return; }
-      openFlyout(id,b);
+      /* Ayni RO'ya tekrar tiklamak site listesini kapatir (ac/kapa) */
+      RAIL.open=(RAIL.open===id)?null:id;
+      F.ro=id; F.site='ALL';
+      NAV={level:'ro',expandedRo:id,ro:null,siteIdx:null};
+      buildRoSiteSelects(); render(); window.scrollTo({top:0,behavior:'smooth'});
     };
   });
-}
-var FLY={open:null};
-function openFlyout(ro,anchor){
-  var list=sitesOfRo(ro);
-  var rect=anchor.getBoundingClientRect();
-  var html='<div class="flyout-title">'+esc(ro)+' · '+esc(BOOT.roLabels[ro]||'')+'</div>'+
-    '<button type="button" data-fro="'+esc(ro)+'"><b>'+esc(t('allSites'))+'</b>'+
-      '<span class="fly-v">'+list.length+'</span></button>';
-  list.slice().sort(function(a,b){ return (a.site||'').localeCompare(b.site||'',LOCALE); })
-    .forEach(function(st){
-      var m=siteMetrics(st);
-      html+='<button type="button" data-fsite="'+esc(siteKey(st))+'">'+
-        (siteFlag(st)||'')+'<span>'+esc(st.site)+'</span>'+
-        '<span class="fly-v">'+money(m.realTurnoverM)+'</span></button>';
-    });
-  var el=$('flyout');
-  el.innerHTML=html; el.hidden=false;
-  /* Ekran altindan tasmasin: once capaya hizala, gerekirse yukari kaydir. */
-  el.style.top='0px';
-  var h=el.offsetHeight;
-  el.style.top=Math.max(8,Math.min(rect.top,window.innerHeight-h-8))+'px';
-  FLY.open=ro;
-  buildRail();   // aria-current tazelensin
-  el.querySelectorAll('[data-fro]').forEach(function(b){
-    b.onclick=function(){
-      F.ro=b.getAttribute('data-fro'); F.site='ALL';
-      NAV={level:'ro',expandedRo:F.ro,ro:null,siteIdx:null};
-      closeFlyout(); buildRoSiteSelects(); render();
-      window.scrollTo({top:0,behavior:'smooth'});
-    };
+  $('railItems').querySelectorAll('[data-rsite]').forEach(function(b){
+    b.onclick=function(e){ e.stopPropagation(); openDrawer(b.getAttribute('data-rsite')); };
   });
-  el.querySelectorAll('[data-fsite]').forEach(function(b){
-    b.onclick=function(){ closeFlyout(); openDrawer(b.getAttribute('data-fsite')); };
-  });
-}
-function closeFlyout(){
-  var el=$('flyout'); if(el){ el.hidden=true; el.innerHTML=''; }
-  FLY.open=null;
 }
 
 /* ---------- sag detay paneli (docs/detay-panel.md) ----------
@@ -1660,13 +1647,7 @@ function initDrawer(){
     var k=DRAWER.key; closeDrawer(); if(k) openSiteByKey(k);
   };
   document.addEventListener('keydown',function(e){
-    if(e.key!=='Escape') return;
-    if(!$('drawer').hidden) closeDrawer();
-    else if(FLY.open) closeFlyout();
-  });
-  /* Flyout disina tiklayinca kapansin (ray dugmeleri stopPropagation yapiyor) */
-  document.addEventListener('click',function(e){
-    if(FLY.open && !$('flyout').contains(e.target)) closeFlyout();
+    if(e.key==='Escape' && !$('drawer').hidden) closeDrawer();
   });
 }
 
@@ -2083,6 +2064,6 @@ function initPanels(){
   };
 }
 
-window.addEventListener('resize',function(){ closeFlyout(); if(DATA) render(); });
+window.addEventListener('resize',function(){ if(DATA) render(); });
 initLang(); initTheme(); initPanels(); initDrawer(); initSplash(); fillGlossary(null); boot();
 </script>
