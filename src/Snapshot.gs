@@ -58,7 +58,15 @@ var PROP_LAST_STORE_ERR = 'RO_DASH_LAST_STORE_ERR';   // son kalici yazma hatasi
 var LEGACY_SNAP_KEY = /^RO_DASH_SNAP_\d{4}-\d{2}_/;
 var SNAP_FOLDER_NAME = 'RO Dashboard Snapshots';
 var SNAP_CACHE_TTL = 21600;                    // 6 saat (CacheService ust siniri)
-var SNAP_VERSION = 1;                          // sekil degisirse artir -> eski snapshot yok sayilir
+var SNAP_VERSION = 1;                          // SEKIL surumu: paketleme bicimi degisirse artir
+/* VERI surumu: parse/hesap mantigi degisip SAYILAR degisirse artir (sekil ayni
+   kalir). Iki surum ayri tutuluyor cunku sonuclari farkli:
+     SNAP_VERSION uyusmazsa -> eski snapshot OKUNAMAZ, yok sayilir.
+     DATA_REV uyusmazsa     -> eski snapshot okunabilir (ekran bozulmaz), ama
+                               sayilar eskidir; servis edilir ve ARKA PLANDA
+                               yeniden kurulmasi planlanir.
+   Boylece veri katmani degistiginde kimsenin elle bir sey yapmasi gerekmiyor. */
+var DATA_REV = 2;
 
 /* Olcu alanlarinin SABIT sirasi. Sira degisirse SNAP_VERSION artirilmali. */
 var MEASURE_FIELDS = ['count', 'turnover', 'ytdCount', 'ytdTurnover',
@@ -186,6 +194,7 @@ function buildSnapshot_(key) {
 
   return {
     v: SNAP_VERSION,
+    rev: DATA_REV,
     builtAt: new Date().toISOString(),
     period: { key: key, year: period.year, month: period.month,
               label: MONTH_LABELS[period.month] + ' ' + period.year, name: period.name },
@@ -454,13 +463,17 @@ function saveSnapshot_(key, snap) {
 function loadOverview_(key) {
   var hit = null;
   try { hit = cacheGet_(CacheService.getScriptCache(), 'snapo_' + key); } catch (e) {}
-  if (hit && hit.v === SNAP_VERSION) return hit;
+  if (hit && hit.v === SNAP_VERSION) {
+    if (hit.rev !== DATA_REV) scheduleRebuild_(key);   // sayilar eski -> arka planda tazele
+    return hit;
+  }
 
   var raw = driveRead_(key, 'o');
-  if (!raw) return null;
+  if (!raw) { scheduleRebuild_(key); return null; }
   var obj;
   try { obj = JSON.parse(raw); } catch (e) { return null; }
-  if (!obj || obj.v !== SNAP_VERSION) return null;
+  if (!obj || obj.v !== SNAP_VERSION) { scheduleRebuild_(key); return null; }
+  if (obj.rev !== DATA_REV) scheduleRebuild_(key);
   /* Drive'dan geldi -> cache'i tazele ki sonraki okuma daha da hizli olsun. */
   try { cachePut_(CacheService.getScriptCache(), 'snapo_' + key, obj, SNAP_CACHE_TTL); } catch (e) {}
   return obj;
@@ -640,6 +653,44 @@ function getTrend() {
   }
 }
 
+/**
+ * Kod guncellemesinden sonra snapshot'i ELLE tazelemek gerekmesin diye:
+ * surum uyusmazligi gorulunce ~1 dakika sonra calisacak TEK SEFERLIK bir
+ * tetikleyici planlar. Kullanici o sirada eski (ama calisan) veriyi gormeye
+ * devam eder; tazelenince sonraki acilista yenisi gelir.
+ *
+ * Tek seferlikler AYRI bir handler (rebuildOnce) kullaniyor — boylece saatlik
+ * tetikleyiciyi yanlislikla silmeden temizlenebiliyorlar (Apps Script'te
+ * proje basina 20 tetikleyici siniri var).
+ */
+function scheduleRebuild_(key) {
+  var cache = CacheService.getScriptCache();
+  var flag = 'rebuild_sched_' + key;
+  try { if (cache.get(flag)) return false; }            // 10 dk icinde zaten planlandi
+  catch (e) {}
+  try { cache.put(flag, '1', 600); } catch (e) {}
+  try {
+    cleanupOneShotTriggers_();
+    ScriptApp.newTrigger('rebuildOnce').timeBased().after(60 * 1000).create();
+    return true;
+  } catch (e) {
+    return false;   // tetikleyici kurulamadi; saatlik tetikleyici yine de yakalar
+  }
+}
+
+function cleanupOneShotTriggers_() {
+  var ts = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < ts.length; i++) {
+    if (ts[i].getHandlerFunction() === 'rebuildOnce') ScriptApp.deleteTrigger(ts[i]);
+  }
+}
+
+/** Tek seferlik tetikleyicinin ucu: once kendini temizler, sonra tazeler. */
+function rebuildOnce() {
+  cleanupOneShotTriggers_();
+  return refreshAllSnapshots();
+}
+
 /** Snapshot tazeleme tetikleyicisini kurar (saatte bir). */
 function installSnapshotTrigger() {
   var existing = ScriptApp.getProjectTriggers();
@@ -770,6 +821,9 @@ function checkSetup() {
   if (ov) {
     log('5) Guncel donem (' + newest + ') : OK');
     log('   Kurulma zamani : ' + ov.builtAt);
+    log('   Veri surumu    : snapshot rev=' + (ov.rev === undefined ? '(yok)' : ov.rev) +
+        '  /  kod rev=' + DATA_REV +
+        (ov.rev === DATA_REV ? '  (guncel)' : '  (ESKI — arka planda tazeleme planlandi)'));
     log('   Site sayisi    : ' + (ov.sites || []).length);
     log('   Sayfasi olmayan: ' + (ov.missingSites || []).length);
   } else {
