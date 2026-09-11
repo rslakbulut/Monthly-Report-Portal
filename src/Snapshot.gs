@@ -47,6 +47,7 @@ var PROP_SNAP_PREFIX = 'RO_DASH_SNAP_';        // ESKI (ScriptProperties) depo �
 var PROP_SNAP_INDEX  = 'RO_DASH_SNAP_INDEX';   // {key: {o:fileId, d:fileId}}
 var PROP_SNAP_FOLDER = 'RO_DASH_SNAP_FOLDER';  // Drive klasor id'si
 var PROP_TREND       = 'RO_DASH_TREND';        // {key: {builtAt, ro:{...}}}  — tum donemler
+var PROP_LAST_STORE_ERR = 'RO_DASH_LAST_STORE_ERR';   // son kalici yazma hatasi (teshis)
 var SNAP_FOLDER_NAME = 'RO Dashboard Snapshots';
 var SNAP_CACHE_TTL = 21600;                    // 6 saat (CacheService ust siniri)
 var SNAP_VERSION = 1;                          // sekil degisirse artir -> eski snapshot yok sayilir
@@ -258,6 +259,12 @@ function driveReadFile_(id) {
   return res.getContentText('UTF-8');
 }
 
+/** 'Drive API 403: ...' mesajindan HTTP kodunu cikarir. */
+function driveApiCode_(e) {
+  var m = /Drive API (\d+)/.exec(String((e && e.message) || e));
+  return m ? parseInt(m[1], 10) : 0;
+}
+
 /** Snapshot dosyalarinin durdugu klasorun id'si; yoksa olusturulur. */
 function snapFolderId_() {
   var props = PropertiesService.getScriptProperties();
@@ -266,7 +273,13 @@ function snapFolderId_() {
     try {
       var meta = driveGetMeta_(id);
       if (meta && !meta.trashed) return id;
-    } catch (e) { /* silinmis/erisilemez -> asagida yenisi olusturulur */ }
+    } catch (e) {
+      /* YALNIZ 404'te yenisi olusturulur: dosya gercekten yok demektir.
+         Diger hatalari (403, 5xx, ag) yutup yeni klasor acmak, her
+         calistirmada Drive'a bir klasor daha birakiyordu ve ASIL hatayi
+         goruntuden kaldiriyordu — canlida tam bu oldu. */
+      if (driveApiCode_(e) !== 404) throw e;
+    }
   }
   var created = driveCreateFolder_(SNAP_FOLDER_NAME);
   props.setProperty(PROP_SNAP_FOLDER, created.id);
@@ -393,8 +406,15 @@ function saveSnapshot_(key, snap) {
     driveWrite_(key, 'o', overviewJson);
     driveWrite_(key, 'd', detailsJson);
     cleanupLegacyProps_();          // eski ScriptProperties deposundan kalanlar
+    PropertiesService.getScriptProperties().deleteProperty(PROP_LAST_STORE_ERR);
   } catch (e) {
     stored = false; storeError = e.message;
+    /* Hatayi sakla: donus degerini kimse gormuyor (tetikleyiciden cagriliyor),
+       boylece checkSetup son hatayi gosterebiliyor. */
+    try {
+      PropertiesService.getScriptProperties().setProperty(PROP_LAST_STORE_ERR,
+        new Date().toISOString() + '  ' + String(storeError).slice(0, 400));
+    } catch (e2) {}
   }
 
   snap.details = details;           // cagirana butun objeyi geri ver
@@ -709,7 +729,9 @@ function checkSetup() {
   }
   log('4) Snapshot dosyasi olan donem: ' + haveOverview + ' / ' + periods.length +
       '  (detay: ' + haveDetails + ')');
-  if (!haveOverview && folderOk) {
+  var lastErr = PropertiesService.getScriptProperties().getProperty(PROP_LAST_STORE_ERR);
+  if (lastErr) log('   Son kalici yazma HATASI: ' + lastErr);
+  if (!haveOverview && folderOk && !lastErr) {
     log('   !! Hic snapshot yok. refreshAllSnapshots calistirin (guncel ay icin)');
     log('      veya ensureSnapshots (tum donemler icin).');
   }
@@ -744,4 +766,60 @@ function checkSetup() {
   log('7) Trend ozeti olan donem: ' + tKeys.length + (tKeys.length ? ' (' + tKeys.join(', ') + ')' : ''));
 
   log('=== bitti ===');
+}
+
+/**
+ * TESHIS: Drive yazma/okuma yolunu KUCUK bir dosyayla izole eder.
+ *
+ * refreshAllSnapshots ~120KB'lik bir dosya yaziyor; basarisiz oldugunda
+ * sorunun yetki mi, boyut mu, multipart bicimi mi oldugu anlasilmiyordu.
+ * Bu fonksiyon adim adim dener ve her adimin sonucunu yazar.
+ */
+function testDriveWrite() {
+  function log(s) { console.log(s); }
+  log('=== Drive yazma testi ===');
+
+  var fid;
+  try {
+    fid = snapFolderId_();
+    log('1) Klasor : OK  (' + fid + ')');
+  } catch (e) {
+    log('1) Klasor : HATA — ' + e.message);
+    return;
+  }
+
+  var smallId = null;
+  try {
+    smallId = driveCreateFile_('ro-dash-test.json',
+      JSON.stringify({ hello: 'world', at: new Date().toISOString() }), fid);
+    log('2) Kucuk dosya yazma : OK  (' + smallId + ')');
+  } catch (e) {
+    log('2) Kucuk dosya yazma : HATA — ' + e.message);
+    return;   // buyuk testin anlami kalmaz
+  }
+
+  try {
+    var back = driveReadFile_(smallId);
+    log('3) Geri okuma : OK  -> ' + back.slice(0, 100));
+  } catch (e) {
+    log('3) Geri okuma : HATA — ' + e.message);
+  }
+
+  try {
+    driveUpdateFile_(smallId, JSON.stringify({ hello: 'updated' }));
+    log('4) Guncelleme : OK');
+  } catch (e) {
+    log('4) Guncelleme : HATA — ' + e.message);
+  }
+
+  /* Asil senaryoya yakin boyut: snapshot overview ~120KB. */
+  try {
+    var big = JSON.stringify({ pad: new Array(60000).join('x') });
+    var bigId = driveCreateFile_('ro-dash-test-big.json', big, fid);
+    log('5) Buyuk dosya (' + big.length + ' bayt) : OK  (' + bigId + ')');
+  } catch (e) {
+    log('5) Buyuk dosya : HATA — ' + e.message);
+  }
+
+  log('=== bitti ===  (test dosyalari klasorde kaldi, silebilirsiniz)');
 }
