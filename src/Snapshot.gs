@@ -668,6 +668,10 @@ function checkSetup() {
     log('2b) Yetki listesi okunamadi: ' + e.message);
   }
 
+  // 2c) Drive ileri servisi kurulu mu (API'yi Cloud projesinde acan sey bu)
+  log('2c) Drive ileri servisi : ' +
+      ((typeof Drive !== 'undefined' && Drive) ? 'KURULU' : 'YOK — appsscript.json push edilmemis olabilir'));
+
   // 3) Drive yetkisi + klasor  (asil "yetki calisti mi" testi burasi)
   var folderOk = false;
   try {
@@ -677,9 +681,22 @@ function checkSetup() {
     log('3) Drive klasoru : OK — "' + meta.name + '"');
     log('   Klasor linki  : ' + (meta.webViewLink || ('https://drive.google.com/drive/folders/' + fid)));
   } catch (e) {
-    log('3) Drive klasoru : HATA — ' + e.message);
-    log('   !! drive.file yetkisi henuz verilmemis. Editorde herhangi bir fonksiyonu');
-    log('      calistirdiginizda cikan yetkilendirme ekranini onaylayin.');
+    var msg = String(e.message || e);
+    log('3) Drive klasoru : HATA — ' + msg);
+    /* Uc farkli neden, uc farkli cozum — ayirt edilmezse yanlis yere bakiliyor. */
+    if (msg.indexOf('has not been used in project') !== -1 || msg.indexOf('is disabled') !== -1) {
+      log('   !! Drive API Cloud projesinde acik degil (yetki sorunu DEGIL).');
+      log('      Cozum: appsscript.json Drive ileri servisini iceriyor; kodu tekrar');
+      log('      push edip bu fonksiyonu yeniden calistirin. Duzelmezse hata');
+      log('      metnindeki console.developers.google.com linkinden Drive API"sini acin');
+      log('      ve 1-2 dakika bekleyin.');
+    } else if (msg.indexOf('insufficient authentication scopes') !== -1 ||
+               msg.indexOf('Insufficient Permission') !== -1) {
+      log('   !! Token drive.file yetkisi tasimiyor (bkz. 2b).');
+      log('      Cozum: myaccount.google.com/permissions -> erisimi kaldir -> tekrar calistir.');
+    } else {
+      log('   !! Beklenmeyen Drive hatasi. Yukaridaki metni paylasin.');
+    }
   }
 
   // 4) Snapshot dosyalari
