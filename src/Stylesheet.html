@@ -42,6 +42,7 @@
   --sh-3:0 8px 16px -4px rgba(12,22,38,.10), 0 20px 42px -12px rgba(12,22,38,.20);
   --ring:0 0 0 3px rgba(0,114,206,.28);
   --maxw:1320px;
+  --rail-w:64px; --topbar-h:62px;
 }
 body.dark-mode {
   --bg:#070d18; --bg-2:#0a1220;
@@ -81,6 +82,108 @@ body{
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .skip-link{position:absolute;left:-9999px;top:0;z-index:200;background:var(--card);color:var(--text);padding:10px 16px;border-radius:0 0 var(--r-sm) 0;font-weight:600}
 .skip-link:focus{left:0}
+
+/* ---------- sol gezinme rayi (docs/sidebar.md) ----------
+   Sabit ikon modu (64px) + grup tiklaninca yandan acilan flyout. Genisleyip
+   daralan sidebar bilerek kullanilmadi — dokuman bu davranisi kaldirmis. */
+body.has-rail{padding-left:var(--rail-w)}
+/* [hidden] UA kuralini display:flex eziyordu — panel gizliyken de aciliyordu
+   (dil menusunde de ayni tuzak yasanmisti). */
+.rail[hidden],.drawer[hidden],.drawer-scrim[hidden],.flyout[hidden]{display:none!important}
+.rail{
+  position:fixed; left:0; top:0; bottom:0; width:var(--rail-w); z-index:70;
+  background:linear-gradient(180deg,#041b3c,#062a5c);
+  border-right:1px solid rgba(255,255,255,.08);
+  display:flex; flex-direction:column; align-items:center;
+  padding:calc(var(--topbar-h) + 10px) 0 14px; gap:6px; overflow-y:auto;
+  scrollbar-width:none;
+}
+.rail::-webkit-scrollbar{display:none}
+.rail-items{display:flex; flex-direction:column; align-items:center; gap:6px; width:100%}
+.rail-btn{
+  position:relative; width:48px; min-height:48px;   /* form-kontrolleri.md: 48x48 dokunma hedefi */
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  background:transparent; border:none; border-radius:12px; cursor:pointer;
+  color:rgba(255,255,255,.66); font:inherit; font-size:10px; font-weight:800;
+  letter-spacing:.04em; transition:background .15s ease, color .15s ease;
+}
+.rail-btn:hover{background:rgba(255,255,255,.12); color:#fff}
+.rail-btn[aria-current="true"]{background:rgba(255,255,255,.16); color:#fff}
+/* Aktif ogeyi sol kenardaki renk cubugu isaretler — renk TEK BASINA anlam
+   tasimasin diye ayrica arka plan da degisiyor. */
+.rail-btn[aria-current="true"]::before{
+  content:''; position:absolute; left:-8px; top:9px; bottom:9px; width:3px;
+  border-radius:0 3px 3px 0; background:var(--rail-color,#fff);
+}
+.rail-dot{width:9px; height:9px; border-radius:3px; background:var(--rail-color,#fff); flex:none}
+.rail-btn svg{display:block}
+.rail-sep{width:30px; height:1px; background:rgba(255,255,255,.14); margin:6px 0; flex:none}
+
+.flyout{
+  position:fixed; left:var(--rail-w); z-index:69; min-width:210px; max-width:260px;
+  max-height:min(70vh,520px); overflow:auto;
+  background:var(--card); border:1px solid var(--border); border-radius:var(--r-md);
+  box-shadow:var(--sh-3); padding:8px;
+  animation:flyIn .16s ease;
+}
+@keyframes flyIn{from{opacity:0; transform:translateX(-6px)} to{opacity:1; transform:none}}
+.flyout-title{
+  font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.11em;
+  color:var(--text-mute); padding:5px 9px 8px;
+}
+.flyout button{
+  display:flex; align-items:center; gap:9px; width:100%; text-align:left;
+  background:none; border:none; font:inherit; font-size:13px; color:var(--text);
+  padding:8px 9px; border-radius:8px; cursor:pointer; min-height:38px;
+}
+.flyout button:hover{background:var(--sunken)}
+.flyout button .fly-v{margin-left:auto; font-size:11.5px; color:var(--text-mute); font-weight:700}
+
+/* ---------- sag detay paneli (docs/detay-panel.md) ---------- */
+.drawer-scrim{
+  position:fixed; inset:0; z-index:88; background:rgba(4,27,60,.35);
+  backdrop-filter:blur(1px); animation:fadeIn .18s ease;
+}
+@keyframes fadeIn{from{opacity:0} to{opacity:1}}
+.drawer{
+  position:fixed; top:0; right:0; bottom:0; z-index:89;
+  width:min(520px,94vw); display:flex; flex-direction:column;
+  background:var(--card); border-left:1px solid var(--border);
+  box-shadow:-24px 0 60px -30px rgba(4,27,60,.5);
+  animation:sheetIn .22s ease;
+}
+@keyframes sheetIn{from{transform:translateX(24px); opacity:.4} to{transform:none; opacity:1}}
+.drawer-head{
+  background:linear-gradient(100deg,#041b3c,#062a5c); color:#fff;
+  padding:16px 18px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+}
+.drawer-head h2{margin:0; font-size:16px; font-weight:700; flex:1 1 auto; letter-spacing:-.01em;
+  display:flex; align-items:center; gap:9px; min-width:0}
+.drawer-eyebrow{
+  flex:0 0 100%; font-size:10px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.11em; color:rgba(255,255,255,.62);
+  display:flex; align-items:center; gap:7px; order:-1;
+}
+.drawer-body{padding:18px; overflow:auto; flex:1 1 auto; display:flex; flex-direction:column; gap:18px}
+.drawer-foot{
+  padding:13px 18px; border-top:1px solid var(--border); background:var(--sunken);
+  display:flex; justify-content:flex-end;
+}
+.dk{display:grid; grid-template-columns:repeat(2,1fr); gap:10px}
+.dk-cell{
+  background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-sm);
+  padding:11px 13px;
+}
+.dk-l{font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--text-mute)}
+.dk-v{font-size:21px; font-weight:800; letter-spacing:-.02em; margin-top:3px; font-variant-numeric:tabular-nums}
+.dk-v .cur{font-size:.5em; font-weight:700; color:var(--text-dim); margin-left:2px}
+.dk-s{font-size:11.5px; color:var(--text-dim); font-weight:600; margin-top:2px}
+.drawer h3{margin:0 0 11px; font-size:10.5px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.11em; color:var(--text-dim)}
+/* Dar panelde Segment sutunu cikarilir — basliktaki hucre de gizlenmeli,
+   yoksa baslik 5 sutun / satir 4 sutun olup O.I alt satira kayiyor. */
+.drawer .tops-row,.drawer .tops-head{grid-template-columns:1fr 58px 58px 64px}
+.drawer .tp-seg,.drawer .tops-head span:nth-child(2){display:none}
 
 /* ---------- ust bar ---------- */
 .topbar{
@@ -671,6 +774,10 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
   #btnGloss{min-width:38px; padding:0; justify-content:center}
 }
 @media (max-width:768px){
+  /* Dar ekranda ray gizlenir — RO/Site secicileri ayni isi zaten goruyor. */
+  .rail,.flyout{display:none!important}
+  body.has-rail{padding-left:0}
+  .drawer{width:100vw}
   .filters{position:static}
   .filters-inner{gap:16px; padding:14px 16px}
   .selstrip{padding:0 16px 12px}
@@ -700,7 +807,8 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
 }
 @media print{
   .topbar,.filters,.crumb button,.tbtn,.kpi-info,.chev,.backbtn,#splash,.selstrip,
-  .stamp button{display:none!important}
+  .stamp button,.rail,.flyout,.drawer,.drawer-scrim{display:none!important}
+  body.has-rail{padding-left:0}
   body{background:#fff}
   .kpi,.ro-row,.panel,.tablewrap,.site-row,.chart{break-inside:avoid; box-shadow:none; border:1px solid #ccc}
   .kpi,.ro-row,.panel{background:#fff!important}

@@ -57,6 +57,14 @@
   </div>
 </header>
 
+<!-- Sol gezinme rayi (docs/sidebar.md): sabit ikon modu + flyout.
+     Genisleyip daralan sidebar yerine 64px'lik ray + yandan acilan liste —
+     dokumanin acikca tercih ettigi desen. Veri BOOT.roOrder'dan turer. -->
+<aside class="rail" id="rail" aria-label="Navigation" hidden>
+  <nav class="rail-items" id="railItems"></nav>
+</aside>
+<div class="flyout" id="flyout" role="menu" hidden></div>
+
 <div class="filters" id="filters" hidden>
   <div class="filters-inner">
     <div class="fgroup">
@@ -107,6 +115,25 @@
   </div>
   <div id="view"><div class="spinner" role="status">Loading…</div></div>
 </main>
+
+<!-- Sag detay paneli (docs/detay-panel.md): site'a tiklayinca listeden
+     cikmadan hizli bakis. Tam sayfa bir dugme uzakta. -->
+<div class="drawer-scrim" id="drawerScrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="false"
+       aria-labelledby="drawerTitle" hidden>
+  <div class="drawer-head">
+    <span class="drawer-eyebrow" id="drawerEyebrow"></span>
+    <h2 id="drawerTitle"></h2>
+    <button class="tbtn icon" id="btnDrawerClose" type="button" aria-label="Close">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+  <div class="drawer-foot">
+    <button class="btn" id="btnDrawerFull" type="button" data-i18n="openFull">Open full page</button>
+  </div>
+</aside>
 
 <dialog class="panelx" id="dlgGloss" aria-labelledby="glossTitle">
   <div class="panel-head">
