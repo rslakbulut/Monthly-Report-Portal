@@ -959,3 +959,48 @@ function repairIndex() {
   log('Indekse yazilan/duzeltilen kayit: ' + added);
   log('=== bitti ===  checkSetup ile dogrulayin.');
 }
+
+/**
+ * Acilis suresini OLCER — tahmin degil, gercek rakam.
+ *
+ * Apps Script editorunden calistir, Yurutme kaydina bak. Sunucu tarafindaki
+ * her adimi ayri ayri sureler; istemci tarafi (indirme + cizim) buna dahil
+ * degildir, onu tarayicinin Network sekmesinden gorursun.
+ *
+ * Ilk calistirmada CacheService soguk olabilir; gercek kullanici deneyimi
+ * icin ust uste iki kez calistirip IKINCI sonuca bak.
+ */
+function measureStartup() {
+  function log(s) { console.log(s); }
+  log('=== Acilis suresi olcumu ===');
+
+  var t0 = Date.now();
+  var boot = null, bootErr = '';
+  try { boot = getBootstrap(); } catch (e) { bootErr = e.message; }
+  var tBoot = Date.now() - t0;
+  log('1) getBootstrap()      : ' + tBoot + ' ms' + (bootErr ? '  HATA: ' + bootErr : ''));
+  if (!boot || boot.error) { log('   !! ' + ((boot && boot.error) || bootErr)); return; }
+  log('   donem sayisi        : ' + ((boot.periods || []).length));
+
+  var t1 = Date.now();
+  var snap = null, snapErr = '';
+  if (boot.periods && boot.periods.length) {
+    try { snap = loadOverview_(boot.periods[0].key); } catch (e) { snapErr = e.message; }
+  }
+  var tSnap = Date.now() - t1;
+  log('2) loadOverview_()     : ' + tSnap + ' ms' + (snapErr ? '  HATA: ' + snapErr : ''));
+  log('   snapshot bulundu mu : ' + (snap ? 'EVET' : 'HAYIR — bulunamazsa acilis YAVAS olur'));
+
+  var t2 = Date.now();
+  var json = jsonForInline_({ boot: boot, snapshot: snap });
+  var tJson = Date.now() - t2;
+  log('3) JSON cevrimi       : ' + tJson + ' ms');
+  log('   HTML\'e gomulen boyut: ' + Math.round(json.length / 1024) + ' KB');
+
+  var total = Date.now() - t0;
+  log('---');
+  log('SUNUCU TOPLAMI         : ' + total + ' ms  (' + (Math.round(total / 100) / 10) + ' s)');
+  log('Splash tabani          : 900 ms bekleme + 320 ms solma (splashHide, Script.html)');
+  log('Kullanicinin gordugu   : yaklasik ' +
+      (Math.round((Math.max(total, 900) + 320) / 100) / 10) + ' s + ag/indirme suresi');
+}
