@@ -181,20 +181,23 @@ eq(parsePeriodCell_('W15', 2026).month, 4, 'W15 = Nisan');
 eq(parsePeriodCell_('2026', 2026).reason, 'year only, no month', 'Yalniz yil -> ay yok isareti');
 
 /* ---------- 4c) Dizin konumundan site/RO cozumleme ---------- */
-/* Canli dizin verisi: locations[].buildingId = "bur1bursa1a" (konumun DEGERI
+/* `key` de donuyor: acilis ekrani haritasi SITE_GEO'yu registry key'iyle
+   adresliyor (WorldMapData.html), site ADIYLA degil. Beklentilerde key'in
+   bulunmasi bu sozlesmeyi kilitler.
+   Canli dizin verisi: locations[].buildingId = "bur1bursa1a" (konumun DEGERI
    degil; organizations[].location "desk" donuyordu, o TIP bilgisi). */
 console.log('\n4c) Dizin konumundan site/RO');
-eq(siteFromLocation_('bur1bursa1a'), {ro:'PDE',site:'Bursa 1'},
+eq(siteFromLocation_('bur1bursa1a'), {ro:'PDE',site:'Bursa 1',key:'BURSA'},
    'bur1bursa1a -> Bursa 1 / PDE (site adi tam eslesti)');
-eq(siteFromLocation_(['desk','bur1bursa1a']), {ro:'PDE',site:'Bursa 1'},
+eq(siteFromLocation_(['desk','bur1bursa1a']), {ro:'PDE',site:'Bursa 1',key:'BURSA'},
    'Aday listesinde ilk TEK eslesme kazanir ("desk" atlanir)');
 eq(siteFromLocation_('desk'), null, 'Anlamsiz konum -> null');
 eq(siteFromLocation_(''), null, 'Bos konum -> null');
 eq(siteFromLocation_('BURSA'), null,
    'Yalniz "BURSA": ayni sehirde Bursa 1 (PDE) ve Bursa 3 THS (PTE) var -> BELIRSIZ');
-eq(siteFromLocation_('zar1zaragoza'), {ro:'PTE',site:'Zaragoza 1'},
+eq(siteFromLocation_('zar1zaragoza'), {ro:'PTE',site:'Zaragoza 1',key:'ZARAGOZA'},
    'zar1zaragoza -> Zaragoza 1 / PTE');
-eq(siteFromLocation_('loudi-plant'), {ro:'PTC',site:'Loudi'},
+eq(siteFromLocation_('loudi-plant'), {ro:'PTC',site:'Loudi',key:'LOUDI'},
    'Rakamsiz site adi da eslesir (Loudi)');
 eq(cityOfSite_('Bursa 3 THS'), 'BURSA', 'Sehir: ilk rakama kadar ("Bursa 3 THS" -> BURSA)');
 eq(cityOfSite_('San Luis Potosi 1 (M10)'), 'SANLUISPOTOSI',
