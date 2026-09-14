@@ -708,13 +708,15 @@ function siteShortName(site){
   return String(site||'').replace(/\s*\d+\s*(\([^)]*\))?\s*$/,'').trim()||String(site||'');
 }
 /** Kullaniciyi site sayfalarindaki HUMAN RESOURCES listesinde arar. */
-/* Once site sayfalarindaki HUMAN RESOURCES listesinde tam ad eslesmesi (en
-   guvenilir), olmazsa Google dizinindeki konumdan turetilen tahmin. */
+/* Site tespiti: ONCE Google dizinindeki konum (kalici kaynak), olmazsa site
+   sayfalarindaki HUMAN RESOURCES listesinde ad eslesmesi.
+   Sira bilincli: HR bolumu ileride ISIM degil yalniz CALISAN SAYISI tutacak
+   (kullanici bildirimi), yani o eslesme zamanla kendiliginden devre disi
+   kalacak. Kod o gun geldiginde kirilmiyor — sadece bu dal bos donuyor. */
 function findUserSite(){
-  var hr=findUserSiteInHR();
-  if(hr) return hr;
   var g=BOOT&&BOOT.user&&BOOT.user.siteGuess;
-  return g?{ro:g.ro,site:g.site}:null;
+  if(g) return {ro:g.ro,site:g.site};
+  return findUserSiteInHR();
 }
 function findUserSiteInHR(){
   if(!DATA||!DATA.hasDetails||!BOOT||!BOOT.user||!BOOT.user.name) return null;
@@ -730,9 +732,9 @@ function findUserSiteInHR(){
   });
   return hit;
 }
-/* Ikinci satir: unvan (Google dizininden) ve RO-Site (site sayfalarindaki
-   HUMAN RESOURCES listesinden). Ikisi de yoksa e-posta gosterilir — satir hic
-   bos kalmasin ve kullanici kim oldugunu dogrulayabilsin. */
+/* Ikinci satir: unvan ve RO-Site. Hicbiri bulunamazsa satir HIC GOSTERILMEZ —
+   yalniz ad soyad kalir (kullanici karari). E-posta yer kaplamasin diye
+   ipucu (tooltip) olarak duruyor. */
 function renderUserChip(){
   if(!BOOT||!BOOT.user||!BOOT.user.email){ $('userChip').hidden=true; return; }
   var u=BOOT.user;
@@ -741,10 +743,13 @@ function renderUserChip(){
   var bits=[];
   if(u.title) bits.push(esc(u.title));
   if(site) bits.push(esc(site.ro+'-'+siteShortName(site.site)));
-  $('ucSub').innerHTML=bits.length
-    ? bits.join('<span class="sep" aria-hidden="true">·</span>')
-    : esc(u.email);
-  $('ucSub').title=u.email;
+  if(bits.length){
+    $('ucSub').innerHTML=bits.join('<span class="sep" aria-hidden="true">·</span>');
+    $('ucSub').hidden=false;
+  } else {
+    $('ucSub').innerHTML=''; $('ucSub').hidden=true;
+  }
+  $('userChip').title=u.email;
   $('ucAvatar').textContent=userInitials(u.name,u.email);
   $('userChip').hidden=false;
 }

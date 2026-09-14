@@ -32,9 +32,14 @@ var FEEDBACK_MAX_IMAGE = 6 * 1024 * 1024;   // 6 MB (base64 cozulmus hali)
  * ya da kisi dizinde bulunamazsa ad yine e-postadan turetilir (eski davranis).
  * Boylece ozellik "varsa daha iyi", olmazsa hicbir sey bozulmuyor.
  *
- * DIZINDEN GELMEYEN SEY: RO ve site. "PDE" Valeo'nun bu rapora ozel bir
- * gruplamasi, Google dizininde boyle bir alan yok. O bilgi site sayfalarindaki
- * HUMAN RESOURCES listesinden bulunuyor (istemci tarafinda, findUserSite).
+ * RO NEREDEN GELIYOR: Google dizininde "PDE" diye bir alan yok — bu Valeo'nun
+ * bu rapora ozel bir gruplamasi. Ama dizindeki KONUM alani ("BUR1 - BURSA 1A")
+ * site'i soyluyor; siteFromLocation_ onu SITE_REGISTRY ile eslestirince RO da
+ * kayittan geliyor. Kalici kaynak budur.
+ *
+ * (Ikincil yedek: site sayfalarindaki HUMAN RESOURCES listesinde ad eslesmesi.
+ *  O bolum ileride isim degil yalniz calisan SAYISI tutacak, yani bu yedek
+ *  zamanla kendiliginden devre disi kalacak — kod o gun kirilmiyor.)
  */
 function currentUser_() {
   var email = '';
