@@ -103,7 +103,7 @@ body.has-rail{padding-left:var(--rail-w)}
   background:linear-gradient(180deg,#041b3c,#062a5c);
   border-right:1px solid rgba(255,255,255,.08);
   display:flex; flex-direction:column; align-items:flex-start;
-  padding:calc(var(--topbar-h) + 10px) 0 14px; gap:4px;
+  padding:0 0 14px; gap:4px;
   overflow-x:hidden; overflow-y:auto; scrollbar-width:none;
   transition:width .18s ease, box-shadow .18s ease;
 }
@@ -117,17 +117,24 @@ body.has-rail{padding-left:var(--rail-w)}
    docs/logo.md: koyu zeminde logo KENDI renginde kalir (Valeo yesili),
    beyaza cevrilmez — ust bardaki kullanim ayri, orasi metinle ayni satirda. */
 .rail-brand{
-  display:flex; flex-direction:column; align-items:flex-start; gap:6px;
-  width:var(--rail-inner); margin:0 8px 14px; padding:0 13px; flex:none;
+  display:flex; flex-direction:column; align-items:flex-start; justify-content:center;
+  gap:6px; width:var(--rail-inner); margin:0 0 10px; padding:0 5px; flex:none;
+  min-height:var(--topbar-h);
+  border-bottom:1px solid rgba(255,255,255,.10);
 }
+/* Kapaliyken logo 64px'lik seridin TAMAMINI doldurur ve serinin en ustunde,
+   ust bar satiriyla ayni yukseklikte durur (kullanici talebi + referans
+   uygulama). Acilinca buyur ve sol kenari alttaki dugmelerin metniyle
+   hizalanir (8px margin + 13px padding = 21px; burada 5px padding oldugu
+   icin 16px margin ekleniyor). */
 .rail-logo{
-  width:34px; height:auto; object-fit:contain; display:block;
-  transition:width .18s ease;
+  width:calc(var(--rail-w) - 10px); height:auto; object-fit:contain; display:block;
+  transition:width .18s ease, margin-left .18s ease;
 }
-.rail:hover .rail-logo,.rail:focus-within .rail-logo{width:118px}
+.rail:hover .rail-logo,.rail:focus-within .rail-logo{width:132px; margin-left:16px}
 .rail-title{
   font-size:10px; font-weight:800; letter-spacing:.13em; text-transform:uppercase;
-  color:rgba(255,255,255,.62); white-space:nowrap;
+  color:rgba(255,255,255,.62); white-space:nowrap; margin-left:16px;
   opacity:0; transition:opacity .14s ease;
 }
 .rail:hover .rail-title,.rail:focus-within .rail-title{opacity:1}
@@ -330,8 +337,11 @@ body.has-rail{padding-left:var(--rail-w)}
   color:#fff; position:sticky; top:0; z-index:60;
   box-shadow:0 1px 0 rgba(255,255,255,.06), 0 8px 24px -12px rgba(4,27,60,.6);
 }
+/* Ust bar icerigi --maxw ile SINIRLANMAZ: dil, tema ve kullanici cipi
+   pencerenin gercek sag kenarina yaslansin (kullanici talebi). Alttaki
+   filtreler ve main yine --maxw ile ortali kalir. */
 .topbar-inner{
-  max-width:var(--maxw); margin:0 auto; padding:12px 24px;
+  max-width:none; margin:0; padding:12px 24px;
   display:flex; align-items:center; gap:12px;
 }
 .topbar img.logo{height:26px; width:auto; object-fit:contain; filter:brightness(0) invert(1)}
