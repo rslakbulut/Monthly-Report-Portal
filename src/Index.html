@@ -20,7 +20,24 @@
 
 <header class="topbar">
   <div class="topbar-inner">
-    <!-- Logo sol raya tasindi; ust barda tekrarlanmiyor (kullanici talebi). -->
+    <!-- Logo sol raya tasindi; ust barda tekrarlanmiyor (kullanici talebi).
+         Arama filtre barindan buraya tasindi: rayin yanindaki lacivert satir
+         bos duruyordu. Hem filtre gibi calisir (yazdikca liste daralir) hem
+         de altinda eslesenleri EK BILGIYLE listeler (RO, Launch Done, sapma)
+         -- oradan dogrudan o site'a/RO'ya gidilir. -->
+    <div class="topsearch" id="topSearch" hidden>
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+      </svg>
+      <input type="search" id="inpSearch" autocomplete="off" spellcheck="false"
+             role="combobox" aria-expanded="false" aria-autocomplete="list"
+             aria-controls="searchMenu" aria-label="Search"
+             data-i18n-ph="searchPh" placeholder="Search site or RO&#8230;">
+      <kbd class="ts-kbd" id="tsKbd" aria-hidden="true">Ctrl K</kbd>
+      <button class="ts-clear" id="tsClear" type="button" hidden aria-label="Clear">&#215;</button>
+      <div class="ts-menu" id="searchMenu" role="listbox" aria-label="Search results" hidden></div>
+    </div>
     <span class="spacer"></span>
 
     <div class="langwrap">
@@ -111,17 +128,6 @@
       <div class="seg" role="group" aria-labelledby="lblType" id="segType"></div></div>
     <div class="fgroup"><span class="flabel" id="lblCustomer" data-i18n="customer">Customer</span>
       <div class="seg" role="group" aria-labelledby="lblCustomer" id="segCustomer"></div></div>
-    <div class="fgroup grow">
-      <span class="flabel" id="lblSearch" data-i18n="search">Search</span>
-      <div class="searchwrap">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
-        </svg>
-        <input type="search" id="inpSearch" autocomplete="off" spellcheck="false"
-               aria-labelledby="lblSearch" data-i18n-ph="searchPh" placeholder="Search site or RO&#8230;">
-      </div>
-    </div>
   </div>
   <!-- Aktif secim seridi: hangi kapsamda bakildigi ust tarafta gorunur olsun
        (is arkadasi geri bildirimi). Bos secimde hic render edilmez. -->

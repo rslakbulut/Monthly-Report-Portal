@@ -371,6 +371,72 @@ body.has-rail{padding-left:var(--rail-w)}
 /* docs/ikonlar.md: Lucide, currentColor, 20px yaninda-metin / 16px ikon-only */
 .tbtn svg{display:block; flex:none}
 
+/* ---------- ust bardaki arama (omnibox) ----------
+   Referans uygulamadaki genis arama cubugu. Iki isi birden yapar: yazdikca
+   ana liste daralir (filtre) ve altindaki menude eslesenler EK BILGIYLE
+   cikar (RO, Launch Done, plana gore sapma) -- satira tiklayinca dogrudan
+   oraya gidilir. Ust bar koyu zemin oldugu icin kutu saydam-beyaz; menu
+   normal kart yuzeyinde (--card) acilir. */
+.topsearch{
+  position:relative; display:flex; align-items:center; flex:0 1 440px; min-width:0;
+  margin-left:4px;
+}
+.topsearch>svg{position:absolute; left:13px; color:rgba(255,255,255,.72); pointer-events:none}
+.topsearch input{
+  width:100%; min-height:40px; padding:0 74px 0 38px; font:inherit; font-size:13.5px; font-weight:500;
+  border:1px solid rgba(255,255,255,.18); border-radius:11px;
+  background:rgba(255,255,255,.10); color:#fff;
+  -webkit-appearance:none; appearance:none; backdrop-filter:blur(4px);
+  transition:background .15s ease, border-color .15s ease;
+}
+.topsearch input::placeholder{color:rgba(255,255,255,.55)}
+.topsearch input:hover{background:rgba(255,255,255,.15); border-color:rgba(255,255,255,.3)}
+.topsearch input:focus{
+  outline:none; background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.5);
+  box-shadow:0 0 0 3px rgba(255,255,255,.14);
+}
+/* Arama alaninda tarayicinin kendi "x" dugmesi bizimkiyle ust uste biniyordu */
+.topsearch input::-webkit-search-cancel-button{-webkit-appearance:none; appearance:none}
+.ts-kbd{
+  position:absolute; right:11px; pointer-events:none;
+  font:inherit; font-size:10.5px; font-weight:700; letter-spacing:.04em;
+  color:rgba(255,255,255,.6); background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.18); border-radius:6px; padding:3px 7px; line-height:1;
+}
+.ts-clear{
+  position:absolute; right:10px; width:22px; height:22px; border-radius:50%;
+  border:none; cursor:pointer; background:rgba(255,255,255,.14); color:rgba(255,255,255,.85);
+  font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center;
+}
+.ts-clear:hover{background:rgba(255,255,255,.28)}
+.ts-menu{
+  position:absolute; left:0; right:0; top:calc(100% + 8px); z-index:90;
+  background:var(--card); color:var(--text); border:1px solid var(--border);
+  border-radius:var(--r-md); box-shadow:var(--sh-3); padding:6px;
+  max-height:min(66vh,460px); overflow:auto;
+}
+.ts-group{
+  font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--text-mute); padding:9px 10px 5px;
+}
+.ts-row{
+  display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+  background:none; border:none; font:inherit; color:var(--text); cursor:pointer;
+  padding:8px 10px; border-radius:9px; min-height:44px;
+}
+.ts-row:hover,.ts-row.on{background:var(--sunken)}
+.ts-row .ts-ico{flex:none; display:flex; align-items:center; justify-content:center}
+.ts-row .ts-main{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px}
+.ts-row .ts-t{font-size:13.5px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.ts-row .ts-s{font-size:11.5px; color:var(--text-mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.ts-row .ts-v{flex:none; font-size:12.5px; font-weight:700; font-variant-numeric:tabular-nums}
+.ts-row mark{background:rgba(0,114,206,.22); color:inherit; border-radius:3px; padding:0 1px}
+.ts-foot{
+  border-top:1px solid var(--border); margin-top:4px; padding:9px 10px 5px;
+  font-size:11.5px; color:var(--text-mute); display:flex; justify-content:space-between; gap:10px;
+}
+.ts-empty{padding:16px 12px; font-size:13px; color:var(--text-mute)}
+
 /* Giris yapan kullanici (ust bar sagi) */
 /* Avatar ONDE, metin arkasinda sola yasli (Material 3 "list item" deseni:
    onde gorsel + ustuste yigilmis metin satirlari; Slack/Notion/Linear da
@@ -959,6 +1025,11 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
   /* Dar ekranda ray gizlenir — RO/Site secicileri ayni isi zaten goruyor. */
   .rail{display:none!important}
   body.has-rail{padding-left:0}
+  /* Arama filtre barindan kaldirildi, yani dar ekranda GIZLENEMEZ -- yoksa
+     telefonda arama diye bir sey kalmaz. Kalan genisligi kaplar; kullanici
+     cipinin metni zaten bu genislikte gizleniyor, yer aciliyor. */
+  .topsearch{flex:1 1 auto; margin-left:0}
+  .ts-kbd{display:none}
   .drawer{width:100vw}
   .userchip .uc-text{display:none}
   .panelx.fb{width:96vw}
