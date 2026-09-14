@@ -17,6 +17,7 @@ var FEEDBACK_TYPES = ['Bug', 'Improvement'];
 var FEEDBACK_PRIORITIES = ['Low', 'Medium', 'Urgent'];
 var FEEDBACK_MAX_MESSAGE = 4000;        // karakter
 var FEEDBACK_MAX_IMAGE = 6 * 1024 * 1024;   // 6 MB (base64 cozulmus hali)
+var DIR_CACHE_REV = 2;   // directoryPerson_ donus SEKLI degisirse artir
 
 /**
  * Giris yapmis kullanici: ad, unvan ve (bulunabiliyorsa) departman.
@@ -147,7 +148,11 @@ function cityOfSite_(name) {
  */
 function directoryPerson_(email) {
   var cache = CacheService.getScriptCache();
-  var key = 'dir_' + Utilities.base64EncodeWebSafe(email).slice(0, 80);
+  /* Anahtarda SURUM var: donus sekli degisince eski kayitlar kendiliginden
+     gecersiz olur. Bu olmadan sekil degisikliginden sonra 6 saat boyunca eski
+     (eksik alanli) kayit servis ediliyordu — canlida tam bu oldu, site/RO
+     gelmedi. Ayni ders Snapshot.gs'te SNAP_VERSION ile zaten ogrenilmisti. */
+  var key = 'dir' + DIR_CACHE_REV + '_' + Utilities.base64EncodeWebSafe(email).slice(0, 80);
   try {
     var hit = cache.get(key);
     if (hit) return hit === 'NONE' ? null : JSON.parse(hit);
@@ -228,8 +233,16 @@ function checkDirectory() {
     log('   ileri servisi kurulu degil, ya da dizin paylasimi kapali.');
     log('   Hicbiri olmasa da pano calisir — ad e-postadan turetilir.');
   }
+  /* Cache'teki kayit da yazilir: canli sonuc ile teshis sonucu farkliysa
+     sebebi neredeyse her zaman eski cache kaydidir. */
+  try {
+    var ck = 'dir' + DIR_CACHE_REV + '_' + Utilities.base64EncodeWebSafe(email).slice(0, 80);
+    log('Cache (rev ' + DIR_CACHE_REV + ') : ' + (CacheService.getScriptCache().get(ck) || '(bos)'));
+  } catch (e) {}
   var u = currentUser_();
-  log('Sonuc: ' + u.name + (u.title ? '  (' + u.title + ')' : '') + '  [kaynak: ' + u.source + ']');
+  log('Sonuc: ' + u.name + (u.title ? '  (' + u.title + ')' : '') +
+      (u.siteGuess ? '  ' + u.siteGuess.ro + ' - ' + u.siteGuess.site : '  (site yok)') +
+      '  [kaynak: ' + u.source + ']');
   log('=== bitti ===');
 }
 
