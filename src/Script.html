@@ -1751,8 +1751,10 @@ function buildFilters(){
    Yan fayda: haritadaki 48 site sirayla yaniyor (220 + k*24 ms), son site
    ~1.35 sn'de beliriyordu -- 900 ms'lik eski tabanda animasyon yarida
    kesiliyordu, simdi tamamlaniyor. */
-var SPLASH_MIN_MS=3500;
-var SPLASH={target:0,shown:0,timer:null,raf:null,done:false,t0:Date.now()};
+/* 4000 = zoom baslangici (2000) + zoom suresi (900) + sehri izlemek icin
+   ~1.1 sn. Daha kisasinda yakinlasma biter bitmez ekran kapaniyor. */
+var SPLASH_MIN_MS=4000;
+var SPLASH={target:0,shown:0,timer:null,raf:null,done:false,zt:undefined,zstart:0,t0:Date.now()};
 function splashSet(p,stageKey){
   SPLASH.target=Math.max(SPLASH.target,p);
   if(stageKey) $('splashStage').textContent=t(stageKey);
@@ -1791,7 +1793,31 @@ function splashHide(){
     },320);
   },wait);
 }
-/* Noktali dunya haritasi + site sehirleri (WorldMapData.html). */
+/* Noktali dunya haritasi + site sehirleri (WorldMapData.html).
+   ZOOM_AT'ten sonra, giris yapan kullanicinin site'i biliniyorsa harita o
+   sehre yaklasir (kullanici talebi). Site, dizin konumundan bulunuyor
+   (Feedback.gs siteFromLocation_ -> {ro,site,key}); key dogrudan SITE_GEO
+   anahtaridir. Site bilinmiyorsa hicbir sey degismez -- dunya goruntusu
+   oldugu gibi kalir. */
+/* ZOOM_SCALE 3: harita 2.4 derecelik bir nokta izgarasi, yani zoom ne
+   kadar buyukse o kadar seyreliyor -- 6 katta noktalar birbirinden
+   ayrilip kara parcasi okunmaz oluyordu (olculdu). 3 katta hem sehir
+   belirgin hem cevre kara sekli duruyor. */
+var ZOOM_AT=2000, ZOOM_DUR=900, ZOOM_SCALE=3;
+function splashZoomTarget(){
+  /* Her karede degil, BIR kez cozulur: BOOT acilis aninda hazir olmayabilir
+     (initSplash, boot'tan once calisiyor), o yuzden bulunana kadar denenir. */
+  if(SPLASH.zt!==undefined) return SPLASH.zt;
+  if(typeof BOOT==='undefined'||!BOOT||!BOOT.user) return null;
+  var g=BOOT.user.siteGuess;
+  var geo=(g&&g.key&&window.SITE_GEO)?SITE_GEO[g.key]:null;
+  SPLASH.zt=geo?{lat:geo[0],lon:geo[1],ro:geo[2],label:g.site}:null;
+  /* Zoom, hedefin COZULDUGU ana gore baslar. Yedek yolda (gomulu paket yok,
+     sunucu turu var) BOOT 2 sn'den sonra gelebilir; sabit ZOOM_AT'e baglansa
+     k bir anda 1 olur ve yakinlasma yerine sicrama gorunurdu. */
+  if(SPLASH.zt) SPLASH.zstart=Math.max(ZOOM_AT,Date.now()-SPLASH.t0);
+  return SPLASH.zt;
+}
 function drawSplashMap(){
   var cv=$('splashMap'); if(!cv||!window.WORLD_MAP) return;
   var ctx=cv.getContext('2d'); if(!ctx) return;
@@ -1804,38 +1830,82 @@ function drawSplashMap(){
     return [((lon-WORLD_MAP.lon0)/WORLD_MAP.step+0.5)*cw,
             ((WORLD_MAP.lat0-lat)/WORLD_MAP.step+0.5)*ch];
   }
+  function ease(x){ return x<.5 ? 4*x*x*x : 1-Math.pow(-2*x+2,3)/2; }
   function frame(){
     var el=Date.now()-SPLASH.t0;
+    ctx.setTransform(1,0,0,1,0,0);
     ctx.clearRect(0,0,W,H);
-    /* kara noktalari */
-    ctx.fillStyle='rgba(160,205,245,.22)';
+
+    /* Kamera: k=0 tam dunya, k=1 hedef sehir ekranin ortasinda ZOOM_SCALE
+       katinda. Ara degerlerde merkez ve olcek birlikte yurur; k=0'da
+       donusum birim matris olur, yani hedef yokken hicbir maliyeti yok. */
+    var tgt=splashZoomTarget();
+    var z0=SPLASH.zstart||ZOOM_AT;
+    var k=(tgt&&el>z0)?ease(Math.min(1,(el-z0)/ZOOM_DUR)):0;
+    var sc=1+(ZOOM_SCALE-1)*k, txy=tgt?proj(tgt.lat,tgt.lon):[W/2,H/2];
+    var ccx=W/2+(txy[0]-W/2)*k, ccy=H/2+(txy[1]-H/2)*k;
+    ctx.setTransform(sc,0,0,sc, W/2-ccx*sc, H/2-ccy*sc);
+
+    /* Kara noktalari. Yaricap olcege bolunur -- gercek bir zoom'da nokta BOYU
+       sabit kalir, aralari acilir; bolmezsek noktalar sismis gorunur. Ama
+       tamamen sabit birakmak da olmuyor: aralar acildikca kara parcasi
+       dagiliyor, o yuzden ekrandaki boy zoom'la 1.7 -> 3.4 px arasi buyur. */
+    var dotR=(1.7+1.7*k)/sc;
+    ctx.fillStyle='rgba(160,205,245,'+(0.22+0.12*k)+')';
     for(var i=0;i<WORLD_MAP.bits.length;i++){
       if(WORLD_MAP.bits.charAt(i)!=='1') continue;
       var c=i%WORLD_MAP.cols, r=(i/WORLD_MAP.cols)|0;
       ctx.beginPath();
-      ctx.arc((c+0.5)*cw,(r+0.5)*ch,1.7,0,6.2832);
+      ctx.arc((c+0.5)*cw,(r+0.5)*ch,dotR,0,6.2832);
       ctx.fill();
     }
     /* site sehirleri — sirayla yanar, sonra nabiz gibi atar */
-    for(var k=0;k<keys.length;k++){
-      var g=SITE_GEO[keys[k]];
-      var appear=220+k*24;
+    for(var j=0;j<keys.length;j++){
+      var g=SITE_GEO[keys[j]];
+      var appear=220+j*24;
       if(el<appear) continue;
       var age=el-appear;
       var grow=Math.min(1,age/420);
-      var pulse=0.72+0.28*Math.sin((el/620)+k);
+      var pulse=0.72+0.28*Math.sin((el/620)+j);
       var xy=proj(g[0],g[1]);
       var hue=RO_HUE[g[2]]||'#3b9ae4';
-      var rr=(3.2+2.6*pulse)*grow;
+      var rr=(3.2+2.6*pulse)*grow/sc;
       var glow=ctx.createRadialGradient(xy[0],xy[1],0,xy[0],xy[1],rr*4.4);
       glow.addColorStop(0,hue); glow.addColorStop(1,'rgba(0,0,0,0)');
       ctx.globalAlpha=0.42*grow; ctx.fillStyle=glow;
       ctx.beginPath(); ctx.arc(xy[0],xy[1],rr*4.4,0,6.2832); ctx.fill();
       ctx.globalAlpha=grow; ctx.fillStyle=hue;
-      ctx.beginPath(); ctx.arc(xy[0],xy[1],2.6,0,6.2832); ctx.fill();
+      ctx.beginPath(); ctx.arc(xy[0],xy[1],2.6/sc,0,6.2832); ctx.fill();
       ctx.globalAlpha=1;
     }
-    if(!SPLASH.done||SPLASH.shown<100) SPLASH.raf=requestAnimationFrame(frame);
+    /* Hedef sehrin halkasi ve adi — EKRAN uzayinda cizilir (donusum sifirli),
+       yoksa yazi tipi de olcege binip bulaniklasir. */
+    if(k>0){
+      ctx.setTransform(1,0,0,1,0,0);
+      var a=Math.min(1,k*1.6);
+      ctx.globalAlpha=a*0.9; ctx.strokeStyle=RO_HUE[tgt.ro]||'#3b9ae4'; ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.arc(W/2,H/2,17+9*(1-k),0,6.2832); ctx.stroke();
+      ctx.globalAlpha=a*0.32;
+      ctx.beginPath(); ctx.arc(W/2,H/2,31+20*(1-k),0,6.2832); ctx.stroke();
+      if(tgt.label){
+        ctx.globalAlpha=a;
+        ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+        ctx.font='800 21px Inter, system-ui, sans-serif';
+        ctx.fillStyle='rgba(4,27,60,.6)'; ctx.fillText(tgt.label,W/2+1,H/2-33);
+        ctx.fillStyle='#ffffff';        ctx.fillText(tgt.label,W/2,H/2-34);
+        /* RO kodu halkanin ALTINDA: ad ile halka arasina konunca halkaya
+           biniyordu (goruldu). */
+        ctx.font='800 12px Inter, system-ui, sans-serif';
+        ctx.globalAlpha=a*0.9; ctx.fillStyle=RO_HUE[tgt.ro]||'#3b9ae4';
+        ctx.fillText(tgt.ro,W/2,H/2+54);
+      }
+      ctx.globalAlpha=1;
+    }
+    /* Dongu ekran GERCEKTEN kapanana kadar surer. Eskiden SPLASH.shown<100
+       kosuluna bagliydi; shown artik gosterilen deger degil (zaman tavani
+       Script'te ayri uygulaniyor) ve erken 100'e varip animasyonu
+       donduruyordu. */
+    if(!$('splash').classList.contains('hide')) SPLASH.raf=requestAnimationFrame(frame);
   }
   frame();
 }

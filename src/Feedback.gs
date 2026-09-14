@@ -106,7 +106,9 @@ function siteFromLocation_(loc) {
     var n = normText_(SITE_REGISTRY[i].site).replace(/[^A-Z0-9]/g, '');
     if (n && n.length >= 4 && L.indexOf(n) !== -1) hits.push(SITE_REGISTRY[i]);
   }
-  if (hits.length === 1) return { ro: hits[0].ro, site: hits[0].site };
+  /* key de doner: acilis ekrani haritasi SITE_GEO'yu bu anahtarla adresliyor
+     (WorldMapData.html), site ADIYLA degil. */
+  if (hits.length === 1) return { ro: hits[0].ro, site: hits[0].site, key: hits[0].key };
   if (hits.length > 1) return null;   // ayni sehirde birden fazla site -> tahmin yok
 
   /* Site adi tam gecmiyor ama SEHIR adi geciyor olabilir (bina kodunda rakam
@@ -130,7 +132,7 @@ function siteFromLocation_(loc) {
     if (found) return null;                            // iki farkli sehir esledi
     found = byCity[cityName][0];
   }
-  return found ? { ro: found.ro, site: found.site } : null;
+  return found ? { ro: found.ro, site: found.site, key: found.key } : null;
 }
 
 /** Site adinin ilk rakamdan ONCEKI kismi, normalize: "Bursa 3 THS" -> "BURSA" */
