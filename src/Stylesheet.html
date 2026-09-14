@@ -42,7 +42,9 @@
   --sh-3:0 8px 16px -4px rgba(12,22,38,.10), 0 20px 42px -12px rgba(12,22,38,.20);
   --ring:0 0 0 3px rgba(0,114,206,.28);
   --maxw:1320px;
-  --rail-w:64px; --rail-open:232px; --rail-inner:216px; --topbar-h:62px;
+  /* Ray acikken 232px'te RO adlari kesiliyordu ("Power Drive Ameri...");
+     268px'te en uzun ad ("Power Thermal Europe") tam siginiyor. */
+  --rail-w:64px; --rail-open:268px; --rail-inner:252px; --topbar-h:62px;
 }
 body.dark-mode {
   --bg:#070d18; --bg-2:#0a1220;
@@ -116,28 +118,35 @@ body.has-rail{padding-left:var(--rail-w)}
 /* Marka: ray genisleyince logo buyur, kapaninca kucul (kullanici talebi).
    docs/logo.md: koyu zeminde logo KENDI renginde kalir (Valeo yesili),
    beyaza cevrilmez — ust bardaki kullanim ayri, orasi metinle ayni satirda. */
+/* Kapali: 64px'lik seride kenardan kenara logo, dikey ortali, ust bar
+   satiriyla ayni yukseklikte. Acik: logo ve alt basligin ikisi de YATAY
+   ORTALI ve daha genis bir blok icinde (referans uygulamayla ayni hiza) --
+   sola yaslanmis kucuk logo + sagda genis bosluk goze hos gorunmuyordu. */
 .rail-brand{
-  display:flex; flex-direction:column; align-items:flex-start; justify-content:center;
-  gap:6px; width:var(--rail-inner); margin:0 0 10px; padding:0 5px; flex:none;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:0; width:100%; margin:0 0 10px; padding:0; flex:none;
   min-height:var(--topbar-h);
   border-bottom:1px solid rgba(255,255,255,.10);
 }
-/* Kapaliyken logo 64px'lik seridin TAMAMINI doldurur ve serinin en ustunde,
-   ust bar satiriyla ayni yukseklikte durur (kullanici talebi + referans
-   uygulama). Acilinca buyur ve sol kenari alttaki dugmelerin metniyle
-   hizalanir (8px margin + 13px padding = 21px; burada 5px padding oldugu
-   icin 16px margin ekleniyor). */
+.rail:hover .rail-brand,.rail:focus-within .rail-brand{gap:11px; padding:20px 0 15px}
+/* Kapaliyken logo 64px'lik seridin TAMAMINI doldurur (kenardan kenara) ve
+   blogun icinde DIKEY ORTALI durur. Onemli: alttaki .rail-title kapaliyken
+   yalniz opacity:0 idi, yani YERINI KORUYORDU -- logonun altinda ~19px'lik
+   olu bir band birakiyordu. Kapaliyken yuksekligi de sifirlaniyor, boylece
+   logo blogun tamamini kullanir. Logonun kendi orani 2.3:1 oldugu icin 64px
+   genislikte yuksekligi ~28px'i gecemez; daha buyugu ya orani bozar ya da
+   marka isaretini kirpar -- ikisi de docs/logo.md'ye aykiri. */
 .rail-logo{
-  width:calc(var(--rail-w) - 10px); height:auto; object-fit:contain; display:block;
-  transition:width .18s ease, margin-left .18s ease;
+  width:var(--rail-w); height:auto; object-fit:contain; display:block;
+  transition:width .18s ease;
 }
-.rail:hover .rail-logo,.rail:focus-within .rail-logo{width:132px; margin-left:16px}
+.rail:hover .rail-logo,.rail:focus-within .rail-logo{width:188px}
 .rail-title{
   font-size:10px; font-weight:800; letter-spacing:.13em; text-transform:uppercase;
-  color:rgba(255,255,255,.62); white-space:nowrap; margin-left:16px;
-  opacity:0; transition:opacity .14s ease;
+  color:rgba(255,255,255,.62); white-space:nowrap; text-align:center;
+  opacity:0; height:0; overflow:hidden; transition:opacity .14s ease;
 }
-.rail:hover .rail-title,.rail:focus-within .rail-title{opacity:1}
+.rail:hover .rail-title,.rail:focus-within .rail-title{opacity:1; height:auto}
 /* Alt bolum (Help / Feedback / Settings) her zaman en altta */
 .rail-foot{
   margin-top:auto; padding-top:12px; width:100%; flex:none;
