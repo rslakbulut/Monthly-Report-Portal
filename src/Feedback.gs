@@ -47,14 +47,37 @@ function currentUser_() {
   if (!email) return { email: '', name: '', title: '', source: 'none' };
 
   var dir = directoryPerson_(email);
-  var guess = dir ? siteFromLocation_(dir.location) : null;
+  var guess = dir ? siteFromLocation_(dir.locs) : null;
   if (dir && dir.name) {
     return { email: email, name: dir.name, title: dir.title || '',
-             department: dir.department || '', location: dir.location || '',
+             department: dir.department || '', location: (dir.locs || []).join(' | '),
              siteGuess: guess, source: 'directory' };
   }
   return { email: email, name: displayNameFromEmail_(email), title: '',
            department: '', location: '', siteGuess: null, source: 'email' };
+}
+
+/**
+ * Konum bilgisi tek bir alanda DEGIL.
+ *
+ * Canli teshiste organizations[].location "desk" dondu — bu konumun DEGERI
+ * degil TIPI. Gercek deger (Google Chat kartindaki "BUR1 - BURSA 1A")
+ * locations[].value icinde. Hangi alanin dolu oldugu hesaba gore degistigi
+ * icin tahmin yurutmek yerine TUM adaylar toplanip sirayla deneniyor.
+ */
+function locationCandidates_(person) {
+  var out = [];
+  function add(v) {
+    v = String(v || '').trim();
+    if (v && out.indexOf(v) === -1) out.push(v);
+  }
+  (person.locations || []).forEach(function (l) {
+    add(l.value); add(l.buildingId); add(l.deskCode);
+  });
+  (person.organizations || []).forEach(function (o) {
+    add(o.location); add(o.department); add(o.officeLocation);
+  });
+  return out;
 }
 
 /**
@@ -67,6 +90,14 @@ function currentUser_() {
  * yanlis RO gostermektense hic gostermemek dogru.
  */
 function siteFromLocation_(loc) {
+  /* Dizi de kabul edilir: adaylar sirayla denenir, ilk TEK eslesme kazanir. */
+  if (loc && loc.length !== undefined && typeof loc !== 'string') {
+    for (var k = 0; k < loc.length; k++) {
+      var r = siteFromLocation_(loc[k]);
+      if (r) return r;
+    }
+    return null;
+  }
   var L = normText_(loc).replace(/[^A-Z0-9]/g, '');
   if (L.length < 3) return null;
   var hits = [];
@@ -74,8 +105,27 @@ function siteFromLocation_(loc) {
     var n = normText_(SITE_REGISTRY[i].site).replace(/[^A-Z0-9]/g, '');
     if (n && n.length >= 4 && L.indexOf(n) !== -1) hits.push(SITE_REGISTRY[i]);
   }
-  if (hits.length !== 1) return null;
-  return { ro: hits[0].ro, site: hits[0].site };
+  if (hits.length === 1) return { ro: hits[0].ro, site: hits[0].site };
+  if (hits.length > 1) return null;   // ayni sehirde birden fazla site -> tahmin yok
+
+  /* Site adi gecmiyor ama SEHIR adi geciyor olabilir ("BURSA 1A" gibi kodlarda
+     rakam farkli yazilmis olur). Sehir bazinda TEK site varsa o kabul edilir. */
+  var byCity = {};
+  for (var c = 0; c < SITE_REGISTRY.length; c++) {
+    var city = normText_(SITE_REGISTRY[c].site).replace(/[^A-Z ]/g, '').trim();
+    if (!city || city.length < 4) continue;
+    (byCity[city] = byCity[city] || []).push(SITE_REGISTRY[c]);
+  }
+  var found = null, many = false;
+  for (var cityName in byCity) {
+    if (!byCity.hasOwnProperty(cityName)) continue;
+    if (L.indexOf(cityName.replace(/ /g, '')) === -1) continue;
+    if (byCity[cityName].length !== 1) { many = true; continue; }
+    if (found) return null;            // iki farkli sehir eslesti -> belirsiz
+    found = byCity[cityName][0];
+  }
+  if (found && !many) return { ro: found.ro, site: found.site };
+  return null;
 }
 
 /**
@@ -109,14 +159,11 @@ function directoryPerson_(email) {
         if (String(addrs[a].value || '').toLowerCase() !== want) continue;
         var nm = (people[i].names || [])[0] || {};
         var org = (people[i].organizations || [])[0] || {};
-        /* Konum: once organizations[].location, yoksa locations[].value.
-           Google Chat kartinda "BUR1 - BURSA 1A" olarak gorunen alan bu. */
-        var locs = people[i].locations || [];
         out = {
           name: nm.displayName || '',
           title: org.title || '',
           department: org.department || '',
-          location: org.location || (locs[0] && locs[0].value) || ''
+          locs: locationCandidates_(people[i])
         };
         break;
       }
@@ -148,14 +195,16 @@ function checkDirectory() {
     log('Dizin sonucu   : ' + n + ' kisi');
     ((res && res.people) || []).forEach(function (p) {
       var nm = (p.names || [])[0] || {}, org = (p.organizations || [])[0] || {};
-      var locs = p.locations || [];
-      var loc = org.location || (locs[0] && locs[0].value) || '';
       log('  - ' + (nm.displayName || '(ad yok)') +
           '  | unvan: ' + (org.title || '-') +
-          '  | departman: ' + (org.department || '-') +
-          '  | konum: ' + (loc || '-'));
-      var g = siteFromLocation_(loc);
-      log('    konumdan site: ' + (g ? (g.ro + ' - ' + g.site) : '(eslesmedi/belirsiz)'));
+          '  | departman: ' + (org.department || '-'));
+      /* Hangi alanin dolu oldugunu gormek icin HAM veri yaziliyor. */
+      log('    ham locations   : ' + JSON.stringify(p.locations || []));
+      log('    ham organizations: ' + JSON.stringify(p.organizations || []));
+      var cands = locationCandidates_(p);
+      log('    aday konumlar   : ' + (cands.length ? cands.join(' | ') : '(yok)'));
+      var g = siteFromLocation_(cands);
+      log('    konumdan site   : ' + (g ? (g.ro + ' - ' + g.site) : '(eslesmedi/belirsiz)'));
     });
     if (!n) {
       log('!! Kisi dizinde bulunamadi. Workspace yoneticisi "kisi paylasimi"ni');
