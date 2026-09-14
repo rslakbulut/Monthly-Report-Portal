@@ -372,11 +372,16 @@ body.has-rail{padding-left:var(--rail-w)}
 .tbtn svg{display:block; flex:none}
 
 /* Giris yapan kullanici (ust bar sagi) */
+/* Avatar ONDE, metin arkasinda sola yasli (Material 3 "list item" deseni:
+   onde gorsel + ustuste yigilmis metin satirlari; Slack/Notion/Linear da
+   ayni). Avatar sagda + metin sola yasli olan kombinasyon kullanilmaz:
+   avatara olan bosluk her satirda degisir. Uc satir da ayni noktadan
+   basladigi icin ad/rol/RO-site hizasi bozulmuyor. */
 .userchip{display:flex; align-items:center; gap:11px; padding-left:6px}
 /* Uc satir: ad / rol / RO-site. Rol ile RO-site yan yanayken ikinci satir
    addan cok uzun kaliyor, ust satir hizasiz gorunuyordu (kullanici geri
    bildirimi). Satir yuksekligi 1.22 -- uc satir 62px'lik bara sigsin diye. */
-.uc-text{display:flex; flex-direction:column; align-items:flex-end; line-height:1.22; min-width:0}
+.uc-text{display:flex; flex-direction:column; align-items:flex-start; line-height:1.22; min-width:0}
 .uc-text b{font-size:13.5px; font-weight:700; color:#fff; white-space:nowrap}
 .uc-text i{font-size:11.5px; font-style:normal; color:rgba(255,255,255,.62); white-space:nowrap}
 .uc-text i#ucSite{color:rgba(255,255,255,.5); font-weight:600; letter-spacing:.02em}
