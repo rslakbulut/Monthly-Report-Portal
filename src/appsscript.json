@@ -2,7 +2,8 @@
   "timeZone": "Europe/Istanbul",
   "dependencies": {
     "enabledAdvancedServices": [
-      { "userSymbol": "Drive", "serviceId": "drive", "version": "v3" }
+      { "userSymbol": "Drive", "serviceId": "drive", "version": "v3" },
+      { "userSymbol": "People", "serviceId": "peopleapi", "version": "v1" }
     ]
   },
   "exceptionLogging": "STACKDRIVER",
@@ -13,7 +14,8 @@
     "https://www.googleapis.com/auth/script.scriptapp",
     "https://www.googleapis.com/auth/script.external_request",
     "https://www.googleapis.com/auth/userinfo.email",
-    "https://www.googleapis.com/auth/drive.file"
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/directory.readonly"
   ],
   "webapp": {
     "access": "DOMAIN",

@@ -19,32 +19,152 @@ var FEEDBACK_MAX_MESSAGE = 4000;        // karakter
 var FEEDBACK_MAX_IMAGE = 6 * 1024 * 1024;   // 6 MB (base64 cozulmus hali)
 
 /**
- * Giris yapmis kullanici.
+ * Giris yapmis kullanici: ad, unvan ve (bulunabiliyorsa) departman.
  *
- * Ad-soyad icin Apps Script'te dogrudan bir API yok (People/Admin SDK ayri
- * yetki ister). Valeo e-postalari ad.soyad@valeo.com duzeninde oldugu icin
- * gorunen ad e-postadan turetiliyor; e-posta yine de yaninda gosteriliyor ki
- * turetme yanlissa kullanici fark etsin.
+ * NEDEN DIZIN ARAMASI GEREKIYOR
+ * Web app executeAs:USER_DEPLOYING ile calisiyor, yani sunucu kodu HEP deploy
+ * eden hesabin kimligiyle kosuyor. Bu yuzden People API'nin "people/me"
+ * cagrisi ZIYARETCIYI degil deploy edeni dondurur. Ziyaretcinin adini almak
+ * icin e-postasiyla DIZINDE aramak gerekiyor.
+ *
+ * YETKI VERILMEZSE KIRILMAZ
+ * directory.readonly yoksa, Workspace yoneticisi kisi paylasimini kapatmissa
+ * ya da kisi dizinde bulunamazsa ad yine e-postadan turetilir (eski davranis).
+ * Boylece ozellik "varsa daha iyi", olmazsa hicbir sey bozulmuyor.
+ *
+ * DIZINDEN GELMEYEN SEY: RO ve site. "PDE" Valeo'nun bu rapora ozel bir
+ * gruplamasi, Google dizininde boyle bir alan yok. O bilgi site sayfalarindaki
+ * HUMAN RESOURCES listesinden bulunuyor (istemci tarafinda, findUserSite).
  */
 function currentUser_() {
   var email = '';
   try { email = Session.getActiveUser().getEmail() || ''; } catch (e) { email = ''; }
-  return { email: email, name: displayNameFromEmail_(email) };
+  if (!email) return { email: '', name: '', title: '', source: 'none' };
+
+  var dir = directoryPerson_(email);
+  var guess = dir ? siteFromLocation_(dir.location) : null;
+  if (dir && dir.name) {
+    return { email: email, name: dir.name, title: dir.title || '',
+             department: dir.department || '', location: dir.location || '',
+             siteGuess: guess, source: 'directory' };
+  }
+  return { email: email, name: displayNameFromEmail_(email), title: '',
+           department: '', location: '', siteGuess: null, source: 'email' };
 }
 
-function displayNameFromEmail_(email) {
-  var local = String(email || '').split('@')[0];
-  if (!local) return '';
-  var parts = local.split(/[._-]+/);
-  var out = [];
-  for (var i = 0; i < parts.length; i++) {
-    var p = parts[i];
-    if (!p) continue;
-    /* Sondaki ".ext" gibi ekler ad degil — gosterimden cikarilir. */
-    if (/^(ext|external|contractor)$/i.test(p)) continue;
-    out.push(p.charAt(0).toUpperCase() + p.slice(1).toLowerCase());
+/**
+ * Dizindeki konum metnini site kaydiyla eslestirir.
+ * Ornek: "BUR1 - BURSA 1A" -> normalize "BUR1BURSA1A", icinde "BURSA1" gecer
+ * -> Bursa 1 / PDE.
+ *
+ * BELIRSIZSE NULL DONER. Ayni sehirde birden fazla site olabiliyor (Bursa 1 =
+ * PDE, Bursa 3 THS = PTE); tek bir site'a indirgenemiyorsa tahmin yurutulmez —
+ * yanlis RO gostermektense hic gostermemek dogru.
+ */
+function siteFromLocation_(loc) {
+  var L = normText_(loc).replace(/[^A-Z0-9]/g, '');
+  if (L.length < 3) return null;
+  var hits = [];
+  for (var i = 0; i < SITE_REGISTRY.length; i++) {
+    var n = normText_(SITE_REGISTRY[i].site).replace(/[^A-Z0-9]/g, '');
+    if (n && n.length >= 4 && L.indexOf(n) !== -1) hits.push(SITE_REGISTRY[i]);
   }
-  return out.join(' ');
+  if (hits.length !== 1) return null;
+  return { ro: hits[0].ro, site: hits[0].site };
+}
+
+/**
+ * Kisiyi Google dizininde e-postasiyla arar.
+ * Sonuc cache'lenir: dizin cagrisi yavas ve her sayfa acilisinda tekrarlanir.
+ * @return {{name:string, title:string, department:string}|null}
+ */
+function directoryPerson_(email) {
+  var cache = CacheService.getScriptCache();
+  var key = 'dir_' + Utilities.base64EncodeWebSafe(email).slice(0, 80);
+  try {
+    var hit = cache.get(key);
+    if (hit) return hit === 'NONE' ? null : JSON.parse(hit);
+  } catch (e) {}
+
+  var out = null;
+  try {
+    /* People ileri servisi kurulu degilse burada ReferenceError olur — yakalanip
+       e-postadan turetmeye dusuluyor. */
+    var res = People.People.searchDirectoryPeople({
+      query: email,
+      readMask: 'names,emailAddresses,organizations,locations',
+      sources: ['DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE'],
+      pageSize: 10
+    });
+    var people = (res && res.people) || [];
+    var want = email.toLowerCase();
+    for (var i = 0; i < people.length && !out; i++) {
+      var addrs = people[i].emailAddresses || [];
+      for (var a = 0; a < addrs.length; a++) {
+        if (String(addrs[a].value || '').toLowerCase() !== want) continue;
+        var nm = (people[i].names || [])[0] || {};
+        var org = (people[i].organizations || [])[0] || {};
+        /* Konum: once organizations[].location, yoksa locations[].value.
+           Google Chat kartinda "BUR1 - BURSA 1A" olarak gorunen alan bu. */
+        var locs = people[i].locations || [];
+        out = {
+          name: nm.displayName || '',
+          title: org.title || '',
+          department: org.department || '',
+          location: org.location || (locs[0] && locs[0].value) || ''
+        };
+        break;
+      }
+    }
+  } catch (e) {
+    out = null;   // yetki yok / servis kapali / dizin paylasimi kapali
+  }
+
+  try { cache.put(key, out ? JSON.stringify(out) : 'NONE', 21600); } catch (e) {}
+  return out;
+}
+
+/** TESHIS: dizin aramasi calisiyor mu, ne donuyor. */
+function checkDirectory() {
+  function log(s) { console.log(s); }
+  log('=== Dizin aramasi kontrolu ===');
+  var email = '';
+  try { email = Session.getActiveUser().getEmail() || '(bos)'; } catch (e) { email = 'HATA'; }
+  log('Aranan e-posta : ' + email);
+  log('People servisi : ' + ((typeof People !== 'undefined' && People) ? 'KURULU' : 'YOK'));
+  try {
+    var res = People.People.searchDirectoryPeople({
+      query: email,
+      readMask: 'names,emailAddresses,organizations,locations',
+      sources: ['DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE'],
+      pageSize: 5
+    });
+    var n = ((res && res.people) || []).length;
+    log('Dizin sonucu   : ' + n + ' kisi');
+    ((res && res.people) || []).forEach(function (p) {
+      var nm = (p.names || [])[0] || {}, org = (p.organizations || [])[0] || {};
+      var locs = p.locations || [];
+      var loc = org.location || (locs[0] && locs[0].value) || '';
+      log('  - ' + (nm.displayName || '(ad yok)') +
+          '  | unvan: ' + (org.title || '-') +
+          '  | departman: ' + (org.department || '-') +
+          '  | konum: ' + (loc || '-'));
+      var g = siteFromLocation_(loc);
+      log('    konumdan site: ' + (g ? (g.ro + ' - ' + g.site) : '(eslesmedi/belirsiz)'));
+    });
+    if (!n) {
+      log('!! Kisi dizinde bulunamadi. Workspace yoneticisi "kisi paylasimi"ni');
+      log('   kapatmis olabilir; bu durumda ad e-postadan turetilmeye devam eder.');
+    }
+  } catch (e) {
+    log('HATA: ' + e.message);
+    log('!! Muhtemel sebepler: directory.readonly yetkisi verilmemis, People');
+    log('   ileri servisi kurulu degil, ya da dizin paylasimi kapali.');
+    log('   Hicbiri olmasa da pano calisir — ad e-postadan turetilir.');
+  }
+  var u = currentUser_();
+  log('Sonuc: ' + u.name + (u.title ? '  (' + u.title + ')' : '') + '  [kaynak: ' + u.source + ']');
+  log('=== bitti ===');
 }
 
 /* Geri bildirimler bu dosyadaki BU SEKMEYE yaziliyor (kullanici talimati).

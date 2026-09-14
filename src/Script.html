@@ -708,7 +708,15 @@ function siteShortName(site){
   return String(site||'').replace(/\s*\d+\s*(\([^)]*\))?\s*$/,'').trim()||String(site||'');
 }
 /** Kullaniciyi site sayfalarindaki HUMAN RESOURCES listesinde arar. */
+/* Once site sayfalarindaki HUMAN RESOURCES listesinde tam ad eslesmesi (en
+   guvenilir), olmazsa Google dizinindeki konumdan turetilen tahmin. */
 function findUserSite(){
+  var hr=findUserSiteInHR();
+  if(hr) return hr;
+  var g=BOOT&&BOOT.user&&BOOT.user.siteGuess;
+  return g?{ro:g.ro,site:g.site}:null;
+}
+function findUserSiteInHR(){
   if(!DATA||!DATA.hasDetails||!BOOT||!BOOT.user||!BOOT.user.name) return null;
   var want=BOOT.user.name.toLowerCase().replace(/[^a-z]/g,'');
   if(want.length<5) return null;
@@ -722,12 +730,20 @@ function findUserSite(){
   });
   return hit;
 }
+/* Ikinci satir: unvan (Google dizininden) ve RO-Site (site sayfalarindaki
+   HUMAN RESOURCES listesinden). Ikisi de yoksa e-posta gosterilir — satir hic
+   bos kalmasin ve kullanici kim oldugunu dogrulayabilsin. */
 function renderUserChip(){
   if(!BOOT||!BOOT.user||!BOOT.user.email){ $('userChip').hidden=true; return; }
   var u=BOOT.user;
   $('ucName').textContent=formatUserName(u.name)||u.email;
   var site=findUserSite();
-  $('ucSub').textContent=site?(site.ro+' · '+siteShortName(site.site)):u.email;
+  var bits=[];
+  if(u.title) bits.push(esc(u.title));
+  if(site) bits.push(esc(site.ro+'-'+siteShortName(site.site)));
+  $('ucSub').innerHTML=bits.length
+    ? bits.join('<span class="sep" aria-hidden="true">·</span>')
+    : esc(u.email);
   $('ucSub').title=u.email;
   $('ucAvatar').textContent=userInitials(u.name,u.email);
   $('userChip').hidden=false;
@@ -1834,7 +1850,8 @@ function buildRail(){
       'style="--rail-color:'+it.color+'" aria-current="'+active+'" '+
       (it.id==='ALL'?'':'aria-expanded="'+open+'" ')+
       'title="'+esc(it.label)+'">'+
-      (it.icon||'<span class="rail-dot" aria-hidden="true"></span>')+
+      (it.icon?('<span class="rail-ico" aria-hidden="true">'+it.icon+'</span>')
+              :('<span class="rail-ico" aria-hidden="true">'+roRegionChip(it.id)+'</span>'))+
       '<span class="rail-code">'+esc(it.id==='ALL'?'ALL':it.id)+'</span>'+
       '<span class="rail-name">'+esc(it.id==='ALL'?t('allROs'):it.label)+'</span>'+
       (it.id==='ALL'?'':'<span class="rail-chev" aria-hidden="true">'+ICON_CHEVRON_SM+'</span>')+
