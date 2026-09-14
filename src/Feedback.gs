@@ -108,24 +108,36 @@ function siteFromLocation_(loc) {
   if (hits.length === 1) return { ro: hits[0].ro, site: hits[0].site };
   if (hits.length > 1) return null;   // ayni sehirde birden fazla site -> tahmin yok
 
-  /* Site adi gecmiyor ama SEHIR adi geciyor olabilir ("BURSA 1A" gibi kodlarda
-     rakam farkli yazilmis olur). Sehir bazinda TEK site varsa o kabul edilir. */
+  /* Site adi tam gecmiyor ama SEHIR adi geciyor olabilir (bina kodunda rakam
+     farkli yazilmis olabilir). Sehir = site adinin ILK RAKAMA kadarki kismi:
+       "Bursa 1"                -> BURSA
+       "Bursa 3 THS"            -> BURSA      (ikisi ayni sehir!)
+       "San Luis Potosi 1 (M10)"-> SANLUISPOTOSI
+     Ayni sehirde birden fazla site varsa (Bursa) eslesme BELIRSIZ sayilir ve
+     null doner — yanlis RO gostermektense hic gostermemek dogru. */
   var byCity = {};
   for (var c = 0; c < SITE_REGISTRY.length; c++) {
-    var city = normText_(SITE_REGISTRY[c].site).replace(/[^A-Z ]/g, '').trim();
+    var city = cityOfSite_(SITE_REGISTRY[c].site);
     if (!city || city.length < 4) continue;
     (byCity[city] = byCity[city] || []).push(SITE_REGISTRY[c]);
   }
-  var found = null, many = false;
+  var found = null;
   for (var cityName in byCity) {
     if (!byCity.hasOwnProperty(cityName)) continue;
-    if (L.indexOf(cityName.replace(/ /g, '')) === -1) continue;
-    if (byCity[cityName].length !== 1) { many = true; continue; }
-    if (found) return null;            // iki farkli sehir eslesti -> belirsiz
+    if (L.indexOf(cityName) === -1) continue;
+    if (byCity[cityName].length !== 1) return null;   // ayni sehirde cok site
+    if (found) return null;                            // iki farkli sehir esledi
     found = byCity[cityName][0];
   }
-  if (found && !many) return { ro: found.ro, site: found.site };
-  return null;
+  return found ? { ro: found.ro, site: found.site } : null;
+}
+
+/** Site adinin ilk rakamdan ONCEKI kismi, normalize: "Bursa 3 THS" -> "BURSA" */
+function cityOfSite_(name) {
+  var s = String(name || '').replace(/\([^)]*\)/g, ' ');   // "(M10)" gibi ekler
+  var cut = s.search(/\d/);
+  if (cut > 0) s = s.slice(0, cut);
+  return normText_(s).replace(/[^A-Z]/g, '');
 }
 
 /**

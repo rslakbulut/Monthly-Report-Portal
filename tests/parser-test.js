@@ -1,6 +1,6 @@
 // Apps Script global'leri olmadan saf ayristirma mantigini test eder.
 const fs=require('fs');
-const src=['SiteRegistry','DateUtil','SheetReader','Parser','SiteParser']
+const src=['SiteRegistry','DateUtil','SheetReader','Parser','SiteParser','Feedback']
   .map(f=>fs.readFileSync(__dirname+'/../src/'+f+'.gs','utf8')).join('\n');
 eval(src);
 
@@ -179,6 +179,26 @@ eq(yr.projects[0].planRaw, '2026', 'Plan-yil blogu: ham hucre degeri TOPS listes
 eq(parsePeriodCell_('W14', 2026).month, 4, 'W14 = Nisan (2026 W14 Persembesi 2 Nisan)');
 eq(parsePeriodCell_('W15', 2026).month, 4, 'W15 = Nisan');
 eq(parsePeriodCell_('2026', 2026).reason, 'year only, no month', 'Yalniz yil -> ay yok isareti');
+
+/* ---------- 4c) Dizin konumundan site/RO cozumleme ---------- */
+/* Canli dizin verisi: locations[].buildingId = "bur1bursa1a" (konumun DEGERI
+   degil; organizations[].location "desk" donuyordu, o TIP bilgisi). */
+console.log('\n4c) Dizin konumundan site/RO');
+eq(siteFromLocation_('bur1bursa1a'), {ro:'PDE',site:'Bursa 1'},
+   'bur1bursa1a -> Bursa 1 / PDE (site adi tam eslesti)');
+eq(siteFromLocation_(['desk','bur1bursa1a']), {ro:'PDE',site:'Bursa 1'},
+   'Aday listesinde ilk TEK eslesme kazanir ("desk" atlanir)');
+eq(siteFromLocation_('desk'), null, 'Anlamsiz konum -> null');
+eq(siteFromLocation_(''), null, 'Bos konum -> null');
+eq(siteFromLocation_('BURSA'), null,
+   'Yalniz "BURSA": ayni sehirde Bursa 1 (PDE) ve Bursa 3 THS (PTE) var -> BELIRSIZ');
+eq(siteFromLocation_('zar1zaragoza'), {ro:'PTE',site:'Zaragoza 1'},
+   'zar1zaragoza -> Zaragoza 1 / PTE');
+eq(siteFromLocation_('loudi-plant'), {ro:'PTC',site:'Loudi'},
+   'Rakamsiz site adi da eslesir (Loudi)');
+eq(cityOfSite_('Bursa 3 THS'), 'BURSA', 'Sehir: ilk rakama kadar ("Bursa 3 THS" -> BURSA)');
+eq(cityOfSite_('San Luis Potosi 1 (M10)'), 'SANLUISPOTOSI',
+   'Sehir: parantezli ek atilir ("(M10)")');
 
 /* ---------- 5) REMAN blogu: Type sutunu yanlis doldurulmus ---------- */
 console.log('\n5) VS Current Portfolio - REMAN — Type sutununda A0/A1/A2 var');
