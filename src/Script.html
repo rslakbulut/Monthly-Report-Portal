@@ -735,20 +735,20 @@ function findUserSiteInHR(){
 /* Ikinci satir: unvan ve RO-Site. Hicbiri bulunamazsa satir HIC GOSTERILMEZ —
    yalniz ad soyad kalir (kullanici karari). E-posta yer kaplamasin diye
    ipucu (tooltip) olarak duruyor. */
+function setChipLine(id,html){
+  var el=$(id); if(!el) return;
+  el.innerHTML=html||''; el.hidden=!html;
+}
 function renderUserChip(){
   if(!BOOT||!BOOT.user||!BOOT.user.email){ $('userChip').hidden=true; return; }
   var u=BOOT.user;
   $('ucName').textContent=formatUserName(u.name)||u.email;
   var site=findUserSite();
-  var bits=[];
-  if(u.title) bits.push(esc(u.title));
-  if(site) bits.push(esc(site.ro+'-'+siteShortName(site.site)));
-  if(bits.length){
-    $('ucSub').innerHTML=bits.join('<span class="sep" aria-hidden="true">·</span>');
-    $('ucSub').hidden=false;
-  } else {
-    $('ucSub').innerHTML=''; $('ucSub').hidden=true;
-  }
+  /* Rol ve RO-site AYRI satirlarda: yan yana yazildiklarinda ikinci satir
+     addan cok daha uzun kaliyor ve ustteki ad hizasiz gorunuyordu
+     (kullanici geri bildirimi). Eksik olan satir hic render edilmez. */
+  setChipLine('ucSub', u.title ? esc(u.title) : '');
+  setChipLine('ucSite', site ? esc(site.ro+'-'+siteShortName(site.site)) : '');
   $('userChip').title=u.email;
   $('ucAvatar').textContent=userInitials(u.name,u.email);
   $('userChip').hidden=false;
