@@ -79,6 +79,11 @@ body{
 :focus-visible{outline:none; box-shadow:var(--ring); border-radius:8px}
 .topbar :focus-visible{box-shadow:0 0 0 3px rgba(255,255,255,.6)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+/* [hidden] HER ZAMAN kazanir. display:flex/grid/inline-flex veren kurallar
+   tarayicinin [hidden] kuralini eziyor ve gizli ogeler gorunur kaliyordu —
+   bu tuzaga uc kez dusuldu (dil menusu, sag panel, gorsel temizleme dugmesi).
+   Tek yerden cozulduğu icin bir daha tekrarlanmiyor. */
+[hidden]{display:none!important}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .skip-link{position:absolute;left:-9999px;top:0;z-index:200;background:var(--card);color:var(--text);padding:10px 16px;border-radius:0 0 var(--r-sm) 0;font-weight:600}
 .skip-link:focus{left:0}
@@ -93,7 +98,6 @@ body{
    Dugmeler sabit genislikte (216px) ve ray overflow-x:hidden — boylece
    genisleme sirasinda metin yeniden akmiyor, sadece gorunur oluyor. */
 body.has-rail{padding-left:var(--rail-w)}
-.rail[hidden],.drawer[hidden],.drawer-scrim[hidden]{display:none!important}
 .rail{
   position:fixed; left:0; top:0; bottom:0; width:var(--rail-w); z-index:70;
   background:linear-gradient(180deg,#041b3c,#062a5c);
@@ -108,6 +112,30 @@ body.has-rail{padding-left:var(--rail-w)}
    jenerik-desenler.md) */
 .rail:hover,.rail:focus-within{
   width:var(--rail-open); box-shadow:12px 0 40px -16px rgba(4,27,60,.55);
+}
+/* Marka: ray genisleyince logo buyur, kapaninca kucul (kullanici talebi).
+   docs/logo.md: koyu zeminde logo KENDI renginde kalir (Valeo yesili),
+   beyaza cevrilmez — ust bardaki kullanim ayri, orasi metinle ayni satirda. */
+.rail-brand{
+  display:flex; flex-direction:column; align-items:flex-start; gap:6px;
+  width:var(--rail-inner); margin:0 8px 14px; padding:0 11px; flex:none;
+}
+.rail-logo{
+  height:22px; width:auto; object-fit:contain; display:block;
+  transition:height .18s ease;
+}
+.rail:hover .rail-logo,.rail:focus-within .rail-logo{height:40px}
+.rail-title{
+  font-size:10px; font-weight:800; letter-spacing:.13em; text-transform:uppercase;
+  color:rgba(255,255,255,.62); white-space:nowrap;
+  opacity:0; transition:opacity .14s ease;
+}
+.rail:hover .rail-title,.rail:focus-within .rail-title{opacity:1}
+/* Alt bolum (Help / Feedback / Settings) her zaman en altta */
+.rail-foot{
+  margin-top:auto; padding-top:12px; width:100%; flex:none;
+  display:flex; flex-direction:column; gap:4px;
+  border-top:1px solid rgba(255,255,255,.12);
 }
 .rail-items{display:flex; flex-direction:column; gap:4px; width:100%}
 .rail-btn{
@@ -196,6 +224,92 @@ body.has-rail{padding-left:var(--rail-w)}
 .drawer .tops-row,.drawer .tops-head{grid-template-columns:1fr 58px 58px 64px}
 .drawer .tp-seg,.drawer .tops-head span:nth-child(2){display:none}
 
+/* ---------- yardim paneli / geri bildirim penceresi ---------- */
+.help-ico{
+  width:34px; height:34px; border-radius:10px; flex:none;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--valeo-green,#78be20); color:#06230a;
+}
+.drawer-head h2,.panel-head h2{display:flex; flex-direction:column; gap:2px; min-width:0}
+.drawer-head h2 i,.panel-head h2 i{
+  font-style:normal; font-size:11.5px; font-weight:500; color:rgba(255,255,255,.66);
+}
+.help-drawer .drawer-body{gap:14px}
+.help-search input{padding-left:38px}
+.help-chips{display:flex; flex-wrap:wrap; gap:7px}
+.help-chips button{
+  font:inherit; font-size:12px; font-weight:600; cursor:pointer;
+  padding:6px 11px; border-radius:999px; min-height:32px;
+  background:var(--sunken); border:1px solid var(--border-strong); color:var(--text-dim);
+}
+.help-chips button:hover{border-color:var(--valeo-mid); color:var(--valeo-mid)}
+.help-sec{margin-bottom:18px}
+.help-sec h3{
+  display:flex; align-items:center; gap:8px; margin:0 0 10px;
+  font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.11em;
+  color:var(--valeo-mid);
+}
+.help-step{
+  display:flex; gap:12px; padding:12px 14px; margin-bottom:8px;
+  background:var(--card); border:1px solid var(--border); border-radius:var(--r-md);
+}
+.help-step .hs-n{
+  width:22px; height:22px; border-radius:7px; flex:none;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--sunken); color:var(--valeo-mid); font-size:11px; font-weight:800;
+}
+.help-step .hs-b{min-width:0}
+.help-step b{display:block; font-size:13.5px; font-weight:700; margin-bottom:3px}
+.help-step span{font-size:12.5px; color:var(--text-dim); line-height:1.5}
+.help-step .src{display:block; margin-top:6px; font-size:11px; color:var(--text-mute)}
+.help-empty{font-size:13px; color:var(--text-mute); padding:10px 2px}
+.help-foot{justify-content:space-between; align-items:center; gap:12px; font-size:12.5px; color:var(--text-dim)}
+
+.panelx.fb{max-width:600px; width:min(600px,94vw)}
+.panelx.fb .panel-body{gap:18px}
+.panel-foot{
+  padding:14px 20px; border-top:1px solid var(--border); background:var(--sunken);
+  display:flex; justify-content:flex-end; gap:10px;
+}
+.flabel .req{color:var(--bad); font-weight:800}
+.flabel .opt{font-style:normal; font-weight:500; text-transform:none; letter-spacing:0; color:var(--text-mute)}
+.pickrow{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px}
+.pickrow button{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  min-height:46px; padding:0 14px; cursor:pointer; font:inherit; font-size:13.5px; font-weight:600;
+  background:var(--card); border:1px solid var(--border-strong); border-radius:var(--r-sm);
+  color:var(--text); transition:border-color .15s ease, background .15s ease;
+}
+.pickrow button:hover{border-color:var(--valeo-mid)}
+.pickrow button[aria-checked="true"]{
+  border-color:var(--valeo-mid); background:rgba(0,114,206,.08); color:var(--valeo-mid); font-weight:700;
+}
+.pickrow .pk-dot{width:9px; height:9px; border-radius:50%; background:var(--pk,var(--text-mute)); flex:none}
+.pickrow svg{flex:none}
+.panel-body textarea{
+  width:100%; min-height:110px; padding:11px 13px; font:inherit; font-size:14px; resize:vertical;
+  border:1px solid var(--border-strong); border-radius:var(--r-sm);
+  background:var(--card); color:var(--text);
+}
+.panel-body textarea:hover{border-color:var(--valeo-mid)}
+.dropzone{
+  border:1.5px dashed var(--border-strong); border-radius:var(--r-sm);
+  min-height:78px; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; background:var(--sunken); transition:border-color .15s ease, background .15s ease;
+}
+.dropzone:hover,.dropzone.over{border-color:var(--valeo-mid); background:rgba(0,114,206,.06)}
+.dz-empty{display:flex; align-items:center; gap:9px; font-size:13px; color:var(--text-dim); font-weight:600}
+.dz-empty em{font-style:normal; color:var(--text-mute); font-weight:500}
+.dz-preview{position:relative; display:inline-flex; padding:8px}
+.dz-preview img{max-height:130px; max-width:100%; border-radius:8px; display:block; box-shadow:var(--sh-2)}
+.dz-preview button{
+  position:absolute; top:2px; right:2px; width:24px; height:24px; border-radius:50%;
+  border:none; cursor:pointer; background:rgba(4,27,60,.78); color:#fff; font-size:16px; line-height:1;
+}
+.fb-msg{font-size:13px; font-weight:600; padding:10px 13px; border-radius:var(--r-sm)}
+.fb-msg.err{background:var(--bad-bg); color:var(--bad)}
+.fb-msg.ok{background:var(--good-bg); color:var(--good)}
+
 /* ---------- ust bar ---------- */
 .topbar{
   background:linear-gradient(100deg,#041b3c 0%,#062a5c 55%,#003d9b 130%);
@@ -220,6 +334,19 @@ body.has-rail{padding-left:var(--rail-w)}
 /* docs/ikonlar.md: Lucide, currentColor, 20px yaninda-metin / 16px ikon-only */
 .tbtn svg{display:block; flex:none}
 
+/* Giris yapan kullanici (ust bar sagi) */
+.userchip{display:flex; align-items:center; gap:11px; padding-left:6px}
+.uc-text{display:flex; flex-direction:column; align-items:flex-end; line-height:1.25; min-width:0}
+.uc-text b{font-size:13.5px; font-weight:700; color:#fff; white-space:nowrap}
+.uc-text i{font-size:11.5px; font-style:normal; color:rgba(255,255,255,.62); white-space:nowrap}
+.uc-avatar{
+  width:36px; height:36px; border-radius:50%; flex:none;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:800; letter-spacing:.02em; color:#fff;
+  background:linear-gradient(140deg,#e8497f,#c92a68);
+  box-shadow:0 2px 8px -2px rgba(0,0,0,.45);
+}
+
 /* Bayrak cipleri — emoji bayraklar Windows'ta render edilmedigi icin inline SVG */
 .flag{display:inline-flex; border-radius:3px; overflow:hidden; flex:none; line-height:0;
       box-shadow:0 0 0 1px rgba(12,22,38,.2)}
@@ -230,8 +357,6 @@ body.dark-mode .flag{box-shadow:0 0 0 1px rgba(255,255,255,.22)}
 
 /* dil secici (ozel dropdown — native select degil, docs/bilesenler.md) */
 .langwrap{position:relative}
-/* [hidden] UA kurali display:grid tarafindan eziliyordu — menu acik aciliyordu */
-.langmenu[hidden]{display:none}
 .langmenu{
   position:absolute; right:0; top:calc(100% + 8px); z-index:80;
   background:var(--card); color:var(--text); border:1px solid var(--border);
@@ -789,6 +914,8 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
   .rail{display:none!important}
   body.has-rail{padding-left:0}
   .drawer{width:100vw}
+  .userchip .uc-text{display:none}
+  .panelx.fb{width:96vw}
   .filters{position:static}
   .filters-inner{gap:16px; padding:14px 16px}
   .selstrip{padding:0 16px 12px}

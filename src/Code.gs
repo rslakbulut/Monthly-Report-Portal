@@ -120,7 +120,8 @@ function getBootstrap() {
       siteCount: SITE_REGISTRY.length,
       roCounts: roSiteCounts_(),
       gmailQuery: getGmailQuery_(),
-      isAdmin: isAuthorizedAdmin_()
+      isAdmin: isAuthorizedAdmin_(),
+      user: currentUser_()
     };
   } catch (e) {
     return { error: 'Could not load start-up data: ' + e.message };
