@@ -388,30 +388,105 @@ body.has-rail{padding-left:var(--rail-w)}
    "bilinmiyor" -- ikisi ayni sey degil, ust yonetime oyle gitmesin. */
 .ex-rep-nr.on .ex-rep-ch{transform:rotate(90deg)}
 
+/* ---------- birim secici (OI / adet) ---------- */
+.bc-head{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap}
+.bc-unit{
+  font-size:10px; font-weight:800; letter-spacing:.1em; color:var(--valeo-mid);
+  background:rgba(0,114,206,.12); border-radius:6px; padding:2px 7px; margin-left:8px;
+  vertical-align:2px;
+}
+.bc-tools{display:flex; align-items:center; gap:16px; flex-wrap:wrap}
+.ex-seg{display:inline-flex; background:var(--sunken); border:1px solid var(--border); border-radius:11px; padding:3px; gap:3px}
+.ex-seg button{
+  background:transparent; color:var(--text-dim); border:none; cursor:pointer;
+  padding:0 13px; min-height:32px; font:inherit; font-size:12.5px; font-weight:700;
+  border-radius:8px; white-space:nowrap; transition:background .15s ease, color .15s ease;
+}
+.ex-seg button:hover{background:var(--card); color:var(--text)}
+.ex-seg button[aria-pressed="true"]{
+  background:linear-gradient(180deg,#0a7ddb,#0060b4); color:#fff;
+  box-shadow:0 1px 2px rgba(0,61,155,.4), 0 4px 10px -3px rgba(0,61,155,.55);
+}
+.bc-key{display:inline-flex; align-items:center; gap:14px; font-size:11.5px; font-weight:600; color:var(--text-mute)}
+.bc-kk{display:inline-flex; align-items:center; gap:6px}
+.bc-kk i{width:10px; height:10px; border-radius:3px; display:inline-block}
+
+/* RO bayrak satiri — SVG'nin ALTINDA, ayni sutun genisliginde */
+.bc-labels{display:flex; width:100%; margin-top:2px}
+.bc-lb{
+  display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0;
+  background:none; border:none; font:inherit; cursor:pointer; padding:6px 2px 2px;
+  border-radius:10px; color:var(--text);
+}
+.bc-lb:hover{background:var(--sunken)}
+.bc-lb-f{display:flex; align-items:center; justify-content:center; height:18px}
+.bc-lb-c{font-size:14px; font-weight:800; letter-spacing:.03em}
+.bc-lb-n{font-size:10.5px; font-weight:600; color:var(--text-mute); text-align:center;
+         overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%}
+
+/* ---------- iki pasta ---------- */
+.ex-pies{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px}
+.ex-pie{background:var(--card); border-radius:var(--r-lg); box-shadow:var(--sh-2); padding:18px 20px 12px}
+.ex-pie h3{margin:0 0 4px; font-size:10px; font-weight:800; letter-spacing:.12em;
+           text-transform:uppercase; color:var(--text-mute)}
+.ex-pie-w{width:100%; aspect-ratio:560/430}
+.ex-pie-w svg{width:100%; height:100%; display:block}
+.ex-pie-empty{padding:60px 0; text-align:center; color:var(--text-mute); font-size:13px}
+.pie-sl{cursor:pointer; transition:opacity .15s ease, transform .15s ease; transform-origin:280px 205px}
+.pie-sl:hover{opacity:.88}
+/* Secili dilim: hafif buyume + beyaz ayirici halka. Digerlerini soldurmak
+   ic yazilari okunmaz yapiyordu. */
+.pie-sl.pie-on{transform:scale(1.045); stroke:var(--card); stroke-width:3}
+/* Etiketler dilimin USTUNDE duruyor ve tiklamayi yutuyordu: kullanici
+   dilimdeki RO adina bassa hicbir sey olmuyordu (testte yakalandi).
+   Etiket katmani tiklamaya saydam. */
+.pie-in,.pie-out,.pie-ctv,.pie-ctu,.pie-ctl{pointer-events:none}
+.pie-dim{opacity:.34}
+.pie-l1{font-size:13px; font-weight:800; fill:#fff}
+.pie-l2{font-size:13px; font-weight:800; fill:#fff}
+.pie-l3{font-size:11px; font-weight:700; fill:#fff; fill-opacity:.85}
+.pie-lead{fill:none; stroke:var(--border-strong); stroke-width:1.2}
+.pie-o1{font-size:11.5px; font-weight:800; fill:var(--text)}
+.pie-o2{font-size:10.5px; font-weight:600; fill:var(--text-mute)}
+.pie-ctv{font-size:34px; font-weight:800; fill:var(--text)}
+.pie-ctu{font-size:12px; font-weight:700; fill:var(--text-mute)}
+.pie-ctl{font-size:10px; font-weight:700; fill:var(--text-mute); letter-spacing:.09em; text-transform:uppercase}
+
+/* sag paneldeki proje tipi tablosu */
+.dk-types{margin-top:14px}
+.dkt{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums}
+.dkt th,.dkt td{padding:7px 8px; font-size:12.5px; text-align:right}
+.dkt thead th{font-size:9.5px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; color:var(--text-mute)}
+.dkt tbody th{text-align:left; font-weight:800}
+.dkt td.good{color:var(--good); font-weight:700}
+.dkt td.bad{color:var(--bad); font-weight:700}
+.dkt-sum{border-top:1px solid var(--border)}
+.dkt-sum th,.dkt-sum td{font-weight:800}
+
 /* ---------- RO cubuk grafigi (saf SVG) ----------
    Kap sabit oranli; Chart.js kullanilmadigi icin docs/grafikler.md'deki
    "maintainAspectRatio sonsuz dongusu" tuzagi burada yok, ama yine de
    yukseklik CSS'ten veriliyor ve SVG viewBox'a sigiyor. */
+/* Panel basligi ile notu ayni satirda dursun: kural yoktu, not alt satira
+   dusuyordu (TOP projeler, proje tipi tablosu vb.). */
+.panel-h{display:flex; align-items:baseline; justify-content:space-between; gap:14px; flex-wrap:wrap}
 .bc-panel{margin-bottom:18px}
 .bc-panel .panel-h{display:flex; align-items:center; justify-content:space-between; gap:16px}
 .bc-key{display:inline-flex; align-items:center; gap:8px; font-size:11.5px; font-weight:600; color:var(--text-mute)}
-.bc-k{width:11px; height:11px; border-radius:3px; display:inline-block}
-.bc-k.bc-kp{background:linear-gradient(180deg,#b9c6d6,#d7dfe8)}
-.bc-k.bc-kr{background:linear-gradient(180deg,#0a7ddb,#0060b4); margin-left:8px}
 /* Sabit yukseklik + preserveAspectRatio:none yazilari yatayda geriyordu.
    Oranla verilince SVG kendi olceginde kaliyor. */
-.bc-wrap{width:100%; aspect-ratio:1180/330; max-width:100%}
+.bc-wrap{width:100%; aspect-ratio:1180/360; max-width:100%}
 .bc-wrap svg{width:100%; height:100%; display:block; overflow:visible}
 .bc-ax{font-size:11px; fill:var(--text-mute); font-weight:600}
-.bc-ro{font-size:14px; fill:var(--text); font-weight:800; letter-spacing:.03em}
-.bc-sub{font-size:10.5px; fill:var(--text-mute); font-weight:600}
-.bc-v{font-size:12.5px; font-weight:800; font-variant-numeric:tabular-nums}
-.bc-vp{fill:var(--text-mute)} .bc-vg{fill:var(--good)} .bc-vb{fill:var(--bad)}
+.bc-grid{stroke:var(--border); stroke-width:1}
+.bc-track{fill:var(--sunken); fill-opacity:.55}
+.bc-hit{fill:transparent}
+.bc-v{font-size:11.5px; font-weight:800; font-variant-numeric:tabular-nums}
+.bc-v0{fill:#64748b} .bc-v1{fill:#0a7ddb} .bc-v2{fill:#12803c}
 .bc-g{cursor:pointer}
 .bc-g:hover rect:not(.bc-hit){filter:brightness(1.08)}
 .bc-g:hover .bc-hit{fill:var(--sunken); fill-opacity:.55}
 /* Koyu temada gri plan cubugu zeminde kayboluyordu */
-body.dark-mode .bc-k.bc-kp{background:linear-gradient(180deg,#5b6b80,#42506180)}
 
 /* halka listesindeki TOPLAM satiri (referans panodaki gibi) */
 .ex-lg-tot{
@@ -1141,7 +1216,9 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
   /* Arama filtre barindan kaldirildi, yani dar ekranda GIZLENEMEZ -- yoksa
      telefonda arama diye bir sey kalmaz. Kalan genisligi kaplar; kullanici
      cipinin metni zaten bu genislikte gizleniyor, yer aciliyor. */
-  .bc-wrap{aspect-ratio:760/330}
+  .bc-wrap{aspect-ratio:760/360}
+  .ex-pies{grid-template-columns:1fr}
+  .bc-lb-n{display:none}
   .ex-donuts{grid-template-columns:1fr}
   .topsearch{flex:1 1 auto; margin-left:0}
   .ts-kbd{display:none}

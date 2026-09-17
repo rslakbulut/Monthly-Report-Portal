@@ -231,7 +231,10 @@ var T={
   settingsIntro:'The monthly report arrives as a new spreadsheet each month. The Gmail scan finds it automatically; if it doesn’t, add the link manually.',
   regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.',
   execByFamily:'Business line',lnReal:'YTD real',
-  execChartTitle:'Budget YTD vs launched — by RO',execTotal:'Total',
+  execChartTitle:'By RO — Budget Year · Budget YTD · launched',execTotal:'Total',
+  execBudgetYear:'Budget Year',execUnit:'Unit',execPieRo:'Order intake by RO',
+  execPieSite:'By site',noData:'No data',
+
   lnBdgt:'Budget YTD',
   tabNewReman:'New & Reman',tabOffroad:'Offroad',
   offroadEmpty:'No Offroad data yet. This tab will fill once the Offroad monthly report starts arriving.',
@@ -241,7 +244,9 @@ var T={
   help:'Help',feedback:'Feedback',settings:'Settings',helpTitle:'Help · User guide',helpSub:'Ask a question or browse the topics',helpSearchPh:'e.g. what is Budget YTD, why is a site red…',helpNotFound:'Didn’t find it?',feedbackSub:'Report a bug or suggest an improvement',type:'Type',priority:'Priority',message:'Message',screenshot:'Screenshot',optional:'optional',dropImage:'Upload an image',orPaste:'or paste (Ctrl+V)',cancel:'Cancel',send:'Send',sending:'Sending…',feedbackThanks:'Thanks — your feedback was recorded.',bug:'Bug',improvement:'Improvement',low:'Low',medium:'Medium',urgent:'Urgent',feedbackPh:'Write your feedback…',startHere:'Start here',noHelpMatch:'Nothing matched. Try another word, or send us feedback.',
   helpS1t:'The RO list is the start',helpS1b:'Seven regional organizations, the one furthest behind plan on top. The bar shows how much of that RO’s Budget Year has been launched.',helpS2t:'The left rail',helpS2b:'Hover it to open. Click an RO to narrow the whole screen to it; click a site to open its panel.',helpS3t:'Site panel',helpS3b:'Clicking a site opens a panel on the right: its KPIs, biggest projects and team. “Open full page” goes to the full detail.',helpS4t:'Filters and search',helpS4b:'Product type, project type and customer narrow every number on screen. The search box finds a site or an RO by name.',helpS5t:'How fresh is the data',helpS5b:'The stamp at the top right says when the data was built. It refreshes every hour; Refresh data rebuilds it now.',helpC1:'Budget YTD',helpC2:'Launch Done',helpC3:'why is a site late',helpC4:'P1 P10 TTM',
   pickType:'Please choose a type.',pickPriority:'Please choose a priority.',writeMessage:'Please write a message.',onlyImages:'Only image files are accepted.'},
- tr:{execChartTitle:'Budget YTD ve gerçekleşen — RO bazında',execTotal:'Toplam',
+ tr:{execChartTitle:'RO bazında — Budget Year · Budget YTD · gerçekleşen',execTotal:'Toplam',
+  execBudgetYear:'Budget Year',execUnit:'Birim',execPieRo:'RO bazında order intake',
+  execPieSite:'Site bazında',noData:'Veri yok',
   lnBdgt:'Budget YTD',
   
   execByFamily:'İş kolu',lnReal:'YTD gerçekleşen',
@@ -1122,7 +1127,7 @@ function renderSelStrip(){
    Launch Sheet Date / Turnover (k€) sutunlari (kullanici tarifi). Ciro burada
    sayfanin kendi birimiyle (k€) gosterilir — proje basina M€ tek ondalikta
    hepsini 0.0 yapardi. */
-function topProjectsOf(list){
+function topProjectsOf(list,limit){
   var out=[];
   list.forEach(function(st){
     (st.topProjects||[]).forEach(function(p){
@@ -1133,10 +1138,10 @@ function topProjectsOf(list){
     });
   });
   out.sort(function(a,b){ return (b.p.turnover||0)-(a.p.turnover||0); });
-  return out.slice(0,12);
+  return out.slice(0,limit||12);
 }
-function topProjectsPanel(list,showSite){
-  var rows=topProjectsOf(list);
+function topProjectsPanel(list,showSite,limit){
+  var rows=topProjectsOf(list,limit);
   var head='<h3>'+esc(t('topProjects'))+' <span class="p-note" lang="en">O.I (k€)</span></h3>';
   if(!rows.length){
     /* Agir yari arka planda geliyor — "proje yok" demek yaniltici olurdu. */
@@ -1326,6 +1331,22 @@ function renderRoLevel(){
       render();
     };
   });
+  $('view').querySelectorAll('[data-exu]').forEach(function(b){
+    b.onclick=function(){ EXV.unit=b.getAttribute('data-exu'); render(); };
+  });
+  /* Sol pasta RO secer, sag pasta site detayini acar. */
+  $('view').querySelectorAll('[data-exp]').forEach(function(el){
+    el.onclick=function(){
+      var kind=el.getAttribute('data-exp'), v=el.getAttribute('data-expv');
+      if(kind==='ro'){ EXP.ro=v; render(); } else { openDrawer(v); }
+    };
+  });
+  $('view').querySelectorAll('.bc-lb[data-exro]').forEach(function(g){
+    g.onclick=function(){
+      F.ro=g.getAttribute('data-exro'); F.site='ALL'; NAV.expandedRo=F.ro;
+      buildRoSiteSelects(); render(); window.scrollTo({top:0,behavior:'smooth'});
+    };
+  });
   $('view').querySelectorAll('.bc-g[data-exro]').forEach(function(g){
     g.onclick=function(){
       F.ro=g.getAttribute('data-exro'); F.site='ALL'; NAV.expandedRo=F.ro;
@@ -1501,76 +1522,252 @@ function execDonut(id,title,items,selKey){
     '<div class="ex-legend">'+legend+'</div></section>';
 }
 
-/* ---------- RO bazinda HEDEF vs GERCEKLESEN (dikey gruplu cubuk) ----------
-   Referans KPI panosunun ana grafigi: her kategoride hedef ve gerceklesen
-   yan yana, degerler cubugun ustunde, ustte kesikli hedef cizgisi.
-   Neden dikey gruplu cubuk: plan-gerceklesen kiyasi UZUNLUKLA okunur (bkz.
-   onceki benchmark), ve iki cubugun tabani ayni hizada oldugu icin fark
-   dogrudan gorunur. Saf SVG -- Chart.js yuklenmiyor, docs/grafikler.md'deki
-   "sabit yukseklikli kap" tuzagi da bu yuzden bizi ilgilendirmiyor. */
+/* ---------- gorunum birimi: OI (M€) / proje adedi ----------
+   Acilista OI (kullanici karari). Tek dugmeyle adet gorunumune geciliyor;
+   birim her grafigin basligindan okunuyor. */
+var EXV={unit:'OI'};          // 'OI' | 'COUNT'
+var EXP={ro:null};            // sag pastada gosterilen RO
+
+function execUnit(){ return EXV.unit==='OI'?'M€':t('projects'); }
+function execFmt(v){ return EXV.unit==='OI'?nf(v,1):nf(Math.round(v)); }
+
+/* Ciro kupu (M€). B1 YTD ciro plani detay satirlarinin PLAN tarihinden
+   geliyor (planYtdTurnover) -- ozet blokta ciro icin YTD butce sutunu yok. */
+function execMoneyCell(list,status,type){
+  var row=type||'TOTAL', rt=(row==='TOTAL')?'ALL':row;
+  var c=execZero();
+  list.forEach(function(st){
+    c.b1  +=execBudgetPick(st,row,status,'budgetTurnover');
+    c.ytd +=execRealSum(st,rt,status,'planYtdTurnover')/1000;
+    c.real+=execRealSum(st,rt,status,'ytdTurnover')/1000;
+  });
+  return c;
+}
+/* Secili birime gore tek giris noktasi. */
+function execCell(list,type,status){
+  return EXV.unit==='OI' ? execMoneyCell(list,status,type==='TOTAL'?'TOTAL':type)
+                         : execCountCell(list,type,status);
+}
+function execUnitToggle(){
+  return '<span class="ex-seg" role="group" aria-label="'+esc(t('execUnit'))+'">'+
+    [['OI','OI (M€)'],['COUNT',t('projects')]].map(function(x){
+      return '<button type="button" data-exu="'+x[0]+'" aria-pressed="'+(EXV.unit===x[0])+'">'+
+        esc(x[1])+'</button>';
+    }).join('')+'</span>';
+}
+
+/* ---------- RO cubuk grafigi: Budget Year / B1 YTD / Real ----------
+   Benchmark (Untitled UI, Grafana, Muzli 2026 derlemesi): yuvarlak uclu
+   cubuklar, ince dikey gradient, arkada soluk "ray" sutunu, deger etiketleri
+   rozet icinde, ince kesikli izgara. Adet gorunumunde her cubuk P1/P10/TTM
+   olarak YIGILI ciziliyor -- kullanici talebi.
+   RO bayraklari SVG'nin ALTINDA HTML satirinda: mevcut flagChip/regionChip
+   bilesenleri HTML, SVG icine gomulemezdi; sutun genisligi ayni oldugu icin
+   hizalama birebir tutuyor. */
+var BC_SERIES=[['b1','execBudgetYear','#94a3b8'],['ytd','lnBdgt','#0a7ddb'],['real','lnReal','#12803c']];
+var BC_TYPE_TONE={P1:0.0,P10:0.22,TTM:0.44};
+
 function execBarChart(){
-  var st=F.status, ty=execTypeRow();
+  var st=F.status, ty=execTypeRow(), money=(EXV.unit==='OI');
   var rows=BOOT.roOrder.filter(function(ro){ return !EX.fam||FAMILY[ro]===EX.fam; })
-    .map(function(ro){ return {ro:ro,c:execCountCell(sitesOfRo(ro),ty,st)}; })
+    .map(function(ro){
+      var list=sitesOfRo(ro);
+      var o={ro:ro,c:execCell(list,ty,st)};
+      if(!money) o.byType=EXEC_TYPES.map(function(tp){ return {tp:tp,c:execCountCell(list,tp,st)}; });
+      return o;
+    })
     .filter(function(r){ return r.c.b1>0||r.c.ytd>0||r.c.real>0; });
   if(!rows.length) return '';
 
-  var W=1180, H=330, PL=54, PR=18, PT=34, PB=54;
+  var W=1180,H=360,PL=58,PR=16,PT=40,PB=18;
   var iw=W-PL-PR, ih=H-PT-PB;
-  var max=0; rows.forEach(function(r){ max=Math.max(max,r.c.ytd,r.c.real); });
-  /* Ust sinir yuvarlanir ki eksen etiketleri duzgun sayilar olsun. */
+  var max=0; rows.forEach(function(r){ max=Math.max(max,r.c.b1,r.c.ytd,r.c.real); });
   var step=Math.pow(10,Math.floor(Math.log(Math.max(max,1))/Math.LN10));
   if(max/step<2) step/=2; else if(max/step>5) step*=2;
   var top=Math.max(step,Math.ceil(max/step)*step);
   var y=function(v){ return PT+ih-(v/top)*ih; };
 
-  var grid='',ticks='';
+  var grid='';
   for(var g=0;g<=4;g++){
     var v=top*g/4, yy=y(v);
     grid+='<line x1="'+PL+'" x2="'+(W-PR)+'" y1="'+yy.toFixed(1)+'" y2="'+yy.toFixed(1)+
-      '" stroke="var(--border)" stroke-width="1"'+(g?'':' stroke-opacity=".9"')+'/>';
-    ticks+='<text x="'+(PL-10)+'" y="'+(yy+4).toFixed(1)+'" text-anchor="end" class="bc-ax">'+
-      nf(Math.round(v))+'</text>';
+      '" class="bc-grid"'+(g?' stroke-dasharray="3 5"':'')+'/>'+
+      '<text x="'+(PL-12)+'" y="'+(yy+4).toFixed(1)+'" text-anchor="end" class="bc-ax">'+
+      (money?nf(v,v<10?1:0):nf(Math.round(v)))+'</text>';
   }
-  var bw=iw/rows.length, bar=Math.min(34,bw*0.3), gap=7;
+
+  var bw=iw/rows.length, bar=Math.min(30,bw*0.19), gap=6;
+  var span=bar*3+gap*2;
   var bars='';
   rows.forEach(function(r,i){
-    var cx=PL+bw*(i+0.5);
-    var x1=cx-bar-gap/2, x2=cx+gap/2;
-    var yb=y(r.c.ytd), yr=y(r.c.real);
-    var behind=r.c.real<r.c.ytd;
+    var cx=PL+bw*(i+0.5), x0=cx-span/2;
     bars+='<g class="bc-g" data-exro="'+esc(r.ro)+'">'+
-      '<rect class="bc-hit" x="'+(PL+bw*i).toFixed(1)+'" y="'+PT+'" width="'+bw.toFixed(1)+
-        '" height="'+ih+'" fill="transparent"/>'+
-      '<rect x="'+x1.toFixed(1)+'" y="'+yb.toFixed(1)+'" width="'+bar+'" height="'+
-        Math.max(0,PT+ih-yb).toFixed(1)+'" rx="4" fill="url(#bcPlan)"/>'+
-      '<rect x="'+x2.toFixed(1)+'" y="'+yr.toFixed(1)+'" width="'+bar+'" height="'+
-        Math.max(0,PT+ih-yr).toFixed(1)+'" rx="4" fill="url(#bcReal)"/>'+
-      '<text x="'+(x1+bar/2).toFixed(1)+'" y="'+(yb-7).toFixed(1)+'" text-anchor="middle" class="bc-v bc-vp">'+
-        nf(r.c.ytd)+'</text>'+
-      '<text x="'+(x2+bar/2).toFixed(1)+'" y="'+(yr-7).toFixed(1)+'" text-anchor="middle" class="bc-v '+
-        (behind?'bc-vb':'bc-vg')+'">'+nf(r.c.real)+'</text>'+
-      '<text x="'+cx.toFixed(1)+'" y="'+(PT+ih+22)+'" text-anchor="middle" class="bc-ro">'+esc(r.ro)+'</text>'+
-      '<text x="'+cx.toFixed(1)+'" y="'+(PT+ih+38)+'" text-anchor="middle" class="bc-sub">'+
-        esc(BOOT.roLabels[r.ro]||'')+'</text>'+
-      '<title>'+esc(r.ro+' — '+t('lnBdgt')+' '+nf(r.c.ytd)+' · '+t('lnReal')+' '+nf(r.c.real))+'</title>'+
-    '</g>';
+      '<rect class="bc-hit" x="'+(PL+bw*i+3).toFixed(1)+'" y="'+(PT-18)+'" width="'+(bw-6).toFixed(1)+
+        '" height="'+(ih+18)+'" rx="12"/>';
+    BC_SERIES.forEach(function(sr,k){
+      var val=r.c[sr[0]], x=x0+k*(bar+gap), yv=y(val), h=Math.max(0,PT+ih-yv);
+      bars+='<rect class="bc-track" x="'+x.toFixed(1)+'" y="'+PT+'" width="'+bar+'" height="'+ih+'" rx="'+(bar/2)+'"/>';
+      if(!money&&r.byType&&h>0){
+        /* Yigili: P1 -> P10 -> TTM, ayni serinin tonlari.
+           Parcalari TEK TEK yuvarlamak olmuyor: kisa parcalar hap gibi
+           gorunuyor ve aralarinda basamak olusuyordu (onizlemede goruldu).
+           Dogrusu, cubugun tamaminin sekliyle KIRPMAK; parcalar duz ciziliyor,
+           yuvarlak tepe kirpma maskesinden geliyor. */
+        var cid='bcC'+i+'_'+k;
+        var tot=0; r.byType.forEach(function(b){ tot+=b.c[sr[0]]||0; });
+        var acc=0, segs='';
+        r.byType.forEach(function(b){
+          var part=(b.c[sr[0]]||0); if(tot<=0||part<=0) return;
+          var ph=h*(part/tot), py=PT+ih-acc-ph;
+          segs+='<rect x="'+x.toFixed(1)+'" y="'+py.toFixed(1)+'" width="'+bar+'" height="'+ph.toFixed(1)+
+            '" fill="'+sr[2]+'" fill-opacity="'+(1-BC_TYPE_TONE[b.tp])+
+            '" stroke="var(--card)" stroke-width="1"><title>'+esc(b.tp+': '+nf(part))+'</title></rect>';
+          acc+=ph;
+        });
+        bars+='<clipPath id="'+cid+'"><rect x="'+x.toFixed(1)+'" y="'+yv.toFixed(1)+'" width="'+bar+
+          '" height="'+h.toFixed(1)+'" rx="'+Math.min(bar/2,6)+'"/></clipPath>'+
+          '<g clip-path="url(#'+cid+')">'+segs+'</g>';
+      } else if(h>0){
+        bars+='<rect x="'+x.toFixed(1)+'" y="'+yv.toFixed(1)+'" width="'+bar+'" height="'+h.toFixed(1)+
+          '" rx="'+Math.min(bar/2,6)+'" fill="url(#bcG'+k+')"/>';
+      }
+      if(val>0)
+        bars+='<text x="'+(x+bar/2).toFixed(1)+'" y="'+(yv-8).toFixed(1)+'" text-anchor="middle" '+
+          'class="bc-v bc-v'+k+'">'+execFmt(val)+'</text>';
+    });
+    bars+='<title>'+esc(r.ro+' — '+t('execBudgetYear')+' '+execFmt(r.c.b1)+' · '+
+      t('lnBdgt')+' '+execFmt(r.c.ytd)+' · '+t('lnReal')+' '+execFmt(r.c.real)+' '+execUnit())+'</title></g>';
   });
 
-  return '<section class="panel bc-panel"><div class="panel-h"><h3>'+esc(t('execChartTitle'))+'</h3>'+
-    '<span class="bc-key"><span class="bc-k bc-kp"></span>'+esc(t('lnBdgt'))+
-      '<span class="bc-k bc-kr"></span>'+esc(t('lnReal'))+'</span></div>'+
+  var labels=rows.map(function(r){
+    return '<button class="bc-lb" type="button" data-exro="'+esc(r.ro)+'" style="width:'+(100/rows.length)+'%">'+
+      '<span class="bc-lb-f">'+roRegionChip(r.ro)+'</span>'+
+      '<span class="bc-lb-c">'+esc(r.ro)+'</span>'+
+      '<span class="bc-lb-n">'+esc(BOOT.roLabels[r.ro]||'')+'</span></button>';
+  }).join('');
+
+  var key=BC_SERIES.map(function(sr){
+    return '<span class="bc-kk"><i style="background:'+sr[2]+'"></i>'+esc(t(sr[1]))+'</span>';
+  }).join('');
+
+  return '<section class="panel bc-panel"><div class="panel-h bc-head">'+
+      '<h3>'+esc(t('execChartTitle'))+' <span class="bc-unit">'+esc(execUnit())+'</span></h3>'+
+      '<div class="bc-tools"><span class="bc-key">'+key+'</span>'+execUnitToggle()+'</div></div>'+
     '<div class="bc-wrap"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" '+
       'aria-label="'+esc(t('execChartTitle'))+'">'+
-      '<defs>'+
-        '<linearGradient id="bcPlan" x1="0" y1="0" x2="0" y2="1">'+
-          '<stop offset="0" stop-color="#b9c6d6"/><stop offset="1" stop-color="#d7dfe8"/></linearGradient>'+
-        /* Gerceklesen cubuk HER ZAMAN marka mavisi; onde/geride bilgisini
-           cubugun ustundeki sayinin rengi tasiyor. Once cubugu duruma gore
-           boyuyordum, efsanedeki tek renkle celisiyordu (goruldu). */
-        '<linearGradient id="bcReal" x1="0" y1="0" x2="0" y2="1">'+
-          '<stop offset="0" stop-color="#0a7ddb"/><stop offset="1" stop-color="#0060b4"/></linearGradient>'+
-      '</defs>'+grid+ticks+bars+'</svg></div></section>';
+      '<defs>'+BC_SERIES.map(function(sr,k){
+        return '<linearGradient id="bcG'+k+'" x1="0" y1="0" x2="0" y2="1">'+
+          '<stop offset="0" stop-color="'+sr[2]+'"/>'+
+          '<stop offset="1" stop-color="'+sr[2]+'" stop-opacity=".72"/></linearGradient>';
+      }).join('')+'</defs>'+grid+bars+'</svg></div>'+
+    '<div class="bc-labels" style="padding-left:'+(PL/W*100)+'%;padding-right:'+(PR/W*100)+'%">'+
+      labels+'</div></section>';
+}
+
+/* ---------- iki pasta: RO -> site ----------
+   Sol pastada RO'lar, dilime tiklaninca sag pasta o RO'nun site'larina
+   doner; sagdaki bir site'a tiklaninca mevcut sag panel (drawer) o site'in
+   detayiyla aciliyor. Etiket yerlesimi: dilim yeterince buyukse (>= %9)
+   yazi dilimin ICINDE, degilse disarida ve ince bir kilavuz cizgiyle --
+   yedi dilimin ucu kucuk oldugunda ic etiket okunmuyor. */
+var PIE_COLORS=['#0072ce','#8b5cf6','#f59e0b','#12803c','#e8497f','#06b6d4','#eb6834',
+                '#6366f1','#14b8a6','#d946ef','#f97316','#0ea5e9'];
+
+function pieSlices(items,cx,cy,R,inner){
+  var tot=0; items.forEach(function(it){ tot+=Math.max(0,it.v); });
+  var ang=-Math.PI/2, out=[];
+  items.forEach(function(it,i){
+    var frac=tot>0?Math.max(0,it.v)/tot:0, a2=ang+frac*2*Math.PI;
+    var mid=(ang+a2)/2;
+    out.push({it:it,i:i,frac:frac,a1:ang,a2:a2,mid:mid,
+      big:(a2-ang)>Math.PI,
+      p1:[cx+R*Math.cos(ang),cy+R*Math.sin(ang)],
+      p2:[cx+R*Math.cos(a2),cy+R*Math.sin(a2)],
+      q1:[cx+inner*Math.cos(ang),cy+inner*Math.sin(ang)],
+      q2:[cx+inner*Math.cos(a2),cy+inner*Math.sin(a2)]});
+    ang=a2;
+  });
+  return {tot:tot,arcs:out};
+}
+/* Uzun site adlari dilime de dis etikete de sigmiyordu. */
+function pieLab(x){ x=String(x||''); return x.length>15?(x.slice(0,14)+'…'):x; }
+function execPie(id,title,items,selKey,centerLab){
+  /* Genislik 430 -> 560: dis etiketler kilavuz cizgisiyle birlikte kutunun
+     disina tasip kesiliyordu ("PDC 8.8 ·", "a 3 THS" olarak goruldu).
+     Cember ayni yerde kalsin diye merkez de ortalandi. */
+  var W=560,H=430,cx=280,cy=205,R=150,inner=88;
+  var d=pieSlices(items,cx,cy,R,inner);
+  if(!d.tot) return '<section class="ex-pie"><h3>'+esc(title)+'</h3>'+
+    '<div class="ex-pie-empty">'+esc(t('noData'))+'</div></section>';
+  var paths='',labels='';
+  d.arcs.forEach(function(a){
+    if(a.frac<=0) return;
+    var c=PIE_COLORS[a.i%PIE_COLORS.length];
+    /* Secilmeyenleri soldurmak yaziyi okunmaz yapiyordu (goruldu). Secim
+       artik SOLDURARAK degil, secili dilimi one cikararak gosteriliyor. */
+    var dim='';
+    var on=(selKey===a.it.k);
+    paths+='<path class="pie-sl'+dim+(on?' pie-on':'')+'" data-exp="'+esc(id)+'" data-expv="'+esc(a.it.k)+'" '+
+      'fill="'+c+'" d="M '+a.p1[0].toFixed(1)+' '+a.p1[1].toFixed(1)+
+      ' A '+R+' '+R+' 0 '+(a.big?1:0)+' 1 '+a.p2[0].toFixed(1)+' '+a.p2[1].toFixed(1)+
+      ' L '+a.q2[0].toFixed(1)+' '+a.q2[1].toFixed(1)+
+      ' A '+inner+' '+inner+' 0 '+(a.big?1:0)+' 0 '+a.q1[0].toFixed(1)+' '+a.q1[1].toFixed(1)+' Z">'+
+      '<title>'+esc(a.it.lab+': '+execFmt(a.it.v)+' '+execUnit()+' ('+Math.round(a.frac*100)+'%)')+'</title></path>';
+
+    var pctTxt=Math.round(a.frac*100)+'%';
+    if(a.frac>=0.09){
+      var rr=(R+inner)/2, lx=cx+rr*Math.cos(a.mid), ly=cy+rr*Math.sin(a.mid);
+      labels+='<g class="pie-in'+dim+'"><text x="'+lx.toFixed(1)+'" y="'+(ly-8).toFixed(1)+
+        '" text-anchor="middle" class="pie-l1">'+esc(pieLab(a.it.lab))+'</text>'+
+        '<text x="'+lx.toFixed(1)+'" y="'+(ly+7).toFixed(1)+'" text-anchor="middle" class="pie-l2">'+
+        execFmt(a.it.v)+'</text>'+
+        '<text x="'+lx.toFixed(1)+'" y="'+(ly+21).toFixed(1)+'" text-anchor="middle" class="pie-l3">'+
+        pctTxt+'</text></g>';
+    } else {
+      var ex=cx+(R+14)*Math.cos(a.mid), ey=cy+(R+14)*Math.sin(a.mid);
+      var right=Math.cos(a.mid)>=0, tx=right?ex+26:ex-26;
+      tx=Math.max(78,Math.min(W-78,tx));   // kutu disina tasmasin
+      labels+='<g class="pie-out'+dim+'">'+
+        '<polyline class="pie-lead" points="'+(cx+(R+2)*Math.cos(a.mid)).toFixed(1)+','+
+          (cy+(R+2)*Math.sin(a.mid)).toFixed(1)+' '+ex.toFixed(1)+','+ey.toFixed(1)+' '+
+          tx.toFixed(1)+','+ey.toFixed(1)+'"/>'+
+        '<text x="'+(right?tx+4:tx-4)+'" y="'+(ey-1).toFixed(1)+'" text-anchor="'+(right?'start':'end')+
+          '" class="pie-o1">'+esc(pieLab(a.it.lab))+'</text>'+
+        '<text x="'+(right?tx+4:tx-4)+'" y="'+(ey+12).toFixed(1)+'" text-anchor="'+(right?'start':'end')+
+          '" class="pie-o2">'+execFmt(a.it.v)+' · '+pctTxt+'</text></g>';
+    }
+  });
+  return '<section class="ex-pie"><h3>'+esc(title)+'</h3>'+
+    '<div class="ex-pie-w"><svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(title)+'">'+
+      paths+labels+
+      '<text x="'+cx+'" y="'+(cy-6)+'" text-anchor="middle" class="pie-ctv">'+execFmt(d.tot)+'</text>'+
+      '<text x="'+cx+'" y="'+(cy+14)+'" text-anchor="middle" class="pie-ctu">'+esc(execUnit())+'</text>'+
+      '<text x="'+cx+'" y="'+(cy+32)+'" text-anchor="middle" class="pie-ctl">'+esc(centerLab)+'</text>'+
+    '</svg></div></section>';
+}
+
+function execPies(){
+  var st=F.status, ty=execTypeRow();
+  var ros=BOOT.roOrder.filter(function(ro){ return sitesOfRo(ro).length && (!EX.fam||FAMILY[ro]===EX.fam); });
+  if(!ros.length) return '';
+  /* Ilk acilista sag pasta bos kalmasin: en buyuk RO secili gelir ve bu
+     secim solda da isaretli gorunur. */
+  if(!EXP.ro||ros.indexOf(EXP.ro)<0){
+    var best=null,bv=-1;
+    ros.forEach(function(ro){ var v=execCell(sitesOfRo(ro),ty,st).b1; if(v>bv){bv=v;best=ro;} });
+    EXP.ro=best;
+  }
+  var roItems=ros.map(function(ro){
+    return {k:ro,lab:ro,v:execCell(sitesOfRo(ro),ty,st).b1};
+  });
+  var siteItems=sitesOfRo(EXP.ro).map(function(sst){
+    return {k:siteKey(sst),lab:sst.site,v:execCell([sst],ty,st).b1};
+  }).filter(function(x){ return x.v>0; }).sort(function(a,b){ return b.v-a.v; });
+
+  return '<div class="ex-pies">'+
+    execPie('ro',t('execPieRo'),roItems,EXP.ro,t('execBudgetYear'))+
+    execPie('site',t('execPieSite')+' — '+EXP.ro,siteItems,null,t('execBudgetYear'))+
+  '</div>';
 }
 
 function execPanel(){
@@ -1586,6 +1783,7 @@ function execPanel(){
     return {k:x,lab:x,v:execCountCell(list,x,st).real,c:['#0072ce','#8b5cf6','#06b6d4'][i]};
   });
   return execBarChart()+
+    execPies()+
     '<div class="ex-donuts">'+
       execDonut('fam',t('execByFamily'),famItems,EX.fam)+
       execDonut('status',t('productType'),prodItems,F.status==='ALL'?null:F.status)+
@@ -2313,6 +2511,15 @@ function openDrawer(key){
   $('drawerEyebrow').innerHTML=roRegionChip(st.ro)+esc(st.ro)+' · '+esc(BOOT.roLabels[st.ro]||'');
   $('drawerTitle').innerHTML=(siteFlag(st)||'')+'<span>'+esc(st.site)+'</span>';
 
+  /* Proje tipi kirilimi: pastadan bir site'a tiklanınca P1/P10/TTM'in yillik
+     butce / B1 YTD / gerceklesen adetleri de gorunsun (kullanici talebi). */
+  var typeRows=EXEC_TYPES.map(function(tp){
+    var c=execCountCell([st],tp,'ALL');
+    return '<tr><th>'+esc(tp)+'</th><td>'+nf(c.b1)+'</td><td>'+nf(c.ytd)+'</td>'+
+      '<td class="'+(c.real>=c.ytd?'good':'bad')+'">'+nf(c.real)+'</td></tr>';
+  }).join('');
+  var tot=execCountCell([st],'TOTAL','ALL');
+
   var body='<div class="dk">'+
     drawerCell('Budget Year', moneyTag(m.budgetTurnover), nf(m.budgetCount)+' '+t('projects'))+
     drawerCell('Launch Done', moneyTag(m.realTurnoverM), nf(m.realCount)+' '+t('projects'))+
@@ -2320,7 +2527,15 @@ function openDrawer(key){
     drawerCell('Headcount', nf(st.headcount||0), t('people'))+
   '</div>'+
   '<div>'+statusPill(st.status)+' '+deltaPill(m.delta)+'</div>'+
-  topProjectsPanel([st],false)+
+  '<section class="panel dk-types"><div class="panel-h"><h3>'+esc(t('projectType'))+'</h3>'+
+    '<span class="panel-note">'+esc(t('projects'))+'</span></div>'+
+    '<table class="dkt"><thead><tr><th></th><th>'+esc(t('execBudgetYear'))+'</th>'+
+      '<th>'+esc(t('lnBdgt'))+'</th><th>'+esc(t('lnReal'))+'</th></tr></thead><tbody>'+
+      typeRows+
+      '<tr class="dkt-sum"><th>'+esc(t('execTotal'))+'</th><td>'+nf(tot.b1)+'</td><td>'+nf(tot.ytd)+
+      '</td><td class="'+(tot.real>=tot.ytd?'good':'bad')+'">'+nf(tot.real)+'</td></tr>'+
+    '</tbody></table></section>'+
+  topProjectsPanel([st],false,5)+
   teamPanel(st);
 
   $('drawerBody').innerHTML=body;
