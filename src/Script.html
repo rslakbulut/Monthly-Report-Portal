@@ -230,6 +230,9 @@ var T={
   skipToContent:'Skip to content',language:'Language',noPeriodYet:'No period registered yet. Open Settings and run the Gmail scan, or add this month’s spreadsheet link manually.',
   settingsIntro:'The monthly report arrives as a new spreadsheet each month. The Gmail scan finds it automatically; if it doesn’t, add the link manually.',
   regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.',
+  execReported:'{r} of {n} sites reported',execNoEntry:'{n} with no data entered',
+  execNrTitle:'Sites with no data entered',
+  execNrNote:'budget exists but no launch rows — counted as “behind”, but really unknown',
   execScope:'Showing',execSentence:'{b1} launches committed for the year · {ytd} due by now · {real} done',
   execAheadBehind:'ahead / behind plan',execOiGap:'order intake vs plan',
   execByFamily:'Business line',execWhoBehind:'Who is behind plan',
@@ -249,7 +252,10 @@ var T={
   help:'Help',feedback:'Feedback',settings:'Settings',helpTitle:'Help · User guide',helpSub:'Ask a question or browse the topics',helpSearchPh:'e.g. what is Budget YTD, why is a site red…',helpNotFound:'Didn’t find it?',feedbackSub:'Report a bug or suggest an improvement',type:'Type',priority:'Priority',message:'Message',screenshot:'Screenshot',optional:'optional',dropImage:'Upload an image',orPaste:'or paste (Ctrl+V)',cancel:'Cancel',send:'Send',sending:'Sending…',feedbackThanks:'Thanks — your feedback was recorded.',bug:'Bug',improvement:'Improvement',low:'Low',medium:'Medium',urgent:'Urgent',feedbackPh:'Write your feedback…',startHere:'Start here',noHelpMatch:'Nothing matched. Try another word, or send us feedback.',
   helpS1t:'The RO list is the start',helpS1b:'Seven regional organizations, the one furthest behind plan on top. The bar shows how much of that RO’s Budget Year has been launched.',helpS2t:'The left rail',helpS2b:'Hover it to open. Click an RO to narrow the whole screen to it; click a site to open its panel.',helpS3t:'Site panel',helpS3b:'Clicking a site opens a panel on the right: its KPIs, biggest projects and team. “Open full page” goes to the full detail.',helpS4t:'Filters and search',helpS4b:'Product type, project type and customer narrow every number on screen. The search box finds a site or an RO by name.',helpS5t:'How fresh is the data',helpS5b:'The stamp at the top right says when the data was built. It refreshes every hour; Refresh data rebuilds it now.',helpC1:'Budget YTD',helpC2:'Launch Done',helpC3:'why is a site late',helpC4:'P1 P10 TTM',
   pickType:'Please choose a type.',pickPriority:'Please choose a priority.',writeMessage:'Please write a message.',onlyImages:'Only image files are accepted.'},
- tr:{execScope:'Gösterilen',execSentence:'Yıl için {b1} launch taahhüt edildi · bugüne kadar {ytd} olmalıydı · {real} gerçekleşti',
+ tr:{execReported:'{n} site’ın {r} tanesi raporladı',execNoEntry:'{n} site veri girmemiş',
+  execNrTitle:'Veri girmemiş site’lar',
+  execNrNote:'bütçesi var ama launch satırı yok — “geride” sayılıyor, oysa bilinmiyor',
+  execScope:'Gösterilen',execSentence:'Yıl için {b1} launch taahhüt edildi · bugüne kadar {ytd} olmalıydı · {real} gerçekleşti',
   execAheadBehind:'plana göre önde / geride',execOiGap:'order intake, plana göre',
   execByFamily:'İş kolu',execWhoBehind:'Kim geride',
   execWhoNote:'çubuk = gerçekleşen, çizgi = plan · satıra tıkla, RO açılsın',
@@ -1415,6 +1421,12 @@ function renderRoLevel(){
   $('view').querySelectorAll('[data-exdet]').forEach(function(b){
     b.onclick=function(){ EX.detail=!EX.detail; render(); };
   });
+  $('view').querySelectorAll('[data-exnr]').forEach(function(b){
+    b.onclick=function(){ EX.nr=!EX.nr; render(); };
+  });
+  $('view').querySelectorAll('.ex-nr-r[data-sk]').forEach(function(b){
+    b.onclick=function(){ openSiteByKey(b.getAttribute('data-sk')); };
+  });
   /* grafik cubuklari: RO seviyesinde RO'ya iner, site seviyesinde site detayina */
   $('view').querySelectorAll('.ch-row[data-ck]').forEach(function(b){
     b.onclick=function(){
@@ -1566,7 +1578,9 @@ function execBar(c,color){
 function execNum(v,grp){ return grp==='OI' ? nf(v,1) : nf(v,0); }
 function execGapPill(c,grp){
   var g=execGap(c);
-  var cls=Math.abs(g)<0.05?'flat':(g>0?'good':'bad');
+  var flat=Math.abs(g)<(grp==='OI'?0.05:0.5);
+  var cls=flat?'flat':(g>0?'good':'bad');
+  if(flat) g=0;
   var txt=(g>0?'+':'')+execNum(g,grp)+(grp==='OI'?' M€':'');
   return '<span class="pill '+cls+'">'+esc(txt)+'</span>';
 }
@@ -1692,12 +1706,25 @@ function execSiteRank(){
    filtreler) -> siralanmis RO cubuklari. Matris silinmedi, "detay" dugmesinin
    arkasina alindi -- bilgi kaybi yok, yuz yuze gelme yok. */
 
-var EX={fam:null,detail:false};
+var EX={fam:null,detail:false,nr:false};
 
 function execList(){
   return (DATA.sites||[]).filter(function(s){ return !EX.fam||FAMILY[s.ro]===EX.fam; });
 }
 function execTypeRow(){ return F.type==='ALL'?'TOTAL':F.type; }
+
+/* "Veri girmemis" site: butcesi var ama HIC gerceklesen satiri yok. Kontrol
+   her zaman TOTAL/ALL uzerinden yapilir, secili filtreden BAGIMSIZ -- yoksa
+   REMAN secilince REMAN projesi olmayan saglam bir site de "raporlamadi"
+   gorunurdu. Bu ayrim onemli: raporlamamis bir site su an gap'e "-n" olarak
+   giriyor, yani ust yonetime "geride" diye gidiyor; oysa "bilinmiyor". */
+function execNotReported(list){
+  return (list||execList()).filter(function(st){
+    if(st.status==='no-data') return true;
+    var c=execCountCell([st],'TOTAL','ALL');
+    return c.real===0 && (c.ytd>0||c.b1>0);
+  });
+}
 
 /* Halka: 2-3 dilim, tiklanabilir. Secim varsa secilmeyen dilimler soner.
    Renk tek basina anlam tasimiyor: her dilimin degeri ve yuzdesi listede. */
@@ -1754,9 +1781,14 @@ function execRoBars(){
     rows.map(function(r){
       var c=r.c, g=execGap(c);
       var w=clamp01(c.real/mx)*100, pm=clamp01(c.ytd/mx)*100;
+      /* Sapmanin ne kadarinin "bilinmiyor" oldugu satirda yazsin: raporlamamis
+         site'i olan bir RO'nun buyuk eksisi yaniltici okunmasin. */
+      var nrn=execNotReported(sitesOfRo(r.ro)).length;
       return '<button class="exro-r" type="button" data-exro="'+esc(r.ro)+'">'+
         '<span class="exro-id"><span class="xro" style="--rc:'+roColor(r.ro)+'">'+esc(r.ro)+'</span>'+
-          '<span class="exro-n">'+esc(BOOT.roLabels[r.ro]||'')+'</span></span>'+
+          '<span class="exro-txt"><span class="exro-n">'+esc(BOOT.roLabels[r.ro]||'')+'</span>'+
+          (nrn?('<span class="exro-nr">'+esc(t('execNoEntry').replace('{n}',nf(nrn)))+'</span>'):'')+
+          '</span></span>'+
         '<span class="xbar"><span class="xbar-t">'+
           '<span class="xbar-f" style="width:'+w.toFixed(1)+'%;background:'+(g>=0?'var(--good-line)':'var(--bad-line)')+'"></span>'+
           '<span class="xbar-p" style="left:'+pm.toFixed(1)+'%"></span></span></span>'+
@@ -1782,14 +1814,54 @@ function execHeadline(){
         ('<b> '+esc(t('allSites'))+' · New + Reman</b>'))+'</span>'+
       '<p>'+esc(t('execSentence')
         .replace('{b1}',nf(c.b1)).replace('{ytd}',nf(c.ytd)).replace('{real}',nf(c.real)))+'</p>'+
+    execReportLine()+
     '</div>'+
     '<div class="ex-big">'+
       execBigNum(g,'LN',t('execAheadBehind'),t('projects'))+
       execBigNum(og,'OI',t('execOiGap'),'M€')+
     '</div></section>';
 }
+/* Kac site raporladi + kac site hic veri girmedi. Sayiya tiklaninca liste
+   acilir. Gap'in yanina degil ALTINA konuyor: buyuk sapma sayisinin ne
+   kadarinin "geride", ne kadarinin "bilinmiyor" oldugu okunabilsin. */
+function execReportLine(){
+  var list=execList(), nr=execNotReported(list), n=list.length, rep=n-nr.length;
+  var html='<div class="ex-rep"><span class="ex-rep-ok">'+
+    esc(t('execReported').replace('{r}',nf(rep)).replace('{n}',nf(n)))+'</span>';
+  if(nr.length){
+    html+='<button class="ex-rep-nr'+(EX.nr?' on':'')+'" type="button" data-exnr="1" '+
+      'aria-expanded="'+EX.nr+'">'+ICON_ALERT+
+      esc(t('execNoEntry').replace('{n}',nf(nr.length)))+
+      '<span class="ex-rep-ch" aria-hidden="true">'+ICON_CHEVRON_SM+'</span></button>';
+  }
+  return html+'</div>';
+}
+/* Veri girmemis site listesi — RO'ya gore gruplu, satir tiklanabilir. */
+function execNrPanel(){
+  var nr=execNotReported();
+  if(!EX.nr||!nr.length) return '';
+  var byRo={};
+  nr.forEach(function(st){ (byRo[st.ro]=byRo[st.ro]||[]).push(st); });
+  var html='<section class="panel ex-nrp"><div class="panel-h"><h3>'+esc(t('execNrTitle'))+'</h3>'+
+    '<span class="panel-note">'+esc(t('execNrNote'))+'</span></div><div class="ex-nrlist">';
+  BOOT.roOrder.forEach(function(ro){
+    var list=byRo[ro]; if(!list) return;
+    html+='<div class="ex-nrgrp"><span class="xro" style="--rc:'+roColor(ro)+'">'+esc(ro)+'</span>'+
+      list.sort(function(a,b){ return (a.site||'').localeCompare(b.site||'',LOCALE); })
+        .map(function(st){
+          var c=execCountCell([st],'TOTAL','ALL');
+          return '<button class="ex-nr-r" type="button" data-sk="'+esc(siteKey(st))+'">'+
+            (siteFlag(st)||'')+'<span class="ex-nr-n">'+esc(st.site)+'</span>'+
+            '<span class="ex-nr-b">'+esc(t('lnBdgt'))+' '+nf(c.ytd)+'</span></button>';
+        }).join('')+'</div>';
+  });
+  return html+'</div></section>';
+}
 function execBigNum(v,grp,label,unit){
-  var cls=Math.abs(v)<(grp==='OI'?0.05:0.5)?'flat':(v>0?'good':'bad');
+  var flat=Math.abs(v)<(grp==='OI'?0.05:0.5);
+  var cls=flat?'flat':(v>0?'good':'bad');
+  /* Yuvarlamada -0.04 -> "-0.0" cikiyordu; sifira yuvarlanan deger isaretsiz. */
+  if(flat) v=0;
   return '<div class="exb '+cls+'"><span class="exb-v">'+(v>0?'+':'')+execNum(v,grp)+
     '<i>'+esc(unit)+'</i></span><span class="exb-l">'+esc(label)+'</span></div>';
 }
@@ -1818,6 +1890,7 @@ function execPanel(){
       execDonut('status',t('productType'),prodItems,F.status==='ALL'?null:F.status)+
       execDonut('type',t('projectType'),stageItems,F.type==='ALL'?null:F.type)+
     '</div>'+
+    execNrPanel()+
     execRoBars()+
     execSiteRank()+
     '<div class="ex-more"><button class="tbtn2" type="button" data-exdet="1" aria-expanded="'+EX.detail+'">'+

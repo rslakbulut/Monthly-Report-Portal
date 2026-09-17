@@ -26,6 +26,8 @@
   /* Isi haritasi hucrelerinde alfa gerekiyor; color-mix yerine ham RGB
      tutuluyor ki rgba() ile dogrudan kullanilabilsin. */
   --good-rgb:31,168,85; --bad-rgb:224,74,74;
+  /* "raporlamadi" ne iyi ne kotu: ucuncu bir durum rengi gerekiyor. */
+  --warn:#8a5a00; --warn-bg:#fdf4e3; --warn-line:#d9a441;
   --warn:#a85a08; --warn-bg:#fdf0dd; --warn-line:#e08a1e;
   --track:#e8edf5;
 
@@ -57,6 +59,7 @@ body.dark-mode {
   --good:#5fd68a; --good-bg:#0f2c1c; --good-line:#3fbf6d;
   --bad:#ff8f8f;  --bad-bg:#361518;  --bad-line:#e06565;
   --good-rgb:63,191,109; --bad-rgb:224,101,101;
+  --warn:#f0c26b; --warn-bg:#33270f; --warn-line:#8a6a28;
   --warn:#f0c274; --warn-bg:#33270f; --warn-line:#d8a03e;
   --track:#1b2841;
   /* Koyu mod adimlari ayrica dogrulandi (surface #101a2b): 7 slot ALL PASS. */
@@ -407,6 +410,38 @@ body.has-rail{padding-left:var(--rail-w)}
 .exb-v i{font-style:normal; font-size:17px; font-weight:700; margin-left:5px}
 .exb.good .exb-v{color:var(--good)} .exb.bad .exb-v{color:var(--bad)} .exb.flat .exb-v{color:var(--text-mute)}
 .exb-l{font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.11em; color:var(--text-mute)}
+
+/* Raporlama satiri: buyuk sapma sayisinin ne kadari "geride", ne kadari
+   "bilinmiyor" -- ikisi ayni sey degil, ust yonetime oyle gitmesin. */
+.ex-rep{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:11px}
+.ex-rep-ok{
+  font-size:11.5px; font-weight:600; color:var(--text-mute);
+  display:inline-flex; align-items:center; gap:7px;
+}
+.ex-rep-nr{
+  display:inline-flex; align-items:center; gap:6px; cursor:pointer; font:inherit;
+  font-size:11.5px; font-weight:700; padding:4px 9px 4px 8px; border-radius:999px;
+  border:1px solid var(--warn-line,#d9a441); background:var(--warn-bg,#fdf4e3);
+  color:var(--warn,#8a5a00);
+}
+.ex-rep-nr:hover{filter:brightness(.97)}
+.ex-rep-nr svg{display:block; width:13px; height:13px}
+.ex-rep-ch{display:flex; transition:transform .15s ease}
+.ex-rep-nr.on .ex-rep-ch{transform:rotate(90deg)}
+
+.ex-nrp{margin-bottom:18px}
+.ex-nrlist{display:flex; flex-direction:column; gap:12px}
+.ex-nrgrp{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.ex-nr-r{
+  display:inline-flex; align-items:center; gap:8px; cursor:pointer; font:inherit;
+  font-size:12.5px; font-weight:600; color:var(--text); min-height:34px;
+  padding:0 11px; border-radius:999px; border:1px solid var(--border-strong);
+  background:var(--card);
+}
+.ex-nr-r:hover{border-color:var(--valeo-mid); color:var(--valeo-mid)}
+.ex-nr-b{font-size:10.5px; font-weight:700; color:var(--text-mute); font-variant-numeric:tabular-nums}
+.exro-txt{display:flex; flex-direction:column; min-width:0; gap:1px}
+.exro-nr{font-size:10px; font-weight:700; color:var(--warn,#8a5a00); white-space:nowrap}
 
 /* uc halka — hepsi tiklanabilir filtre */
 .ex-donuts{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:18px}
