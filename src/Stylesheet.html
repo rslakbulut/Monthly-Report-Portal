@@ -23,6 +23,9 @@
   /* durum */
   --good:#12803c; --good-bg:#e6f6ec; --good-line:#1fa855;
   --bad:#c22a2a;  --bad-bg:#fdeaea;  --bad-line:#e04a4a;
+  /* Isi haritasi hucrelerinde alfa gerekiyor; color-mix yerine ham RGB
+     tutuluyor ki rgba() ile dogrudan kullanilabilsin. */
+  --good-rgb:31,168,85; --bad-rgb:224,74,74;
   --warn:#a85a08; --warn-bg:#fdf0dd; --warn-line:#e08a1e;
   --track:#e8edf5;
 
@@ -53,6 +56,7 @@ body.dark-mode {
   --text:#eaf1f9; --text-dim:#a2b4ca; --text-mute:#76899f;
   --good:#5fd68a; --good-bg:#0f2c1c; --good-line:#3fbf6d;
   --bad:#ff8f8f;  --bad-bg:#361518;  --bad-line:#e06565;
+  --good-rgb:63,191,109; --bad-rgb:224,101,101;
   --warn:#f0c274; --warn-bg:#33270f; --warn-line:#d8a03e;
   --track:#1b2841;
   /* Koyu mod adimlari ayrica dogrulandi (surface #101a2b): 7 slot ALL PASS. */
@@ -370,6 +374,82 @@ body.has-rail{padding-left:var(--rail-w)}
 .tbtn.icon{min-width:38px; padding:0; justify-content:center}
 /* docs/ikonlar.md: Lucide, currentColor, 20px yaninda-metin / 16px ikon-only */
 .tbtn svg{display:block; flex:none}
+
+/* ---------- ust yonetim gorunumu ----------
+   Mudurun uc slaytinin ekran karsiligi. Slayttaki 24 sutunluk matris yerine
+   RO basina TEK hucre (GAP) + hucre icinde kucuk "gerceklesen/plan" satiri:
+   "nerede sorun var" sorusu bakisla cevaplaniyor, renk yogunlugu da sapmanin
+   buyuklugunu tasiyor. Renk TEK basina anlam tasimiyor (WCAG): isaret ve
+   sayi da hucrede. */
+.xfams{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:8px}
+.xcard{
+  background:var(--card); border-radius:var(--r-lg); box-shadow:var(--sh-2);
+  padding:18px 20px 14px; display:flex; flex-direction:column; gap:14px;
+  border-top:3px solid var(--xc);
+}
+.xcard-h{display:flex; align-items:flex-start; justify-content:space-between; gap:14px}
+.xcard-h h3{margin:0 0 6px; font-size:15px; font-weight:800; letter-spacing:.04em}
+.xcard-ros{display:flex; gap:5px; flex-wrap:wrap}
+.xro{
+  font-size:10px; font-weight:800; letter-spacing:.04em; padding:2px 6px; border-radius:5px;
+  color:var(--rc,var(--text-mute)); background:color-mix(in srgb,var(--rc,#888) 14%,transparent);
+  white-space:nowrap;
+}
+.xcard-gap{display:flex; flex-direction:column; align-items:flex-end; gap:1px}
+.xg-v{font-size:30px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums}
+.xg-v.good{color:var(--good)} .xg-v.bad{color:var(--bad)}
+.xg-l{font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.11em; color:var(--text-mute)}
+.xcard-main{display:flex; flex-direction:column; gap:7px}
+.xcard-nums{display:flex; gap:16px; flex-wrap:wrap; font-size:11.5px; color:var(--text-mute)}
+.xcard-nums b{font-size:13px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums}
+.xcard-grp{display:flex; flex-direction:column; gap:6px}
+.xgrp-l{font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.11em; color:var(--text-mute)}
+.xmini{display:grid; grid-template-columns:46px 1fr 74px 62px; align-items:center; gap:10px}
+.xm-l{font-size:11.5px; font-weight:700; color:var(--text)}
+.xm-v{font-size:11.5px; color:var(--text-mute); text-align:right; font-variant-numeric:tabular-nums}
+.xcard-f{
+  display:flex; align-items:center; gap:10px; padding-top:11px; margin-top:auto;
+  border-top:1px solid var(--border); font-size:11.5px; color:var(--text-mute);
+}
+.xcard-f b{font-size:15px; color:var(--text); font-variant-numeric:tabular-nums}
+.xf-s{margin-left:auto}
+/* plan isaretli cubuk */
+.xbar{display:block; min-width:0}
+.xbar-t{position:relative; display:block; height:9px; border-radius:999px; background:var(--sunken); overflow:hidden}
+.xbar-f{position:absolute; left:0; top:0; bottom:0; border-radius:999px}
+.xbar-p{position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--text); opacity:.55; border-radius:2px}
+
+/* matris */
+.xmx-wrap{overflow-x:auto; background:var(--card); border-radius:var(--r-lg); box-shadow:var(--sh-2); padding:6px 4px}
+.xmx{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums}
+.xmx th,.xmx td{padding:7px 9px; text-align:center}
+.xmx thead th{font-size:11px; font-weight:700; color:var(--text-mute)}
+.xmx-rh{text-align:left!important; font-size:12px; font-weight:800; color:var(--text); white-space:nowrap}
+.xmx-sub{text-align:left!important; font-size:10px; font-weight:700; letter-spacing:.06em; color:var(--text-mute)}
+.xmx-c{border-radius:8px; line-height:1.15}
+.xmx-c b{display:block; font-size:13px; font-weight:700}
+.xmx-c i{display:block; font-style:normal; font-size:10px; color:var(--text-mute); margin-top:1px}
+.xmx-c b.good{color:var(--good)} .xmx-c b.bad{color:var(--bad)}
+.xmx-sum{background:var(--sunken)}
+.xmx-sum .xmx-rh,.xmx-sum .xmx-c b{font-weight:800}
+.xmx tr[data-split="1"] td,.xmx tr[data-split="1"] th{border-top:2px solid var(--border-strong)}
+.xmx-tot{font-weight:800}
+
+/* TOP / WORSE site siralamasi */
+.xrank{display:flex; flex-direction:column}
+.xrank-r{
+  display:grid; grid-template-columns:1fr 40px 90px 54px; align-items:center; gap:10px;
+  background:none; border:none; font:inherit; color:var(--text); text-align:left;
+  cursor:pointer; padding:7px 10px; border-radius:9px; min-height:38px;
+}
+.xrank-r:hover{background:var(--sunken)}
+.xr-n{display:flex; align-items:center; gap:8px; min-width:0; font-size:13px; font-weight:600;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.xr-ro{font-size:10px; font-weight:800; color:var(--rc); text-align:center}
+.xr-b{display:block; height:7px; border-radius:999px; background:var(--sunken); overflow:hidden}
+.xr-b span{display:block; height:100%; border-radius:999px}
+.xr-v{text-align:right; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums}
+.xr-v.good{color:var(--good)} .xr-v.bad{color:var(--bad)}
 
 /* Verisi henuz olmayan sekme (OFFROAD) — bos ekran, hata degil */
 .empty-tab{
@@ -1042,6 +1122,9 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
   /* Arama filtre barindan kaldirildi, yani dar ekranda GIZLENEMEZ -- yoksa
      telefonda arama diye bir sey kalmaz. Kalan genisligi kaplar; kullanici
      cipinin metni zaten bu genislikte gizleniyor, yer aciliyor. */
+  .xfams{grid-template-columns:1fr}
+  .xmini{grid-template-columns:42px 1fr 66px 56px; gap:8px}
+  .xrank-r{grid-template-columns:1fr 34px 60px 48px; gap:8px}
   .topsearch{flex:1 1 auto; margin-left:0}
   .ts-kbd{display:none}
   .drawer{width:100vw}
