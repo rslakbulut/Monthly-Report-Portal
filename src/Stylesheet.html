@@ -388,6 +388,39 @@ body.has-rail{padding-left:var(--rail-w)}
    "bilinmiyor" -- ikisi ayni sey degil, ust yonetime oyle gitmesin. */
 .ex-rep-nr.on .ex-rep-ch{transform:rotate(90deg)}
 
+/* ---------- RO cubuk grafigi (saf SVG) ----------
+   Kap sabit oranli; Chart.js kullanilmadigi icin docs/grafikler.md'deki
+   "maintainAspectRatio sonsuz dongusu" tuzagi burada yok, ama yine de
+   yukseklik CSS'ten veriliyor ve SVG viewBox'a sigiyor. */
+.bc-panel{margin-bottom:18px}
+.bc-panel .panel-h{display:flex; align-items:center; justify-content:space-between; gap:16px}
+.bc-key{display:inline-flex; align-items:center; gap:8px; font-size:11.5px; font-weight:600; color:var(--text-mute)}
+.bc-k{width:11px; height:11px; border-radius:3px; display:inline-block}
+.bc-k.bc-kp{background:linear-gradient(180deg,#b9c6d6,#d7dfe8)}
+.bc-k.bc-kr{background:linear-gradient(180deg,#0a7ddb,#0060b4); margin-left:8px}
+/* Sabit yukseklik + preserveAspectRatio:none yazilari yatayda geriyordu.
+   Oranla verilince SVG kendi olceginde kaliyor. */
+.bc-wrap{width:100%; aspect-ratio:1180/330; max-width:100%}
+.bc-wrap svg{width:100%; height:100%; display:block; overflow:visible}
+.bc-ax{font-size:11px; fill:var(--text-mute); font-weight:600}
+.bc-ro{font-size:14px; fill:var(--text); font-weight:800; letter-spacing:.03em}
+.bc-sub{font-size:10.5px; fill:var(--text-mute); font-weight:600}
+.bc-v{font-size:12.5px; font-weight:800; font-variant-numeric:tabular-nums}
+.bc-vp{fill:var(--text-mute)} .bc-vg{fill:var(--good)} .bc-vb{fill:var(--bad)}
+.bc-g{cursor:pointer}
+.bc-g:hover rect:not(.bc-hit){filter:brightness(1.08)}
+.bc-g:hover .bc-hit{fill:var(--sunken); fill-opacity:.55}
+/* Koyu temada gri plan cubugu zeminde kayboluyordu */
+body.dark-mode .bc-k.bc-kp{background:linear-gradient(180deg,#5b6b80,#42506180)}
+
+/* halka listesindeki TOPLAM satiri (referans panodaki gibi) */
+.ex-lg-tot{
+  border-top:1px solid var(--border); border-radius:0; margin-top:4px; padding-top:9px;
+  cursor:default; font-weight:800;
+}
+.ex-lg-tot:hover{background:none}
+.ex-lg-tot .ex-lab,.ex-lg-tot .ex-v{font-weight:800}
+
 /* uc halka — hepsi tiklanabilir filtre */
 .ex-donuts{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:18px}
 .ex-donut{
@@ -1108,6 +1141,7 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
   /* Arama filtre barindan kaldirildi, yani dar ekranda GIZLENEMEZ -- yoksa
      telefonda arama diye bir sey kalmaz. Kalan genisligi kaplar; kullanici
      cipinin metni zaten bu genislikte gizleniyor, yer aciliyor. */
+  .bc-wrap{aspect-ratio:760/330}
   .ex-donuts{grid-template-columns:1fr}
   .topsearch{flex:1 1 auto; margin-left:0}
   .ts-kbd{display:none}

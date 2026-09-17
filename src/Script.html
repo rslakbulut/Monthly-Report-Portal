@@ -231,6 +231,8 @@ var T={
   settingsIntro:'The monthly report arrives as a new spreadsheet each month. The Gmail scan finds it automatically; if it doesn’t, add the link manually.',
   regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.',
   execByFamily:'Business line',lnReal:'YTD real',
+  execChartTitle:'Budget YTD vs launched — by RO',execTotal:'Total',
+  lnBdgt:'Budget YTD',
   tabNewReman:'New & Reman',tabOffroad:'Offroad',
   offroadEmpty:'No Offroad data yet. This tab will fill once the Offroad monthly report starts arriving.',
   search:'Search',searchPh:'Search site or RO…',headcount:'Headcount',people:'people',inSelection:'in the current selection',topProjects:'Top projects',segment:'Segment',planCol:'Plan',realCol:'Real',clear:'Clear',selection:'Selection',drillHint:'Click a bar to go deeper',allSites:'All sites',team:'Team',noProjects:'No project rows in this scope',results:'results',noMatch:'Nothing matched',budgetVsDone:'Budget Year vs Launch Done',
@@ -239,7 +241,9 @@ var T={
   help:'Help',feedback:'Feedback',settings:'Settings',helpTitle:'Help · User guide',helpSub:'Ask a question or browse the topics',helpSearchPh:'e.g. what is Budget YTD, why is a site red…',helpNotFound:'Didn’t find it?',feedbackSub:'Report a bug or suggest an improvement',type:'Type',priority:'Priority',message:'Message',screenshot:'Screenshot',optional:'optional',dropImage:'Upload an image',orPaste:'or paste (Ctrl+V)',cancel:'Cancel',send:'Send',sending:'Sending…',feedbackThanks:'Thanks — your feedback was recorded.',bug:'Bug',improvement:'Improvement',low:'Low',medium:'Medium',urgent:'Urgent',feedbackPh:'Write your feedback…',startHere:'Start here',noHelpMatch:'Nothing matched. Try another word, or send us feedback.',
   helpS1t:'The RO list is the start',helpS1b:'Seven regional organizations, the one furthest behind plan on top. The bar shows how much of that RO’s Budget Year has been launched.',helpS2t:'The left rail',helpS2b:'Hover it to open. Click an RO to narrow the whole screen to it; click a site to open its panel.',helpS3t:'Site panel',helpS3b:'Clicking a site opens a panel on the right: its KPIs, biggest projects and team. “Open full page” goes to the full detail.',helpS4t:'Filters and search',helpS4b:'Product type, project type and customer narrow every number on screen. The search box finds a site or an RO by name.',helpS5t:'How fresh is the data',helpS5b:'The stamp at the top right says when the data was built. It refreshes every hour; Refresh data rebuilds it now.',helpC1:'Budget YTD',helpC2:'Launch Done',helpC3:'why is a site late',helpC4:'P1 P10 TTM',
   pickType:'Please choose a type.',pickPriority:'Please choose a priority.',writeMessage:'Please write a message.',onlyImages:'Only image files are accepted.'},
- tr:{
+ tr:{execChartTitle:'Budget YTD ve gerçekleşen — RO bazında',execTotal:'Toplam',
+  lnBdgt:'Budget YTD',
+  
   execByFamily:'İş kolu',lnReal:'YTD gerçekleşen',
   offroadEmpty:'Offroad verisi henüz yok. Offroad aylık raporu gelmeye başlayınca bu sekme dolacak.',
   whatAmILookingAt:'Bu ekran ne anlatıyor',year:'Yıl',month:'Ay',productType:'Ürün tipi',
@@ -1322,6 +1326,12 @@ function renderRoLevel(){
       render();
     };
   });
+  $('view').querySelectorAll('.bc-g[data-exro]').forEach(function(g){
+    g.onclick=function(){
+      F.ro=g.getAttribute('data-exro'); F.site='ALL'; NAV.expandedRo=F.ro;
+      buildRoSiteSelects(); render(); window.scrollTo({top:0,behavior:'smooth'});
+    };
+  });
   $('view').querySelectorAll('[data-exclr]').forEach(function(b){
     b.onclick=function(){
       var k=b.getAttribute('data-exclr');
@@ -1481,12 +1491,86 @@ function execDonut(id,title,items,selKey){
       '<span class="ex-v">'+nf(it.v)+'</span>'+
       '<span class="ex-p">'+(tot>0?Math.round(it.v/tot*100):0)+'%</span></button>';
   }).join('');
+  legend+='<div class="ex-lg ex-lg-tot"><span></span><span class="ex-lab">'+
+    esc(t('execTotal'))+'</span><span class="ex-v">'+nf(tot)+'</span><span class="ex-p">100%</span></div>';
   return '<section class="ex-donut"><h3>'+esc(title)+'</h3>'+
     '<div class="ex-ring"><svg viewBox="0 0 120 120" aria-hidden="true">'+
       '<circle r="'+R+'" cx="60" cy="60" fill="none" stroke="var(--sunken)" stroke-width="17"/>'+
       arcs+'</svg>'+
       '<span class="ex-ctr"><b>'+nf(ctrVal)+'</b><i>'+esc(ctrLab)+'</i></span></div>'+
     '<div class="ex-legend">'+legend+'</div></section>';
+}
+
+/* ---------- RO bazinda HEDEF vs GERCEKLESEN (dikey gruplu cubuk) ----------
+   Referans KPI panosunun ana grafigi: her kategoride hedef ve gerceklesen
+   yan yana, degerler cubugun ustunde, ustte kesikli hedef cizgisi.
+   Neden dikey gruplu cubuk: plan-gerceklesen kiyasi UZUNLUKLA okunur (bkz.
+   onceki benchmark), ve iki cubugun tabani ayni hizada oldugu icin fark
+   dogrudan gorunur. Saf SVG -- Chart.js yuklenmiyor, docs/grafikler.md'deki
+   "sabit yukseklikli kap" tuzagi da bu yuzden bizi ilgilendirmiyor. */
+function execBarChart(){
+  var st=F.status, ty=execTypeRow();
+  var rows=BOOT.roOrder.filter(function(ro){ return !EX.fam||FAMILY[ro]===EX.fam; })
+    .map(function(ro){ return {ro:ro,c:execCountCell(sitesOfRo(ro),ty,st)}; })
+    .filter(function(r){ return r.c.b1>0||r.c.ytd>0||r.c.real>0; });
+  if(!rows.length) return '';
+
+  var W=1180, H=330, PL=54, PR=18, PT=34, PB=54;
+  var iw=W-PL-PR, ih=H-PT-PB;
+  var max=0; rows.forEach(function(r){ max=Math.max(max,r.c.ytd,r.c.real); });
+  /* Ust sinir yuvarlanir ki eksen etiketleri duzgun sayilar olsun. */
+  var step=Math.pow(10,Math.floor(Math.log(Math.max(max,1))/Math.LN10));
+  if(max/step<2) step/=2; else if(max/step>5) step*=2;
+  var top=Math.max(step,Math.ceil(max/step)*step);
+  var y=function(v){ return PT+ih-(v/top)*ih; };
+
+  var grid='',ticks='';
+  for(var g=0;g<=4;g++){
+    var v=top*g/4, yy=y(v);
+    grid+='<line x1="'+PL+'" x2="'+(W-PR)+'" y1="'+yy.toFixed(1)+'" y2="'+yy.toFixed(1)+
+      '" stroke="var(--border)" stroke-width="1"'+(g?'':' stroke-opacity=".9"')+'/>';
+    ticks+='<text x="'+(PL-10)+'" y="'+(yy+4).toFixed(1)+'" text-anchor="end" class="bc-ax">'+
+      nf(Math.round(v))+'</text>';
+  }
+  var bw=iw/rows.length, bar=Math.min(34,bw*0.3), gap=7;
+  var bars='';
+  rows.forEach(function(r,i){
+    var cx=PL+bw*(i+0.5);
+    var x1=cx-bar-gap/2, x2=cx+gap/2;
+    var yb=y(r.c.ytd), yr=y(r.c.real);
+    var behind=r.c.real<r.c.ytd;
+    bars+='<g class="bc-g" data-exro="'+esc(r.ro)+'">'+
+      '<rect class="bc-hit" x="'+(PL+bw*i).toFixed(1)+'" y="'+PT+'" width="'+bw.toFixed(1)+
+        '" height="'+ih+'" fill="transparent"/>'+
+      '<rect x="'+x1.toFixed(1)+'" y="'+yb.toFixed(1)+'" width="'+bar+'" height="'+
+        Math.max(0,PT+ih-yb).toFixed(1)+'" rx="4" fill="url(#bcPlan)"/>'+
+      '<rect x="'+x2.toFixed(1)+'" y="'+yr.toFixed(1)+'" width="'+bar+'" height="'+
+        Math.max(0,PT+ih-yr).toFixed(1)+'" rx="4" fill="url(#bcReal)"/>'+
+      '<text x="'+(x1+bar/2).toFixed(1)+'" y="'+(yb-7).toFixed(1)+'" text-anchor="middle" class="bc-v bc-vp">'+
+        nf(r.c.ytd)+'</text>'+
+      '<text x="'+(x2+bar/2).toFixed(1)+'" y="'+(yr-7).toFixed(1)+'" text-anchor="middle" class="bc-v '+
+        (behind?'bc-vb':'bc-vg')+'">'+nf(r.c.real)+'</text>'+
+      '<text x="'+cx.toFixed(1)+'" y="'+(PT+ih+22)+'" text-anchor="middle" class="bc-ro">'+esc(r.ro)+'</text>'+
+      '<text x="'+cx.toFixed(1)+'" y="'+(PT+ih+38)+'" text-anchor="middle" class="bc-sub">'+
+        esc(BOOT.roLabels[r.ro]||'')+'</text>'+
+      '<title>'+esc(r.ro+' — '+t('lnBdgt')+' '+nf(r.c.ytd)+' · '+t('lnReal')+' '+nf(r.c.real))+'</title>'+
+    '</g>';
+  });
+
+  return '<section class="panel bc-panel"><div class="panel-h"><h3>'+esc(t('execChartTitle'))+'</h3>'+
+    '<span class="bc-key"><span class="bc-k bc-kp"></span>'+esc(t('lnBdgt'))+
+      '<span class="bc-k bc-kr"></span>'+esc(t('lnReal'))+'</span></div>'+
+    '<div class="bc-wrap"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" '+
+      'aria-label="'+esc(t('execChartTitle'))+'">'+
+      '<defs>'+
+        '<linearGradient id="bcPlan" x1="0" y1="0" x2="0" y2="1">'+
+          '<stop offset="0" stop-color="#b9c6d6"/><stop offset="1" stop-color="#d7dfe8"/></linearGradient>'+
+        /* Gerceklesen cubuk HER ZAMAN marka mavisi; onde/geride bilgisini
+           cubugun ustundeki sayinin rengi tasiyor. Once cubugu duruma gore
+           boyuyordum, efsanedeki tek renkle celisiyordu (goruldu). */
+        '<linearGradient id="bcReal" x1="0" y1="0" x2="0" y2="1">'+
+          '<stop offset="0" stop-color="#0a7ddb"/><stop offset="1" stop-color="#0060b4"/></linearGradient>'+
+      '</defs>'+grid+ticks+bars+'</svg></div></section>';
 }
 
 function execPanel(){
@@ -1501,7 +1585,8 @@ function execPanel(){
   var stageItems=EXEC_TYPES.map(function(x,i){
     return {k:x,lab:x,v:execCountCell(list,x,st).real,c:['#0072ce','#8b5cf6','#06b6d4'][i]};
   });
-  return '<div class="ex-donuts">'+
+  return execBarChart()+
+    '<div class="ex-donuts">'+
       execDonut('fam',t('execByFamily'),famItems,EX.fam)+
       execDonut('status',t('productType'),prodItems,F.status==='ALL'?null:F.status)+
       execDonut('type',t('projectType'),stageItems,F.type==='ALL'?null:F.type)+
