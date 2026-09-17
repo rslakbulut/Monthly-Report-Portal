@@ -371,6 +371,20 @@ body.has-rail{padding-left:var(--rail-w)}
 /* docs/ikonlar.md: Lucide, currentColor, 20px yaninda-metin / 16px ikon-only */
 .tbtn svg{display:block; flex:none}
 
+/* Verisi henuz olmayan sekme (OFFROAD) — bos ekran, hata degil */
+.empty-tab{
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+  gap:14px; padding:72px 24px; color:var(--text-mute);
+}
+.empty-tab .et-ico{
+  width:64px; height:64px; border-radius:20px; display:flex; align-items:center;
+  justify-content:center; background:var(--sunken); color:var(--text-mute);
+  box-shadow:inset 0 0 0 1px var(--border);
+}
+.empty-tab .et-ico svg{width:30px; height:30px}
+.empty-tab h2{margin:0; font-size:20px; font-weight:700; color:var(--text)}
+.empty-tab p{margin:0; max-width:46ch; font-size:14px; line-height:1.55}
+
 /* ---------- ust bardaki arama (omnibox) ----------
    Referans uygulamadaki genis arama cubugu. Iki isi birden yapar: yazdikca
    ana liste daralir (filtre) ve altindaki menude eslesenler EK BILGIYLE
