@@ -230,6 +230,11 @@ var T={
   skipToContent:'Skip to content',language:'Language',noPeriodYet:'No period registered yet. Open Settings and run the Gmail scan, or add this month’s spreadsheet link manually.',
   settingsIntro:'The monthly report arrives as a new spreadsheet each month. The Gmail scan finds it automatically; if it doesn’t, add the link manually.',
   regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.',
+  execScope:'Showing',execSentence:'{b1} launches committed for the year · {ytd} due by now · {real} done',
+  execAheadBehind:'ahead / behind plan',execOiGap:'order intake vs plan',
+  execByFamily:'Business line',execWhoBehind:'Who is behind plan',
+  execWhoNote:'bar = done, line = plan · click a row to open the RO',
+  showDetail:'Show detail table',hideDetail:'Hide detail table',
   execTitle:'Power aftermarket — plan vs actual',
   execNote:'Launch number and order intake, New + Reman, year to date',
   execMatrix:'By RO and project typology',
@@ -244,7 +249,12 @@ var T={
   help:'Help',feedback:'Feedback',settings:'Settings',helpTitle:'Help · User guide',helpSub:'Ask a question or browse the topics',helpSearchPh:'e.g. what is Budget YTD, why is a site red…',helpNotFound:'Didn’t find it?',feedbackSub:'Report a bug or suggest an improvement',type:'Type',priority:'Priority',message:'Message',screenshot:'Screenshot',optional:'optional',dropImage:'Upload an image',orPaste:'or paste (Ctrl+V)',cancel:'Cancel',send:'Send',sending:'Sending…',feedbackThanks:'Thanks — your feedback was recorded.',bug:'Bug',improvement:'Improvement',low:'Low',medium:'Medium',urgent:'Urgent',feedbackPh:'Write your feedback…',startHere:'Start here',noHelpMatch:'Nothing matched. Try another word, or send us feedback.',
   helpS1t:'The RO list is the start',helpS1b:'Seven regional organizations, the one furthest behind plan on top. The bar shows how much of that RO’s Budget Year has been launched.',helpS2t:'The left rail',helpS2b:'Hover it to open. Click an RO to narrow the whole screen to it; click a site to open its panel.',helpS3t:'Site panel',helpS3b:'Clicking a site opens a panel on the right: its KPIs, biggest projects and team. “Open full page” goes to the full detail.',helpS4t:'Filters and search',helpS4b:'Product type, project type and customer narrow every number on screen. The search box finds a site or an RO by name.',helpS5t:'How fresh is the data',helpS5b:'The stamp at the top right says when the data was built. It refreshes every hour; Refresh data rebuilds it now.',helpC1:'Budget YTD',helpC2:'Launch Done',helpC3:'why is a site late',helpC4:'P1 P10 TTM',
   pickType:'Please choose a type.',pickPriority:'Please choose a priority.',writeMessage:'Please write a message.',onlyImages:'Only image files are accepted.'},
- tr:{execTitle:'Power aftermarket — plan ve gerçekleşen',
+ tr:{execScope:'Gösterilen',execSentence:'Yıl için {b1} launch taahhüt edildi · bugüne kadar {ytd} olmalıydı · {real} gerçekleşti',
+  execAheadBehind:'plana göre önde / geride',execOiGap:'order intake, plana göre',
+  execByFamily:'İş kolu',execWhoBehind:'Kim geride',
+  execWhoNote:'çubuk = gerçekleşen, çizgi = plan · satıra tıkla, RO açılsın',
+  showDetail:'Detay tablosunu göster',hideDetail:'Detay tablosunu gizle',
+  execTitle:'Power aftermarket — plan ve gerçekleşen',
   execNote:'Launch adedi ve order intake, New + Reman, yıl başından bugüne',
   execMatrix:'RO ve proje tipolojisi',
   execMatrixNote:'Her hücre sapmayı gösterir: YTD Real eksi B1 YTD',
@@ -1355,15 +1365,12 @@ function renderRoLevel(){
   var html=kpiRow(sumMetrics(scope));
   if(q){ html+=searchResultsHtml(searchHits(q))+noticeBlock(); }
   else {
-    /* Yonetim gorunumu yalniz TUM kapsamda ve kirilim filtreleri acikken:
-         - Tek RO/site secilince o kapsamin kendi ekrani zaten asagida.
-         - Panelin KENDISI tipoloji kirilimi (NEW/REMAN, P1/P10/TTM, VS/OES).
-           Kullanici ustte "NEW" secmisken panelin NEW+REMAN gostermesi
-           celiski olurdu; o yuzden kirilim filtrelendiginde gizleniyor.
-       Panel icindeki hesaplar bilerek filtrelerden BAGIMSIZ (execCountCell /
-       execOiCell), cunku mudurun slayti her zaman NEW+REMAN ve tum tipler. */
-    if(F.ro==='ALL'&&F.site==='ALL'&&F.status==='ALL'&&F.type==='ALL'&&F.customer==='ALL')
-      html+=execPanel();
+    /* Panel artik kirilim filtresini KENDI tasiyor (halkalar F.status ve
+       F.type'i sürüyor), o yuzden filtre acikken gizlenmiyor -- tersine,
+       secili dilim vurgulanip geri kalan ekran ona gore daraliyor.
+       Yalniz tek RO/site secilince gizleniyor: o kapsamin kendi ekrani
+       zaten asagida. */
+    if(F.ro==='ALL'&&F.site==='ALL') html+=execPanel();
     html+=chartPanel();
     html+='<div class="section-head"><h2 class="section-title">'+esc(t('byRO'))+'</h2>'+
           '<span class="section-note">'+esc(t('clickRow'))+'</span></div><div class="rolist">';
@@ -1378,6 +1385,35 @@ function renderRoLevel(){
   $('view').innerHTML=html;
   $('view').querySelectorAll('.xrank-r[data-sk]').forEach(function(b){
     b.onclick=function(){ openSiteByKey(b.getAttribute('data-sk')); };
+  });
+  /* Cross-filtering: halka dilimi ve legend satiri ayni secimi surer. Aile
+     icin EX.fam, digerleri icin ZATEN VAR OLAN F.status / F.type -- yani
+     halkaya tiklamak ust filtre barindaki dugmeye basmakla ayni sey, iki
+     ayri "secili" durum olusmuyor. Ayni dilime tekrar tiklamak kaldirir. */
+  $('view').querySelectorAll('[data-ex]').forEach(function(b){
+    b.onclick=function(){
+      var kind=b.getAttribute('data-ex'), v=b.getAttribute('data-exv');
+      if(kind==='fam') EX.fam=(EX.fam===v)?null:v;
+      else if(kind==='status'){ F.status=(F.status===v)?'ALL':v; buildFilterSegs(); }
+      else if(kind==='type'){ F.type=(F.type===v)?'ALL':v; buildFilterSegs(); }
+      render();
+    };
+  });
+  $('view').querySelectorAll('[data-exclr]').forEach(function(b){
+    b.onclick=function(){
+      var k=b.getAttribute('data-exclr');
+      if(k==='fam') EX.fam=null; else if(k==='status') F.status='ALL'; else F.type='ALL';
+      buildFilterSegs(); render();
+    };
+  });
+  $('view').querySelectorAll('[data-exro]').forEach(function(b){
+    b.onclick=function(){
+      F.ro=b.getAttribute('data-exro'); F.site='ALL'; NAV.expandedRo=F.ro;
+      buildRoSiteSelects(); render(); window.scrollTo({top:0,behavior:'smooth'});
+    };
+  });
+  $('view').querySelectorAll('[data-exdet]').forEach(function(b){
+    b.onclick=function(){ EX.detail=!EX.detail; render(); };
   });
   /* grafik cubuklari: RO seviyesinde RO'ya iner, site seviyesinde site detayina */
   $('view').querySelectorAll('.ch-row[data-ck]').forEach(function(b){
@@ -1484,12 +1520,13 @@ function execCountCell(list,type,status){
 }
 /* OI kupu (M€). B1 YTD ciro plani, detay satirlarinin PLAN tarihinden geliyor
    (planYtdTurnover) -- ozet blokta ciro icin YTD butce sutunu yok. */
-function execOiCell(list,status){
+function execOiCell(list,status,type){
+  var row=type||'TOTAL', rt=(row==='TOTAL')?'ALL':row;
   var c=execZero();
   list.forEach(function(st){
-    c.b1  +=execBudgetPick(st,'TOTAL',status,'budgetTurnover');
-    c.ytd +=execRealSum(st,'ALL',status,'planYtdTurnover')/1000;
-    c.real+=execRealSum(st,'ALL',status,'ytdTurnover')/1000;
+    c.b1  +=execBudgetPick(st,row,status,'budgetTurnover');
+    c.ytd +=execRealSum(st,rt,status,'planYtdTurnover')/1000;
+    c.real+=execRealSum(st,rt,status,'ytdTurnover')/1000;
   });
   return c;
 }
@@ -1618,13 +1655,13 @@ function execMatrix(){
 
 /* --- 3) TOP 10 / WORSE 10 site: adet GAP'ine gore (kullanici teyidi) --- */
 function execSiteRank(){
-  var scored=(DATA.sites||[]).filter(function(st){ return st.status!=='no-data'; })
+  var scored=execList().filter(function(st){ return st.status!=='no-data'; })
     .map(function(st){
-      var c=execCountCell([st],'TOTAL','ALL');
+      var c=execCountCell([st],execTypeRow(),F.status);
       return {st:st,g:execGap(c),c:c};
     });
-  var best=scored.slice().sort(function(a,b){ return b.g-a.g; }).slice(0,10);
-  var worst=scored.slice().sort(function(a,b){ return a.g-b.g; }).slice(0,10);
+  var best=scored.slice().sort(function(a,b){ return b.g-a.g; }).slice(0,5);
+  var worst=scored.slice().sort(function(a,b){ return a.g-b.g; }).slice(0,5);
   function col(title,list,kind){
     var mx=1; list.forEach(function(x){ mx=Math.max(mx,Math.abs(x.g)); });
     return '<section class="panel"><div class="panel-h"><h3>'+esc(title)+'</h3>'+
@@ -1641,16 +1678,152 @@ function execSiteRank(){
   return '<div class="panels two">'+col(t('top10'),best,'good')+col(t('worse10'),worst,'bad')+'</div>';
 }
 
+/* ---------- yonetim ekrani: ONCE CEVAP, SONRA DETAY ----------
+   Ilk surumu bir analiz ekraniydi: her hucrede sayi, 63 hucrelik matris.
+   Ust yonetim 10 saniyede "yolunda miyiz" sorusunun cevabini ariyor.
+   Benchmark (ThoughtSpot, Sigma, Omni, Microsoft Learn):
+     - Uzunluk insanin en hassas okudugu boyut; aci/alan en zayifi. Yani
+       PLAN-GERCEKLESEN kiyasi pasta ile YAPILMAZ, cubukla yapilir.
+     - Pasta/halka yalniz PARCA-BUTUN icin ve en fazla ~5 dilimle ise yarar.
+       Bizim uc kirilimimiz 2, 2 ve 3 dilim -- tam da halkanin ise yaradigi yer.
+     - Yonetim ekraninda 5-6 KPI, sayfada 4-6 gorsel.
+     - Cross-filtering: bir gorsel digerlerini filtreler.
+   Bu yuzden ekran: tek cumle + iki buyuk sayi -> uc halka (tiklaninca
+   filtreler) -> siralanmis RO cubuklari. Matris silinmedi, "detay" dugmesinin
+   arkasina alindi -- bilgi kaybi yok, yuz yuze gelme yok. */
+
+var EX={fam:null,detail:false};
+
+function execList(){
+  return (DATA.sites||[]).filter(function(s){ return !EX.fam||FAMILY[s.ro]===EX.fam; });
+}
+function execTypeRow(){ return F.type==='ALL'?'TOTAL':F.type; }
+
+/* Halka: 2-3 dilim, tiklanabilir. Secim varsa secilmeyen dilimler soner.
+   Renk tek basina anlam tasimiyor: her dilimin degeri ve yuzdesi listede. */
+function execDonut(id,title,items,selKey){
+  var tot=0; items.forEach(function(it){ tot+=it.v; });
+  var R=44, C=2*Math.PI*R, off=0;
+  var arcs='';
+  items.forEach(function(it){
+    var frac=tot>0?it.v/tot:0, len=frac*C;
+    var dim=(selKey&&selKey!==it.k)?' class="ex-dim"':'';
+    arcs+='<circle'+dim+' r="'+R+'" cx="60" cy="60" fill="none" stroke="'+it.c+'" '+
+      'stroke-width="'+(selKey===it.k?22:17)+'" stroke-linecap="butt" '+
+      'stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" '+
+      'stroke-dashoffset="'+(-off).toFixed(2)+'" '+
+      'transform="rotate(-90 60 60)" data-ex="'+esc(id)+'" data-exv="'+esc(it.k)+'">'+
+      '<title>'+esc(it.lab+': '+nf(it.v)+(tot>0?(' ('+Math.round(frac*100)+'%)'):''))+'</title>'+
+      '</circle>';
+    off+=len;
+  });
+  /* Secim varsa merkez SECILEN dilimin degerini gosterir. Yoksa halkanin
+     kendi toplami kalir ve secim yapilan halka 1.417, digerleri 714 yazip
+     yan yana celisiyor gibi duruyordu (goruldu). */
+  var sel=null; items.forEach(function(it){ if(it.k===selKey) sel=it; });
+  var ctrVal=sel?sel.v:tot, ctrLab=sel?sel.lab:t('lnReal');
+  var legend=items.map(function(it){
+    var on=(selKey===it.k);
+    return '<button class="ex-lg'+(on?' on':'')+'" type="button" data-ex="'+esc(id)+
+      '" data-exv="'+esc(it.k)+'"><span class="ex-dot" style="background:'+it.c+'"></span>'+
+      '<span class="ex-lab">'+esc(it.lab)+'</span>'+
+      '<span class="ex-v">'+nf(it.v)+'</span>'+
+      '<span class="ex-p">'+(tot>0?Math.round(it.v/tot*100):0)+'%</span></button>';
+  }).join('');
+  return '<section class="ex-donut"><h3>'+esc(title)+'</h3>'+
+    '<div class="ex-ring"><svg viewBox="0 0 120 120" aria-hidden="true">'+
+      '<circle r="'+R+'" cx="60" cy="60" fill="none" stroke="var(--sunken)" stroke-width="17"/>'+
+      arcs+'</svg>'+
+      '<span class="ex-ctr"><b>'+nf(ctrVal)+'</b><i>'+esc(ctrLab)+'</i></span></div>'+
+    '<div class="ex-legend">'+legend+'</div></section>';
+}
+
+/* Siralanmis RO cubuklari: "kim geride" sorusunun tek dogru gorseli.
+   Cubuk = gerceklesen, dikey cizgi = plan, saginda sapma. */
+function execRoBars(){
+  var st=F.status, ty=execTypeRow();
+  var rows=BOOT.roOrder.filter(function(ro){ return !EX.fam||FAMILY[ro]===EX.fam; })
+    .map(function(ro){
+      var list=sitesOfRo(ro);
+      return {ro:ro,c:execCountCell(list,ty,st)};
+    }).filter(function(r){ return r.c.b1>0||r.c.ytd>0||r.c.real>0; });
+  rows.sort(function(a,b){ return execGap(a.c)-execGap(b.c); });
+  var mx=1; rows.forEach(function(r){ mx=Math.max(mx,r.c.b1,r.c.ytd,r.c.real); });
+  return '<section class="panel ex-ro"><div class="panel-h"><h3>'+esc(t('execWhoBehind'))+'</h3>'+
+    '<span class="panel-note">'+esc(t('execWhoNote'))+'</span></div>'+
+    rows.map(function(r){
+      var c=r.c, g=execGap(c);
+      var w=clamp01(c.real/mx)*100, pm=clamp01(c.ytd/mx)*100;
+      return '<button class="exro-r" type="button" data-exro="'+esc(r.ro)+'">'+
+        '<span class="exro-id"><span class="xro" style="--rc:'+roColor(r.ro)+'">'+esc(r.ro)+'</span>'+
+          '<span class="exro-n">'+esc(BOOT.roLabels[r.ro]||'')+'</span></span>'+
+        '<span class="xbar"><span class="xbar-t">'+
+          '<span class="xbar-f" style="width:'+w.toFixed(1)+'%;background:'+(g>=0?'var(--good-line)':'var(--bad-line)')+'"></span>'+
+          '<span class="xbar-p" style="left:'+pm.toFixed(1)+'%"></span></span></span>'+
+        '<span class="exro-v">'+nf(c.real)+' / '+nf(c.ytd)+'</span>'+
+        execGapPill(c,'LN')+
+        '<span class="exro-ch" aria-hidden="true">'+ICON_CHEVRON_SM+'</span>'+
+      '</button>';
+    }).join('')+'</section>';
+}
+
+/* Secili kapsamin tek cumlelik ozeti + iki buyuk sayi. */
+function execHeadline(){
+  var list=execList(), st=F.status, ty=execTypeRow();
+  var c=execCountCell(list,ty,st), oi=execOiCell(list,st,ty);
+  var g=execGap(c), og=execGap(oi);
+  var chips='';
+  if(EX.fam) chips+=execChip('fam',EX.fam==='DRIVE'?'POWER DRIVE':'POWER THERMAL');
+  if(st!=='ALL') chips+=execChip('status',st);
+  if(F.type!=='ALL') chips+=execChip('type',F.type);
+  return '<section class="ex-head">'+
+    '<div class="ex-sent">'+
+      '<span class="ex-scope">'+esc(t('execScope'))+(chips?('<span class="ex-chips">'+chips+'</span>'):
+        ('<b> '+esc(t('allSites'))+' · New + Reman</b>'))+'</span>'+
+      '<p>'+esc(t('execSentence')
+        .replace('{b1}',nf(c.b1)).replace('{ytd}',nf(c.ytd)).replace('{real}',nf(c.real)))+'</p>'+
+    '</div>'+
+    '<div class="ex-big">'+
+      execBigNum(g,'LN',t('execAheadBehind'),t('projects'))+
+      execBigNum(og,'OI',t('execOiGap'),'M€')+
+    '</div></section>';
+}
+function execBigNum(v,grp,label,unit){
+  var cls=Math.abs(v)<(grp==='OI'?0.05:0.5)?'flat':(v>0?'good':'bad');
+  return '<div class="exb '+cls+'"><span class="exb-v">'+(v>0?'+':'')+execNum(v,grp)+
+    '<i>'+esc(unit)+'</i></span><span class="exb-l">'+esc(label)+'</span></div>';
+}
+function execChip(kind,label){
+  return '<button class="ex-chip" type="button" data-exclr="'+esc(kind)+'">'+esc(label)+
+    '<span aria-hidden="true">'+ICON_X+'</span></button>';
+}
+
 function execPanel(){
   if(!DATA||!DATA.sites||!DATA.sites.length) return '';
-  var fams=execFamilies();
+  var list=execList(), st=F.status, ty=execTypeRow();
+  var famItems=['DRIVE','THERMAL'].map(function(f){
+    var l=(DATA.sites||[]).filter(function(s){ return FAMILY[s.ro]===f; });
+    return {k:f,lab:'POWER '+f,v:execCountCell(l,ty,st).real,c:f==='DRIVE'?'#0072ce':'#8b5cf6'};
+  });
+  var prodItems=[{k:'NEW',lab:'NEW',v:execCountCell(list,ty,'NEW').real,c:'#0072ce'},
+                 {k:'REMAN',lab:'REMAN',v:execCountCell(list,ty,'REMAN').real,c:'#f59e0b'}];
+  var stageItems=EXEC_TYPES.map(function(x,i){
+    return {k:x,lab:x,v:execCountCell(list,x,st).real,c:['#0072ce','#8b5cf6','#06b6d4'][i]};
+  });
   return '<div class="section-head"><h2 class="section-title">'+esc(t('execTitle'))+'</h2>'+
       '<span class="section-note">'+esc(t('execNote'))+'</span></div>'+
-    '<div class="xfams">'+fams.map(execFamilyCard).join('')+'</div>'+
-    '<div class="section-head"><h2 class="section-title">'+esc(t('execMatrix'))+'</h2>'+
-      '<span class="section-note">'+esc(t('execMatrixNote'))+'</span></div>'+
-    execMatrix()+
-    execSiteRank();
+    execHeadline()+
+    '<div class="ex-donuts">'+
+      execDonut('fam',t('execByFamily'),famItems,EX.fam)+
+      execDonut('status',t('productType'),prodItems,F.status==='ALL'?null:F.status)+
+      execDonut('type',t('projectType'),stageItems,F.type==='ALL'?null:F.type)+
+    '</div>'+
+    execRoBars()+
+    execSiteRank()+
+    '<div class="ex-more"><button class="tbtn2" type="button" data-exdet="1" aria-expanded="'+EX.detail+'">'+
+      esc(EX.detail?t('hideDetail'):t('showDetail'))+'</button></div>'+
+    (EX.detail?('<div class="section-head"><h2 class="section-title">'+esc(t('execMatrix'))+'</h2>'+
+      '<span class="section-note">'+esc(t('execMatrixNote'))+'</span></div>'+execMatrix()):'');
 }
 
 /* Arama sonucu / grafik cubugu -> site detayi. NAV.siteIdx o RO'nun TAM
