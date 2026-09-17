@@ -382,66 +382,11 @@ body.has-rail{padding-left:var(--rail-w)}
    Benchmark kurallari (ThoughtSpot/Sigma/Omni/Microsoft Learn): plan-gerceklesen
    kiyasi UZUNLUKLA (cubuk), parca-butun HALKAYLA ve en fazla ~5 dilimle;
    ekranda 4-6 gorsel, 5-6 KPI. Bu blok o duzeni tasiyor. */
-.ex-head{
-  display:flex; align-items:center; justify-content:space-between; gap:28px; flex-wrap:wrap;
-  background:var(--card); border-radius:var(--r-lg); box-shadow:var(--sh-2);
-  padding:22px 26px; margin-bottom:18px;
-}
-.ex-sent{min-width:min(100%,320px); flex:1 1 380px}
-.ex-scope{
-  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-  font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
-  color:var(--text-mute); margin-bottom:9px;
-}
-.ex-scope b{color:var(--text); letter-spacing:.06em}
-.ex-chips{display:flex; gap:6px; flex-wrap:wrap}
-.ex-chip{
-  display:inline-flex; align-items:center; gap:6px; cursor:pointer; font:inherit;
-  font-size:10.5px; font-weight:800; letter-spacing:.05em; padding:3px 7px 3px 9px;
-  border-radius:999px; border:1px solid var(--valeo-mid); background:rgba(0,114,206,.10);
-  color:var(--valeo-mid);
-}
-.ex-chip:hover{background:rgba(0,114,206,.2)}
-.ex-chip svg{display:block}
-.ex-sent p{margin:0; font-size:15px; line-height:1.5; color:var(--text)}
-.ex-big{display:flex; gap:34px; flex-wrap:wrap}
-.exb{display:flex; flex-direction:column; align-items:flex-end; gap:3px}
-.exb-v{font-size:46px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; letter-spacing:-.02em}
-.exb-v i{font-style:normal; font-size:17px; font-weight:700; margin-left:5px}
 .exb.good .exb-v{color:var(--good)} .exb.bad .exb-v{color:var(--bad)} .exb.flat .exb-v{color:var(--text-mute)}
-.exb-l{font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.11em; color:var(--text-mute)}
 
 /* Raporlama satiri: buyuk sapma sayisinin ne kadari "geride", ne kadari
    "bilinmiyor" -- ikisi ayni sey degil, ust yonetime oyle gitmesin. */
-.ex-rep{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:11px}
-.ex-rep-ok{
-  font-size:11.5px; font-weight:600; color:var(--text-mute);
-  display:inline-flex; align-items:center; gap:7px;
-}
-.ex-rep-nr{
-  display:inline-flex; align-items:center; gap:6px; cursor:pointer; font:inherit;
-  font-size:11.5px; font-weight:700; padding:4px 9px 4px 8px; border-radius:999px;
-  border:1px solid var(--warn-line,#d9a441); background:var(--warn-bg,#fdf4e3);
-  color:var(--warn,#8a5a00);
-}
-.ex-rep-nr:hover{filter:brightness(.97)}
-.ex-rep-nr svg{display:block; width:13px; height:13px}
-.ex-rep-ch{display:flex; transition:transform .15s ease}
 .ex-rep-nr.on .ex-rep-ch{transform:rotate(90deg)}
-
-.ex-nrp{margin-bottom:18px}
-.ex-nrlist{display:flex; flex-direction:column; gap:12px}
-.ex-nrgrp{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
-.ex-nr-r{
-  display:inline-flex; align-items:center; gap:8px; cursor:pointer; font:inherit;
-  font-size:12.5px; font-weight:600; color:var(--text); min-height:34px;
-  padding:0 11px; border-radius:999px; border:1px solid var(--border-strong);
-  background:var(--card);
-}
-.ex-nr-r:hover{border-color:var(--valeo-mid); color:var(--valeo-mid)}
-.ex-nr-b{font-size:10.5px; font-weight:700; color:var(--text-mute); font-variant-numeric:tabular-nums}
-.exro-txt{display:flex; flex-direction:column; min-width:0; gap:1px}
-.exro-nr{font-size:10px; font-weight:700; color:var(--warn,#8a5a00); white-space:nowrap}
 
 /* uc halka — hepsi tiklanabilir filtre */
 .ex-donuts{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:18px}
@@ -479,26 +424,6 @@ body.has-rail{padding-left:var(--rail-w)}
 .ex-lg .ex-p{font-size:11px; color:var(--text-mute); text-align:right; font-variant-numeric:tabular-nums}
 
 /* "kim geride" — siralanmis cubuklar */
-.ex-ro{margin-bottom:18px}
-.exro-r{
-  display:grid; grid-template-columns:210px 1fr 96px 74px 20px; align-items:center; gap:14px;
-  background:none; border:none; font:inherit; color:var(--text); text-align:left;
-  cursor:pointer; padding:9px 10px; border-radius:10px; min-height:46px; width:100%;
-}
-.exro-r:hover{background:var(--sunken)}
-.exro-id{display:flex; align-items:center; gap:9px; min-width:0}
-.exro-n{font-size:12.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.exro-v{font-size:12.5px; color:var(--text-mute); text-align:right; font-variant-numeric:tabular-nums}
-.exro-ch{color:var(--text-mute); display:flex}
-.exro-r:hover .exro-ch{color:var(--valeo-mid); transform:translateX(2px)}
-
-.ex-more{display:flex; justify-content:center; margin:6px 0 16px}
-.tbtn2{
-  background:var(--card); border:1px solid var(--border-strong); border-radius:999px;
-  min-height:38px; padding:0 18px; font:inherit; font-size:12.5px; font-weight:600;
-  color:var(--text-mute); cursor:pointer; box-shadow:var(--sh-1);
-}
-.tbtn2:hover{border-color:var(--valeo-mid); color:var(--valeo-mid)}
 
 /* ---------- ust yonetim gorunumu ----------
    Mudurun uc slaytinin ekran karsiligi. Slayttaki 24 sutunluk matris yerine
@@ -506,81 +431,12 @@ body.has-rail{padding-left:var(--rail-w)}
    "nerede sorun var" sorusu bakisla cevaplaniyor, renk yogunlugu da sapmanin
    buyuklugunu tasiyor. Renk TEK basina anlam tasimiyor (WCAG): isaret ve
    sayi da hucrede. */
-.xfams{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:8px}
-.xcard{
-  background:var(--card); border-radius:var(--r-lg); box-shadow:var(--sh-2);
-  padding:18px 20px 14px; display:flex; flex-direction:column; gap:14px;
-  border-top:3px solid var(--xc);
-}
-.xcard-h{display:flex; align-items:flex-start; justify-content:space-between; gap:14px}
-.xcard-h h3{margin:0 0 6px; font-size:15px; font-weight:800; letter-spacing:.04em}
-.xcard-ros{display:flex; gap:5px; flex-wrap:wrap}
-.xro{
-  font-size:10px; font-weight:800; letter-spacing:.04em; padding:2px 6px; border-radius:5px;
-  color:var(--rc,var(--text-mute)); background:color-mix(in srgb,var(--rc,#888) 14%,transparent);
-  white-space:nowrap;
-}
-.xcard-gap{display:flex; flex-direction:column; align-items:flex-end; gap:1px}
-.xg-v{font-size:30px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums}
 .xg-v.good{color:var(--good)} .xg-v.bad{color:var(--bad)}
-.xg-l{font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.11em; color:var(--text-mute)}
-.xcard-main{display:flex; flex-direction:column; gap:7px}
-.xcard-nums{display:flex; gap:16px; flex-wrap:wrap; font-size:11.5px; color:var(--text-mute)}
-.xcard-nums b{font-size:13px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums}
-.xcard-grp{display:flex; flex-direction:column; gap:6px}
-.xgrp-l{font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.11em; color:var(--text-mute)}
-.xmini{display:grid; grid-template-columns:46px 1fr 74px 62px; align-items:center; gap:10px}
-.xm-l{font-size:11.5px; font-weight:700; color:var(--text)}
-.xm-v{font-size:11.5px; color:var(--text-mute); text-align:right; font-variant-numeric:tabular-nums}
-.xcard-f{
-  display:flex; align-items:center; gap:10px; padding-top:11px; margin-top:auto;
-  border-top:1px solid var(--border); font-size:11.5px; color:var(--text-mute);
-}
-.xcard-f b{font-size:15px; color:var(--text); font-variant-numeric:tabular-nums}
-.xf-s{margin-left:auto}
 /* plan isaretli cubuk */
-.xbar{display:block; min-width:0}
-.xbar-t{position:relative; display:block; height:9px; border-radius:999px; background:var(--sunken); overflow:hidden}
-.xbar-f{position:absolute; left:0; top:0; bottom:0; border-radius:999px}
-.xbar-p{position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--text); opacity:.55; border-radius:2px}
 
 /* matris */
-.xmx-wrap{overflow-x:auto; background:var(--card); border-radius:var(--r-lg); box-shadow:var(--sh-2); padding:6px 4px}
-.xmx{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums}
-.xmx th,.xmx td{padding:7px 9px; text-align:center}
-.xmx thead th{font-size:11px; font-weight:700; color:var(--text-mute)}
-.xmx-rh{text-align:left!important; font-size:12px; font-weight:800; color:var(--text); white-space:nowrap}
-.xmx-sub{text-align:left!important; font-size:10px; font-weight:700; letter-spacing:.06em; color:var(--text-mute)}
-.xmx-c{border-radius:8px; line-height:1.15}
-.xmx-c b{display:block; font-size:13px; font-weight:700}
-.xmx-c i{display:block; font-style:normal; font-size:10px; color:var(--text-mute); margin-top:1px}
-.xmx-c b.good{color:var(--good)} .xmx-c b.bad{color:var(--bad)}
-.xmx-sum{background:var(--sunken)}
-.xmx-sum .xmx-rh,.xmx-sum .xmx-c b{font-weight:800}
-.xmx tr[data-split="1"] td,.xmx tr[data-split="1"] th{border-top:2px solid var(--border-strong)}
-.xmx-tot{font-weight:800}
 
 /* TOP / WORSE site siralamasi */
-.xrank{display:flex; flex-direction:column}
-.xrank-r{
-  display:grid; grid-template-columns:1fr 40px 90px 54px; align-items:center; gap:10px;
-  background:none; border:none; font:inherit; color:var(--text); text-align:left;
-  cursor:pointer; padding:7px 10px; border-radius:9px; min-height:38px;
-}
-.xrank-r:hover{background:var(--sunken)}
-.xr-n{display:flex; align-items:center; gap:8px; min-width:0; font-size:13px; font-weight:600;
-      overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.xr-ro{font-size:10px; font-weight:800; color:var(--rc); text-align:center}
-.xr-b{display:block; height:7px; border-radius:999px; background:var(--sunken); overflow:hidden}
-.xr-b span{display:block; height:100%; border-radius:999px}
-.xr-v{text-align:right; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums}
-.xr-v.good{color:var(--good)} .xr-v.bad{color:var(--bad)}
-
-/* Verisi henuz olmayan sekme (OFFROAD) — bos ekran, hata degil */
-.empty-tab{
-  display:flex; flex-direction:column; align-items:center; text-align:center;
-  gap:14px; padding:72px 24px; color:var(--text-mute);
-}
 .empty-tab .et-ico{
   width:64px; height:64px; border-radius:20px; display:flex; align-items:center;
   justify-content:center; background:var(--sunken); color:var(--text-mute);
@@ -711,8 +567,13 @@ body.dark-mode .flag{box-shadow:0 0 0 1px rgba(255,255,255,.22)}
 }
 .filters-inner{
   max-width:var(--maxw); margin:0 auto; padding:14px 24px;
-  display:flex; gap:26px; flex-wrap:wrap; align-items:flex-end;
+  display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;
 }
+/* Yedi grubun TEK SATIRDA durmasi icin secicilere sabit genislik verildi
+   (kullanici talebi: Customer alt satira kayiyordu). Icerige gore buyumeyi
+   birakmak gerekti: RO secicisi en uzun RO adi kadar aciliyordu ve tek
+   basina ~265px yiyordu. Dar ekranda flex-wrap yine sariyor. */
+#selYear{width:94px} #selMonth{width:122px} #selRo{width:150px} #selSite{width:168px}
 .fgroup{display:flex; flex-direction:column; gap:7px}
 .fgroup .flabel{
   font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.11em;
@@ -724,7 +585,7 @@ body.dark-mode .flag{box-shadow:0 0 0 1px rgba(255,255,255,.22)}
 }
 .seg button{
   background:transparent; color:var(--text-dim); border:none; cursor:pointer;
-  padding:0 16px; min-height:38px; font:inherit; font-size:13.5px; font-weight:600;
+  padding:0 10px; min-height:38px; font:inherit; font-size:13px; font-weight:600;
   border-radius:9px; letter-spacing:.005em; white-space:nowrap;
   transition:background .15s ease, color .15s ease, box-shadow .15s ease;
 }
@@ -735,7 +596,7 @@ body.dark-mode .flag{box-shadow:0 0 0 1px rgba(255,255,255,.22)}
 }
 .seg button[aria-pressed="true"]:hover{background:linear-gradient(180deg,#0a7ddb,#0060b4); color:#fff}
 select.ctl{
-  min-height:44px; padding:0 38px 0 14px; font:inherit; font-size:14px; font-weight:600;
+  min-height:44px; padding:0 34px 0 12px; font:inherit; font-size:13.5px; font-weight:600;
   border:1px solid var(--border-strong); border-radius:12px;
   background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a6b80' stroke-width='1.9' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 14px center;
   color:var(--text); -webkit-appearance:none; appearance:none; cursor:pointer;
@@ -1248,13 +1109,6 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
      telefonda arama diye bir sey kalmaz. Kalan genisligi kaplar; kullanici
      cipinin metni zaten bu genislikte gizleniyor, yer aciliyor. */
   .ex-donuts{grid-template-columns:1fr}
-  .ex-big{gap:22px}
-  .exb-v{font-size:34px}
-  .exro-r{grid-template-columns:96px 1fr 76px 62px; gap:9px}
-  .exro-n{display:none}
-  .xfams{grid-template-columns:1fr}
-  .xmini{grid-template-columns:42px 1fr 66px 56px; gap:8px}
-  .xrank-r{grid-template-columns:1fr 34px 60px 48px; gap:8px}
   .topsearch{flex:1 1 auto; margin-left:0}
   .ts-kbd{display:none}
   .drawer{width:100vw}
@@ -1262,6 +1116,7 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
   .panelx.fb{width:96vw}
   .filters{position:static}
   .filters-inner{gap:16px; padding:14px 16px}
+  #selYear,#selMonth,#selRo,#selSite{width:auto; min-width:140px}
   .selstrip{padding:0 16px 12px}
   .fgroup.grow{flex:1 1 100%}
   .topbar-inner{padding:10px 16px; gap:8px}
