@@ -232,7 +232,7 @@ var T={
   regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.',
   execByFamily:'Business line',lnReal:'YTD real',
   execChartTitle:'By RO — Budget Year · Budget YTD · launched',execTotal:'Total',
-  execBudgetYear:'Budget Year',execUnit:'Unit',execPieRo:'Order intake by RO',
+  execBudgetYear:'Budget Year',execUnit:'Unit',execOther:'Other',execPieRo:'Order intake by RO',
   execPieSite:'By site',noData:'No data',
 
   lnBdgt:'Budget YTD',
@@ -245,7 +245,7 @@ var T={
   helpS1t:'The RO list is the start',helpS1b:'Seven regional organizations, the one furthest behind plan on top. The bar shows how much of that RO’s Budget Year has been launched.',helpS2t:'The left rail',helpS2b:'Hover it to open. Click an RO to narrow the whole screen to it; click a site to open its panel.',helpS3t:'Site panel',helpS3b:'Clicking a site opens a panel on the right: its KPIs, biggest projects and team. “Open full page” goes to the full detail.',helpS4t:'Filters and search',helpS4b:'Product type, project type and customer narrow every number on screen. The search box finds a site or an RO by name.',helpS5t:'How fresh is the data',helpS5b:'The stamp at the top right says when the data was built. It refreshes every hour; Refresh data rebuilds it now.',helpC1:'Budget YTD',helpC2:'Launch Done',helpC3:'why is a site late',helpC4:'P1 P10 TTM',
   pickType:'Please choose a type.',pickPriority:'Please choose a priority.',writeMessage:'Please write a message.',onlyImages:'Only image files are accepted.'},
  tr:{execChartTitle:'RO bazında — Budget Year · Budget YTD · gerçekleşen',execTotal:'Toplam',
-  execBudgetYear:'Budget Year',execUnit:'Birim',execPieRo:'RO bazında order intake',
+  execBudgetYear:'Budget Year',execUnit:'Birim',execOther:'Diğer',execPieRo:'RO bazında order intake',
   execPieSite:'Site bazında',noData:'Veri yok',
   lnBdgt:'Budget YTD',
   
@@ -1338,7 +1338,8 @@ function renderRoLevel(){
   $('view').querySelectorAll('[data-exp]').forEach(function(el){
     el.onclick=function(){
       var kind=el.getAttribute('data-exp'), v=el.getAttribute('data-expv');
-      if(kind==='ro'){ EXP.ro=v; render(); } else { openDrawer(v); }
+      if(kind==='ro'){ EXP.ro=v; render(); }
+      else if(v!=='__other') openDrawer(v);
     };
   });
   $('view').querySelectorAll('.bc-lb[data-exro]').forEach(function(g){
@@ -1591,7 +1592,7 @@ function execBarChart(){
   for(var g=0;g<=4;g++){
     var v=top*g/4, yy=y(v);
     grid+='<line x1="'+PL+'" x2="'+(W-PR)+'" y1="'+yy.toFixed(1)+'" y2="'+yy.toFixed(1)+
-      '" class="bc-grid"'+(g?' stroke-dasharray="3 5"':'')+'/>'+
+      '" class="bc-grid"/>'+
       '<text x="'+(PL-12)+'" y="'+(yy+4).toFixed(1)+'" text-anchor="end" class="bc-ax">'+
       (money?nf(v,v<10?1:0):nf(Math.round(v)))+'</text>';
   }
@@ -1670,8 +1671,42 @@ function execBarChart(){
    detayiyla aciliyor. Etiket yerlesimi: dilim yeterince buyukse (>= %9)
    yazi dilimin ICINDE, degilse disarida ve ince bir kilavuz cizgiyle --
    yedi dilimin ucu kucuk oldugunda ic etiket okunmuyor. */
-var PIE_COLORS=['#0072ce','#8b5cf6','#f59e0b','#12803c','#e8497f','#06b6d4','#eb6834',
-                '#6366f1','#14b8a6','#d946ef','#f97316','#0ea5e9'];
+/* Renk kararlari EL YORDAMIYLA degil, olcerek. */
+function cssVar(n){
+  try{ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  catch(e){ return ''; }
+}
+function roHex(ro){ return cssVar('--ro-'+ro)||'#0072ce'; }
+/* Dilim uzerindeki yazi rengi: WCAG bagil parlakliga gore secilir. Once
+   HEPSI beyazdi; #eda100 gibi acik dilimlerde beyaz yazi okunmuyordu
+   (validator: kontrast 2.11:1). */
+function relLum(hex){
+  var m=/^#?([0-9a-fA-F]{6})$/.exec(String(hex||'').trim());
+  if(!m) return null;
+  var n=parseInt(m[1],16);
+  function f(c){ c/=255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4); }
+  return 0.2126*f(n>>16&255)+0.7152*f(n>>8&255)+0.0722*f(n&255);
+}
+function contrastRatio(l1,l2){
+  var a=Math.max(l1,l2), b=Math.min(l1,l2);
+  return (a+0.05)/(b+0.05);
+}
+/* Iki secenegin kontrasti HESAPLANIR, buyugu secilir. Once tek bir parlaklik
+   ESIGI kullaniyordum ve orta tonlarda yanlis seciyordu: #94a3b8 uzerinde
+   beyaz 2.5:1 iken koyu murekkep 6.9:1 (olculdu). */
+var INK_DARK='#0b1b2b';
+function inkOn(hex){
+  var L=relLum(hex); if(L==null) return '#ffffff';
+  var white=contrastRatio(1,L), dark=contrastRatio(relLum(INK_DARK),L);
+  return dark>white?INK_DARK:'#ffffff';
+}
+/* Site dilimleri icin dogrulanmis 6'li palet + "diger" grisi. Sira SABIT:
+   site'in RO icindeki kayit sirasina gore atanir, DEGERE gore degil --
+   degere gore atamak birim/filtre degisince renkleri yer degistiriyordu
+   (recolor-on-filter). */
+var PIE_COLORS=['#0072ce','#eda100','#1baf7a','#9085e9','#e87ba4','#c2410c'];
+var PIE_OTHER='#94a3b8';
+var PIE_MAX=6;   // pasta ~6 dilimi gecince bitisik siniflar birbirine karisir
 
 function pieSlices(items,cx,cy,R,inner){
   var tot=0; items.forEach(function(it){ tot+=Math.max(0,it.v); });
@@ -1702,7 +1737,8 @@ function execPie(id,title,items,selKey,centerLab){
   var paths='',labels='';
   d.arcs.forEach(function(a){
     if(a.frac<=0) return;
-    var c=PIE_COLORS[a.i%PIE_COLORS.length];
+    var c=a.it.c||PIE_COLORS[a.i%PIE_COLORS.length];
+    var ink=inkOn(a.it.hex||c);
     /* Secilmeyenleri soldurmak yaziyi okunmaz yapiyordu (goruldu). Secim
        artik SOLDURARAK degil, secili dilimi one cikararak gosteriliyor. */
     var dim='';
@@ -1718,10 +1754,10 @@ function execPie(id,title,items,selKey,centerLab){
     if(a.frac>=0.09){
       var rr=(R+inner)/2, lx=cx+rr*Math.cos(a.mid), ly=cy+rr*Math.sin(a.mid);
       labels+='<g class="pie-in'+dim+'"><text x="'+lx.toFixed(1)+'" y="'+(ly-8).toFixed(1)+
-        '" text-anchor="middle" class="pie-l1">'+esc(pieLab(a.it.lab))+'</text>'+
-        '<text x="'+lx.toFixed(1)+'" y="'+(ly+7).toFixed(1)+'" text-anchor="middle" class="pie-l2">'+
+        '" text-anchor="middle" class="pie-l1" fill="'+ink+'">'+esc(pieLab(a.it.lab))+'</text>'+
+        '<text x="'+lx.toFixed(1)+'" y="'+(ly+7).toFixed(1)+'" text-anchor="middle" class="pie-l2" fill="'+ink+'">'+
         execFmt(a.it.v)+'</text>'+
-        '<text x="'+lx.toFixed(1)+'" y="'+(ly+21).toFixed(1)+'" text-anchor="middle" class="pie-l3">'+
+        '<text x="'+lx.toFixed(1)+'" y="'+(ly+21).toFixed(1)+'" text-anchor="middle" class="pie-l3" fill="'+ink+'" fill-opacity=".82">'+
         pctTxt+'</text></g>';
     } else {
       var ex=cx+(R+14)*Math.cos(a.mid), ey=cy+(R+14)*Math.sin(a.mid);
@@ -1757,12 +1793,27 @@ function execPies(){
     ros.forEach(function(ro){ var v=execCell(sitesOfRo(ro),ty,st).b1; if(v>bv){bv=v;best=ro;} });
     EXP.ro=best;
   }
+  /* Renk KIMLIGE bagli: RO kendi rengini uygulamanin her yerinde tasiyor
+     (ray, satirlar, cipler), pasta da ayni kaynagi kullaniyor. */
   var roItems=ros.map(function(ro){
-    return {k:ro,lab:ro,v:execCell(sitesOfRo(ro),ty,st).b1};
+    var h=roHex(ro);
+    return {k:ro,lab:ro,v:execCell(sitesOfRo(ro),ty,st).b1,c:'var(--ro-'+ro+')',hex:h};
   });
-  var siteItems=sitesOfRo(EXP.ro).map(function(sst){
-    return {k:siteKey(sst),lab:sst.site,v:execCell([sst],ty,st).b1};
+  /* Site rengi RO icindeki KAYIT sirasina gore; siralama sonradan yapiliyor
+     ki renk degerle birlikte yer degistirmesin. */
+  var all=sitesOfRo(EXP.ro).map(function(sst,i){
+    return {k:siteKey(sst),lab:sst.site,v:execCell([sst],ty,st).b1,
+            c:PIE_COLORS[i%PIE_COLORS.length],hex:PIE_COLORS[i%PIE_COLORS.length]};
   }).filter(function(x){ return x.v>0; }).sort(function(a,b){ return b.v-a.v; });
+  /* ~6 dilimden sonrasi "diger"e katlaniyor: daha fazla kategorik renk
+     bitisikte ayirt edilemiyor (olculdu). */
+  var siteItems=all;
+  if(all.length>PIE_MAX){
+    var head=all.slice(0,PIE_MAX-1), rest=all.slice(PIE_MAX-1), sum=0;
+    rest.forEach(function(x){ sum+=x.v; });
+    siteItems=head.concat([{k:'__other',lab:t('execOther')+' ('+rest.length+')',v:sum,
+                            c:PIE_OTHER,hex:PIE_OTHER,noClick:true}]);
+  }
 
   return '<div class="ex-pies">'+
     execPie('ro',t('execPieRo'),roItems,EXP.ro,t('execBudgetYear'))+
@@ -2218,8 +2269,12 @@ function drawSplashMap(){
   var W=cv.width, H=cv.height;
   var cw=W/WORLD_MAP.cols, ch=H/WORLD_MAP.rows;
   var keys=Object.keys(SITE_GEO||{});
-  var RO_HUE={PAS:'#eb6834',PDA:'#1baf7a',PDC:'#eda100',PDE:'#3b9ae4',
-              PTA:'#9085e9',PTC:'#e87ba4',PTE:'#22c55e'};
+  /* RO rengi TEK kaynaktan: --ro-* degiskenleri. Burada ayri bir kopya
+     vardi ve uygulamanin geri kalaniyla uyusmuyordu (PDE #3b9ae4 vs #0072ce,
+     PTE ise #22c55e = tokens/colors.css'teki --success, yani REZERVE bir
+     durum rengi kategori rengi olarak kullaniliyordu). */
+  var RO_HUE={};
+  ['PAS','PDA','PDC','PDE','PTA','PTC','PTE'].forEach(function(r){ RO_HUE[r]=roHex(r); });
   function proj(lat,lon){
     return [((lon-WORLD_MAP.lon0)/WORLD_MAP.step+0.5)*cw,
             ((WORLD_MAP.lat0-lat)/WORLD_MAP.step+0.5)*ch];

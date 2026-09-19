@@ -432,19 +432,19 @@ body.has-rail{padding-left:var(--rail-w)}
 .ex-pie-w{width:100%; aspect-ratio:560/430}
 .ex-pie-w svg{width:100%; height:100%; display:block}
 .ex-pie-empty{padding:60px 0; text-align:center; color:var(--text-mute); font-size:13px}
-.pie-sl{cursor:pointer; transition:opacity .15s ease, transform .15s ease; transform-origin:280px 205px}
+.pie-sl{stroke:var(--card); stroke-width:2; cursor:pointer; transition:opacity .15s ease, transform .15s ease; transform-origin:280px 205px}
 .pie-sl:hover{opacity:.88}
 /* Secili dilim: hafif buyume + beyaz ayirici halka. Digerlerini soldurmak
    ic yazilari okunmaz yapiyordu. */
-.pie-sl.pie-on{transform:scale(1.045); stroke:var(--card); stroke-width:3}
+.pie-sl.pie-on{transform:scale(1.045); stroke-width:3}
 /* Etiketler dilimin USTUNDE duruyor ve tiklamayi yutuyordu: kullanici
    dilimdeki RO adina bassa hicbir sey olmuyordu (testte yakalandi).
    Etiket katmani tiklamaya saydam. */
 .pie-in,.pie-out,.pie-ctv,.pie-ctu,.pie-ctl{pointer-events:none}
 .pie-dim{opacity:.34}
-.pie-l1{font-size:13px; font-weight:800; fill:#fff}
-.pie-l2{font-size:13px; font-weight:800; fill:#fff}
-.pie-l3{font-size:11px; font-weight:700; fill:#fff; fill-opacity:.85}
+.pie-l1{font-size:13px; font-weight:800}
+.pie-l2{font-size:13px; font-weight:800}
+.pie-l3{font-size:11px; font-weight:700}
 .pie-lead{fill:none; stroke:var(--border-strong); stroke-width:1.2}
 .pie-o1{font-size:11.5px; font-weight:800; fill:var(--text)}
 .pie-o2{font-size:10.5px; font-weight:600; fill:var(--text-mute)}
@@ -482,7 +482,10 @@ body.has-rail{padding-left:var(--rail-w)}
 .bc-track{fill:var(--sunken); fill-opacity:.55}
 .bc-hit{fill:transparent}
 .bc-v{font-size:11.5px; font-weight:800; font-variant-numeric:tabular-nums}
-.bc-v0{fill:#64748b} .bc-v1{fill:#0a7ddb} .bc-v2{fill:#12803c}
+/* Yazi seri rengini GIYMEZ: deger etiketleri metin tokeninde kalir,
+   kimligi yanlarindaki renkli cubuk tasir. Seri rengine boyanmislardi. */
+.bc-v0,.bc-v1,.bc-v2{fill:var(--text-mute)}
+.bc-v2{fill:var(--text)}
 .bc-g{cursor:pointer}
 .bc-g:hover rect:not(.bc-hit){filter:brightness(1.08)}
 .bc-g:hover .bc-hit{fill:var(--sunken); fill-opacity:.55}
