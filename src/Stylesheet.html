@@ -650,7 +650,16 @@ body.has-rail{padding-left:var(--rail-w)}
       box-shadow:0 0 0 1px rgba(12,22,38,.2)}
 .flag svg{display:block}
 body.dark-mode .flag{box-shadow:0 0 0 1px rgba(255,255,255,.22)}
-body.dark-mode .filters-inner{box-shadow:var(--sh-2)}
+/* Koyu temada maviyi KOYU karta karistirmak paneli daha da koyultuyor ve
+   zeminden ayirt edilemiyordu. Koyu arayuzde "ayri bolge" yukseklikle
+   okunur: panel zeminden DAHA ACIK, hafif mavi bir yuzey. */
+body.dark-mode .filters-inner{
+  background:linear-gradient(180deg,
+    color-mix(in srgb,#7ab8e0 17%,var(--card)),
+    color-mix(in srgb,#7ab8e0 11%,var(--card)));
+  border-color:color-mix(in srgb,#7ab8e0 26%,var(--border));
+  box-shadow:var(--sh-2);
+}
 #langLabel{display:inline-flex; align-items:center; gap:7px}
 .headline .flag{vertical-align:-2px; margin-right:2px}
 
@@ -696,9 +705,9 @@ body.dark-mode .filters-inner{box-shadow:var(--sh-2)}
      marka mavisinin cok hafif bir yikamasi. color-mix ile veriliyor, boylece
      acik ve koyu temada ayni kural tek yerden calisiyor. */
   background:linear-gradient(180deg,
-    color-mix(in srgb,var(--valeo-mid) 7%,var(--card)),
-    color-mix(in srgb,var(--valeo-mid) 4%,var(--card)));
-  border:1px solid color-mix(in srgb,var(--valeo-mid) 24%,var(--border));
+    color-mix(in srgb,var(--valeo-mid) 14%,var(--card)),
+    color-mix(in srgb,var(--valeo-mid) 9%,var(--card)));
+  border:1px solid color-mix(in srgb,var(--valeo-mid) 32%,var(--border));
   border-radius:18px;
   box-shadow:var(--sh-2), inset 0 1px 0 rgba(255,255,255,.5);
 }
