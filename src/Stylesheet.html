@@ -484,6 +484,15 @@ body.has-rail{padding-left:var(--rail-w)}
 /* Sabit yukseklik + preserveAspectRatio:none yazilari yatayda geriyordu.
    Oranla verilince SVG kendi olceginde kaliyor. */
 .bc-wrap{width:100%; aspect-ratio:1180/360; max-width:100%}
+/* Aile grafigi: iki birim yan yana. Iki AYRI grafik -- ayni eksene iki olcek
+   koymak (cift eksen) veriyi yanlis okutur. */
+.bc-pair{display:grid; grid-template-columns:1fr 1fr; gap:22px}
+.bc-half{min-width:0}
+.bc-half h4{
+  margin:0 0 2px; font-size:10px; font-weight:800; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--valeo-mid);
+}
+.bc-half .bc-wrap{aspect-ratio:620/330}
 .bc-wrap svg{width:100%; height:100%; display:block; overflow:visible}
 .bc-ax{font-size:11px; fill:var(--text-mute); font-weight:600}
 .bc-grid{stroke:var(--border); stroke-width:1}
@@ -1241,6 +1250,8 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
      telefonda arama diye bir sey kalmaz. Kalan genisligi kaplar; kullanici
      cipinin metni zaten bu genislikte gizleniyor, yer aciliyor. */
   .bc-wrap{aspect-ratio:760/360}
+  .bc-pair{grid-template-columns:1fr; gap:18px}
+  .bc-half .bc-wrap{aspect-ratio:620/330}
   .ex-pies{grid-template-columns:1fr}
   .bc-lb-n{display:none}
   .topsearch{flex:1 1 auto; margin-left:0}

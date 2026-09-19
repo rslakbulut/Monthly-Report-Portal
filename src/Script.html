@@ -1480,12 +1480,12 @@ function execTypeRow(){ return F.type==='ALL'?'TOTAL':F.type; }
 var EXV={unit:'OI'};          // 'OI' | 'COUNT'
 var EXP={ro:null};            // sag pastada gosterilen RO
 
-function execUnit(){ return EXV.unit==='OI'?'M€':t('execQty'); }
+function execUnit(u){ return (u||EXV.unit)==='OI'?'M€':t('execQty'); }
 /* Baslik rozeti secili dugmenin ETIKETININ AYNISINI gosterir ('OI (M€)'),
    yalin 'M€' degil. Pasta ortasindaki birim satiri ve ipuclari kisa
    halini kullanmaya devam ediyor -- orada zaten deger yaninda duruyor. */
-function execUnitLabel(){ return EXV.unit==='OI'?'OI (M€)':t('execQty'); }
-function execFmt(v){ return EXV.unit==='OI'?nf(v,1):nf(Math.round(v)); }
+function execUnitLabel(u){ return (u||EXV.unit)==='OI'?'OI (M€)':t('execQty'); }
+function execFmt(v,u){ return (u||EXV.unit)==='OI'?nf(v,1):nf(Math.round(v)); }
 
 /* Ciro kupu (M€). B1 YTD ciro plani detay satirlarinin PLAN tarihinden
    geliyor (planYtdTurnover) -- ozet blokta ciro icin YTD butce sutunu yok. */
@@ -1500,9 +1500,9 @@ function execMoneyCell(list,status,type){
   return c;
 }
 /* Secili birime gore tek giris noktasi. */
-function execCell(list,type,status){
-  return EXV.unit==='OI' ? execMoneyCell(list,status,type==='TOTAL'?'TOTAL':type)
-                         : execCountCell(list,type,status);
+function execCell(list,type,status,u){
+  return (u||EXV.unit)==='OI' ? execMoneyCell(list,status,type==='TOTAL'?'TOTAL':type)
+                              : execCountCell(list,type,status);
 }
 function execUnitToggle(){
   return '<span class="ex-seg" role="group" aria-label="'+esc(t('execUnit'))+'">'+
@@ -1525,7 +1525,7 @@ var BC_TYPE_TONE={P1:0.0,P10:0.22,TTM:0.44};
 
 /* mode 'family' -> POWER DRIVE / POWER THERMAL, 'ro' -> tek tek RO'lar.
    Ikisi ayni cizim koduyla uretiliyor; tek fark satir kumesi ve alt etiket. */
-function execBarRows(mode,st,ty,money){
+function execBarRows(mode,st,ty,money,u){
   var src;
   if(mode==='family'){
     src=['DRIVE','THERMAL'].filter(function(f){ return !EX.fam||EX.fam===f; })
@@ -1539,17 +1539,20 @@ function execBarRows(mode,st,ty,money){
       .map(function(ro){ return {key:ro,label:ro,ros:[ro],list:sitesOfRo(ro)}; });
   }
   return src.map(function(o){
-    o.c=execCell(o.list,ty,st);
+    o.c=execCell(o.list,ty,st,u);
     if(!money) o.byType=EXEC_TYPES.map(function(tp){ return {tp:tp,c:execCountCell(o.list,tp,st)}; });
     return o;
   }).filter(function(r){ return r.c.b1>0||r.c.ytd>0||r.c.real>0; });
 }
-function execBarChart(mode){
-  var st=F.status, ty=execTypeRow(), money=(EXV.unit==='OI');
-  var rows=execBarRows(mode,st,ty,money);
+/* unit verilirse secili birimden BAGIMSIZ cizer (aile grafigi iki birimi
+   yan yana gosteriyor). half=true dar kolon icin daha kucuk viewBox. */
+function execBarChart(mode,unit,half){
+  var u=unit||EXV.unit;
+  var st=F.status, ty=execTypeRow(), money=(u==='OI');
+  var rows=execBarRows(mode,st,ty,money,u);
   if(!rows.length) return '';
 
-  var W=1180,H=360,PL=58,PR=16,PT=40,PB=18;
+  var W=half?620:1180,H=half?330:360,PL=half?50:58,PR=16,PT=36,PB=18;
   var iw=W-PL-PR, ih=H-PT-PB;
   var max=0; rows.forEach(function(r){ max=Math.max(max,r.c.b1,r.c.ytd,r.c.real); });
   var step=Math.pow(10,Math.floor(Math.log(Math.max(max,1))/Math.LN10));
@@ -1606,10 +1609,10 @@ function execBarChart(mode){
       }
       if(val>0)
         bars+='<text x="'+(x+bar/2).toFixed(1)+'" y="'+(yv-8).toFixed(1)+'" text-anchor="middle" '+
-          'class="bc-v bc-v'+k+'">'+execFmt(val)+'</text>';
+          'class="bc-v bc-v'+k+'">'+execFmt(val,u)+'</text>';
     });
-    bars+='<title>'+esc(r.label+' — '+t('execBudgetYear')+' '+execFmt(r.c.b1)+' · '+
-      t('lnBdgt')+' '+execFmt(r.c.ytd)+' · '+t('lnReal')+' '+execFmt(r.c.real)+' '+execUnit())+'</title></g>';
+    bars+='<title>'+esc(r.label+' — '+t('execBudgetYear')+' '+execFmt(r.c.b1,u)+' · '+
+      t('lnBdgt')+' '+execFmt(r.c.ytd,u)+' · '+t('lnReal')+' '+execFmt(r.c.real,u)+' '+execUnit(u))+'</title></g>';
   });
 
   var labels=rows.map(function(r){
@@ -1628,10 +1631,7 @@ function execBarChart(mode){
     return '<span class="bc-kk"><i style="background:'+sr[2]+'"></i>'+esc(t(sr[1]))+'</span>';
   }).join('');
 
-  return '<section class="panel bc-panel"><div class="panel-h bc-head">'+
-      '<h3>'+esc(mode==='family'?t('execChartFam'):t('execChartTitle'))+
-        ' <span class="bc-unit">'+esc(execUnitLabel())+'</span></h3>'+
-      '<div class="bc-tools"><span class="bc-key">'+key+'</span>'+execUnitToggle()+'</div></div>'+
+  var body=
     '<div class="bc-wrap"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" '+
       'aria-label="'+esc(t('execChartTitle'))+'">'+
       '<defs>'+BC_SERIES.map(function(sr,k){
@@ -1640,7 +1640,28 @@ function execBarChart(mode){
           '<stop offset="1" stop-color="'+sr[2]+'" stop-opacity=".72"/></linearGradient>';
       }).join('')+'</defs>'+grid+bars+'</svg></div>'+
     '<div class="bc-labels" style="width:'+(bw*rows.length/W*100)+'%;margin-left:'+(x0off/W*100)+'%">'+
-      labels+'</div></section>';
+      labels+'</div>';
+  if(half) return '<div class="bc-half"><h4>'+esc(execUnitLabel(u))+'</h4>'+body+'</div>';
+  return '<section class="panel bc-panel"><div class="panel-h bc-head">'+
+      '<h3>'+esc(mode==='family'?t('execChartFam'):t('execChartTitle'))+
+        ' <span class="bc-unit">'+esc(execUnitLabel(u))+'</span></h3>'+
+      '<div class="bc-tools"><span class="bc-key">'+key+'</span>'+execUnitToggle()+'</div></div>'+
+    body+'</section>';
+}
+
+/* Aile grafiginde yalniz iki kategori var; tek birim tam genisligi bosa
+   harciyordu. Iki birim YAN YANA gosteriliyor -- ayni eksene iki olcek
+   koymak (cift eksen) yasak oldugu icin dogru cozum iki AYRI grafik. */
+function execFamilyPair(){
+  var a=execBarChart('family','OI',true), b=execBarChart('family','COUNT',true);
+  if(!a&&!b) return '';
+  var key=BC_SERIES.map(function(sr){
+    return '<span class="bc-kk"><i style="background:'+sr[2]+'"></i>'+esc(t(sr[1]))+'</span>';
+  }).join('');
+  return '<section class="panel bc-panel"><div class="panel-h bc-head">'+
+      '<h3>'+esc(t('execChartFam'))+'</h3>'+
+      '<div class="bc-tools"><span class="bc-key">'+key+'</span></div></div>'+
+    '<div class="bc-pair">'+a+b+'</div></section>';
 }
 
 /* ---------- iki pasta: RO -> site ----------
@@ -1804,7 +1825,7 @@ function execPanel(){
   /* Uc halka (is kolu / urun tipi / proje tipi) kaldirildi: ayni kirilimler
      zaten ust filtre barinda ve is kolu cubuk grafiginde secilebiliyor,
      ekranda ayni bilgi ucuncu kez tekrarlaniyordu. */
-  return execBarChart('family')+
+  return execFamilyPair()+
     execBarChart('ro')+
     execPies();
 }
