@@ -237,8 +237,7 @@ var T={
   execScopeFam:'By business line',execScopeRo:'By RO',
   execSeries:'Budget Year · Budget YTD · launched',
   execChartTitle:'By RO — Budget Year · Budget YTD · launched',execTotal:'Total',
-  execBudgetYear:'Budget Year',execUnit:'Unit',execOther:'Other',execQty:'Project Qty',execPieWrap:'Composition — RO to site',execPieRo:'By RO',
-  execPieSite:'By site',noData:'No data',
+  execBudgetYear:'Budget Year',execQty:'Project Qty',noData:'No data',
 
   lnBdgt:'Budget YTD',
   tabNewReman:'New & Reman',tabOffroad:'Offroad',
@@ -253,8 +252,7 @@ var T={
   execScopeFam:'İş kolu bazında',execScopeRo:'RO bazında',
   execSeries:'Budget Year · Budget YTD · gerçekleşen',
   execChartTitle:'RO bazında — Budget Year · Budget YTD · gerçekleşen',execTotal:'Toplam',
-  execBudgetYear:'Budget Year',execUnit:'Birim',execOther:'Diğer',execQty:'Project Qty',execPieWrap:'Dağılım — RO’dan site’a',execPieRo:'RO bazında',
-  execPieSite:'Site bazında',noData:'Veri yok',
+  execBudgetYear:'Budget Year',execQty:'Project Qty',noData:'Veri yok',
   lnBdgt:'Budget YTD',lnReal:'YTD gerçekleşen',
   offroadEmpty:'Offroad verisi henüz yok. Offroad aylık raporu gelmeye başlayınca bu sekme dolacak.',
   whatAmILookingAt:'Bu ekran ne anlatıyor',year:'Yıl',month:'Ay',productType:'Ürün tipi',
@@ -1328,17 +1326,6 @@ function renderRoLevel(){
      icin EX.fam, digerleri icin ZATEN VAR OLAN F.status / F.type -- yani
      halkaya tiklamak ust filtre barindaki dugmeye basmakla ayni sey, iki
      ayri "secili" durum olusmuyor. Ayni dilime tekrar tiklamak kaldirir. */
-  $('view').querySelectorAll('[data-exu]').forEach(function(b){
-    b.onclick=function(){ EXV.unit=b.getAttribute('data-exu'); render(); };
-  });
-  /* Sol pasta RO secer, sag pasta site detayini acar. */
-  $('view').querySelectorAll('[data-exp]').forEach(function(el){
-    el.onclick=function(){
-      var kind=el.getAttribute('data-exp'), v=el.getAttribute('data-expv');
-      if(kind==='ro'){ EXP.ro=v; render(); }
-      else if(v!=='__other') openDrawer(v);
-    };
-  });
   /* Aile cubugu/etiketi EX.fam'i surer -- halkalardaki secimle AYNI durum,
      iki ayri "secili aile" olusmuyor. Ayni aileye tekrar tiklamak kaldirir. */
   $('view').querySelectorAll('[data-exfam]').forEach(function(g){
@@ -1484,8 +1471,9 @@ function execTypeRow(){ return F.type==='ALL'?'TOTAL':F.type; }
 /* ---------- gorunum birimi: OI (M€) / proje adedi ----------
    Acilista OI (kullanici karari). Tek dugmeyle adet gorunumune geciliyor;
    birim her grafigin basligindan okunuyor. */
+/* Birim artik SECIM degil: iki grafik iki birimi birden gosteriyor.
+   Kalan tek is, birim verilmeyen cagrilarda varsayilan olmak. */
 var EXV={unit:'OI'};          // 'OI' | 'COUNT'
-var EXP={ro:null};            // sag pastada gosterilen RO
 
 function execUnit(u){ return (u||EXV.unit)==='OI'?'M€':t('execQty'); }
 /* Baslik rozeti secili dugmenin ETIKETININ AYNISINI gosterir ('OI (M€)'),
@@ -1510,13 +1498,6 @@ function execMoneyCell(list,status,type){
 function execCell(list,type,status,u){
   return (u||EXV.unit)==='OI' ? execMoneyCell(list,status,type==='TOTAL'?'TOTAL':type)
                               : execCountCell(list,type,status);
-}
-function execUnitToggle(){
-  return '<span class="ex-seg" role="group" aria-label="'+esc(t('execUnit'))+'">'+
-    [['OI','OI (M€)'],['COUNT',t('execQty')]].map(function(x){
-      return '<button type="button" data-exu="'+x[0]+'" aria-pressed="'+(EXV.unit===x[0])+'">'+
-        esc(x[1])+'</button>';
-    }).join('')+'</span>';
 }
 
 /* ---------- RO cubuk grafigi: Budget Year / B1 YTD / Real ----------
@@ -1686,167 +1667,15 @@ function execPair(mode){
   return '<div class="bc-pair bc-pair-'+esc(mode)+'">'+a+b+'</div>';
 }
 
-/* ---------- iki pasta: RO -> site ----------
-   Sol pastada RO'lar, dilime tiklaninca sag pasta o RO'nun site'larina
-   doner; sagdaki bir site'a tiklaninca mevcut sag panel (drawer) o site'in
-   detayiyla aciliyor. Etiket yerlesimi: dilim yeterince buyukse (>= %9)
-   yazi dilimin ICINDE, degilse disarida ve ince bir kilavuz cizgiyle --
-   yedi dilimin ucu kucuk oldugunda ic etiket okunmuyor. */
-/* Renk kararlari EL YORDAMIYLA degil, olcerek. */
+/* Renk kaynagi: RO renkleri --ro-* degiskenlerinden okunuyor; acilis
+   ekranindaki nokta renkleri de ayni kaynaktan geliyor, boylece iki yerde
+   ayri palet tutulmuyor. */
 function cssVar(n){
   try{ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
   catch(e){ return ''; }
 }
 function roHex(ro){ return cssVar('--ro-'+ro)||'#0072ce'; }
-/* Dilim uzerindeki yazi rengi: WCAG bagil parlakliga gore secilir. Once
-   HEPSI beyazdi; #eda100 gibi acik dilimlerde beyaz yazi okunmuyordu
-   (validator: kontrast 2.11:1). */
-function relLum(hex){
-  var m=/^#?([0-9a-fA-F]{6})$/.exec(String(hex||'').trim());
-  if(!m) return null;
-  var n=parseInt(m[1],16);
-  function f(c){ c/=255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4); }
-  return 0.2126*f(n>>16&255)+0.7152*f(n>>8&255)+0.0722*f(n&255);
-}
-function contrastRatio(l1,l2){
-  var a=Math.max(l1,l2), b=Math.min(l1,l2);
-  return (a+0.05)/(b+0.05);
-}
-/* Iki secenegin kontrasti HESAPLANIR, buyugu secilir. Once tek bir parlaklik
-   ESIGI kullaniyordum ve orta tonlarda yanlis seciyordu: #94a3b8 uzerinde
-   beyaz 2.5:1 iken koyu murekkep 6.9:1 (olculdu). */
-var INK_DARK='#0b1b2b';
-function inkOn(hex){
-  var L=relLum(hex); if(L==null) return '#ffffff';
-  var white=contrastRatio(1,L), dark=contrastRatio(relLum(INK_DARK),L);
-  return dark>white?INK_DARK:'#ffffff';
-}
-/* Site dilimleri icin dogrulanmis 6'li palet + "diger" grisi. Sira SABIT:
-   site'in RO icindeki kayit sirasina gore atanir, DEGERE gore degil --
-   degere gore atamak birim/filtre degisince renkleri yer degistiriyordu
-   (recolor-on-filter). */
-var PIE_COLORS=['#0072ce','#eda100','#1baf7a','#9085e9','#e87ba4','#c2410c'];
-var PIE_OTHER='#94a3b8';
-var PIE_MAX=6;   // pasta ~6 dilimi gecince bitisik siniflar birbirine karisir
 
-function pieSlices(items,cx,cy,R,inner){
-  var tot=0; items.forEach(function(it){ tot+=Math.max(0,it.v); });
-  var ang=-Math.PI/2, out=[];
-  items.forEach(function(it,i){
-    var frac=tot>0?Math.max(0,it.v)/tot:0, a2=ang+frac*2*Math.PI;
-    var mid=(ang+a2)/2;
-    out.push({it:it,i:i,frac:frac,a1:ang,a2:a2,mid:mid,
-      big:(a2-ang)>Math.PI,
-      p1:[cx+R*Math.cos(ang),cy+R*Math.sin(ang)],
-      p2:[cx+R*Math.cos(a2),cy+R*Math.sin(a2)],
-      q1:[cx+inner*Math.cos(ang),cy+inner*Math.sin(ang)],
-      q2:[cx+inner*Math.cos(a2),cy+inner*Math.sin(a2)]});
-    ang=a2;
-  });
-  return {tot:tot,arcs:out};
-}
-/* Uzun site adlari dilime de dis etikete de sigmiyordu. */
-function pieLab(x){ x=String(x||''); return x.length>15?(x.slice(0,14)+'…'):x; }
-function execPie(id,title,items,selKey,centerLab){
-  /* Genislik 430 -> 560: dis etiketler kilavuz cizgisiyle birlikte kutunun
-     disina tasip kesiliyordu ("PDC 8.8 ·", "a 3 THS" olarak goruldu).
-     Cember ayni yerde kalsin diye merkez de ortalandi. */
-  var W=560,H=430,cx=280,cy=205,R=150,inner=88;
-  var d=pieSlices(items,cx,cy,R,inner);
-  if(!d.tot) return '<section class="ex-pie"><h3>'+esc(title)+'</h3>'+
-    '<div class="ex-pie-empty">'+esc(t('noData'))+'</div></section>';
-  var paths='',labels='';
-  d.arcs.forEach(function(a){
-    if(a.frac<=0) return;
-    var c=a.it.c||PIE_COLORS[a.i%PIE_COLORS.length];
-    var ink=inkOn(a.it.hex||c);
-    /* Secilmeyenleri soldurmak yaziyi okunmaz yapiyordu (goruldu). Secim
-       artik SOLDURARAK degil, secili dilimi one cikararak gosteriliyor. */
-    var dim='';
-    var on=(selKey===a.it.k);
-    paths+='<path class="pie-sl'+dim+(on?' pie-on':'')+'" data-exp="'+esc(id)+'" data-expv="'+esc(a.it.k)+'" '+
-      'fill="'+c+'" d="M '+a.p1[0].toFixed(1)+' '+a.p1[1].toFixed(1)+
-      ' A '+R+' '+R+' 0 '+(a.big?1:0)+' 1 '+a.p2[0].toFixed(1)+' '+a.p2[1].toFixed(1)+
-      ' L '+a.q2[0].toFixed(1)+' '+a.q2[1].toFixed(1)+
-      ' A '+inner+' '+inner+' 0 '+(a.big?1:0)+' 0 '+a.q1[0].toFixed(1)+' '+a.q1[1].toFixed(1)+' Z">'+
-      '<title>'+esc(a.it.lab+': '+execFmt(a.it.v)+' '+execUnit()+' ('+Math.round(a.frac*100)+'%)')+'</title></path>';
-
-    var pctTxt=Math.round(a.frac*100)+'%';
-    if(a.frac>=0.09){
-      var rr=(R+inner)/2, lx=cx+rr*Math.cos(a.mid), ly=cy+rr*Math.sin(a.mid);
-      labels+='<g class="pie-in'+dim+'"><text x="'+lx.toFixed(1)+'" y="'+(ly-8).toFixed(1)+
-        '" text-anchor="middle" class="pie-l1" fill="'+ink+'">'+esc(pieLab(a.it.lab))+'</text>'+
-        '<text x="'+lx.toFixed(1)+'" y="'+(ly+7).toFixed(1)+'" text-anchor="middle" class="pie-l2" fill="'+ink+'">'+
-        execFmt(a.it.v)+'</text>'+
-        '<text x="'+lx.toFixed(1)+'" y="'+(ly+21).toFixed(1)+'" text-anchor="middle" class="pie-l3" fill="'+ink+'" fill-opacity=".82">'+
-        pctTxt+'</text></g>';
-    } else {
-      var ex=cx+(R+14)*Math.cos(a.mid), ey=cy+(R+14)*Math.sin(a.mid);
-      var right=Math.cos(a.mid)>=0, tx=right?ex+26:ex-26;
-      tx=Math.max(78,Math.min(W-78,tx));   // kutu disina tasmasin
-      labels+='<g class="pie-out'+dim+'">'+
-        '<polyline class="pie-lead" points="'+(cx+(R+2)*Math.cos(a.mid)).toFixed(1)+','+
-          (cy+(R+2)*Math.sin(a.mid)).toFixed(1)+' '+ex.toFixed(1)+','+ey.toFixed(1)+' '+
-          tx.toFixed(1)+','+ey.toFixed(1)+'"/>'+
-        '<text x="'+(right?tx+4:tx-4)+'" y="'+(ey-1).toFixed(1)+'" text-anchor="'+(right?'start':'end')+
-          '" class="pie-o1">'+esc(pieLab(a.it.lab))+'</text>'+
-        '<text x="'+(right?tx+4:tx-4)+'" y="'+(ey+12).toFixed(1)+'" text-anchor="'+(right?'start':'end')+
-          '" class="pie-o2">'+execFmt(a.it.v)+' · '+pctTxt+'</text></g>';
-    }
-  });
-  return '<section class="ex-pie"><h3>'+esc(title)+'</h3>'+
-    '<div class="ex-pie-w"><svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(title)+'">'+
-      paths+labels+
-      '<text x="'+cx+'" y="'+(cy-6)+'" text-anchor="middle" class="pie-ctv">'+execFmt(d.tot)+'</text>'+
-      '<text x="'+cx+'" y="'+(cy+14)+'" text-anchor="middle" class="pie-ctu">'+esc(execUnit())+'</text>'+
-      '<text x="'+cx+'" y="'+(cy+32)+'" text-anchor="middle" class="pie-ctl">'+esc(centerLab)+'</text>'+
-    '</svg></div></section>';
-}
-
-function execPies(){
-  var st=F.status, ty=execTypeRow();
-  var ros=BOOT.roOrder.filter(function(ro){ return sitesOfRo(ro).length && (!EX.fam||FAMILY[ro]===EX.fam); });
-  if(!ros.length) return '';
-  /* Ilk acilista sag pasta bos kalmasin: en buyuk RO secili gelir ve bu
-     secim solda da isaretli gorunur. */
-  if(!EXP.ro||ros.indexOf(EXP.ro)<0){
-    var best=null,bv=-1;
-    ros.forEach(function(ro){ var v=execCell(sitesOfRo(ro),ty,st).b1; if(v>bv){bv=v;best=ro;} });
-    EXP.ro=best;
-  }
-  /* Renk KIMLIGE bagli: RO kendi rengini uygulamanin her yerinde tasiyor
-     (ray, satirlar, cipler), pasta da ayni kaynagi kullaniyor. */
-  var roItems=ros.map(function(ro){
-    var h=roHex(ro);
-    return {k:ro,lab:ro,v:execCell(sitesOfRo(ro),ty,st).b1,c:'var(--ro-'+ro+')',hex:h};
-  });
-  /* Site rengi RO icindeki KAYIT sirasina gore; siralama sonradan yapiliyor
-     ki renk degerle birlikte yer degistirmesin. */
-  var all=sitesOfRo(EXP.ro).map(function(sst,i){
-    return {k:siteKey(sst),lab:sst.site,v:execCell([sst],ty,st).b1,
-            c:PIE_COLORS[i%PIE_COLORS.length],hex:PIE_COLORS[i%PIE_COLORS.length]};
-  }).filter(function(x){ return x.v>0; }).sort(function(a,b){ return b.v-a.v; });
-  /* ~6 dilimden sonrasi "diger"e katlaniyor: daha fazla kategorik renk
-     bitisikte ayirt edilemiyor (olculdu). */
-  var siteItems=all;
-  if(all.length>PIE_MAX){
-    var head=all.slice(0,PIE_MAX-1), rest=all.slice(PIE_MAX-1), sum=0;
-    rest.forEach(function(x){ sum+=x.v; });
-    siteItems=head.concat([{k:'__other',lab:t('execOther')+' ('+rest.length+')',v:sum,
-                            c:PIE_OTHER,hex:PIE_OTHER,noClick:true}]);
-  }
-
-  /* Birim secici buraya tasindi: cubuk grafiklerin ikisi de artik iki birimi
-     birden gosteriyor, secime ihtiyaci kalmadi. Secim yalnizca pastalari
-     ilgilendiriyor, kontrol de onlarin basinda duruyor. */
-  return '<section class="panel ex-pies-wrap"><div class="panel-h bc-head">'+
-      '<h3>'+esc(t('execPieWrap'))+' <span class="bc-unit">'+esc(execUnitLabel())+'</span></h3>'+
-      '<div class="bc-tools">'+execUnitToggle()+'</div></div>'+
-    '<div class="ex-pies">'+
-      execPie('ro',t('execPieRo'),roItems,EXP.ro,t('execBudgetYear'))+
-      execPie('site',t('execPieSite')+' — '+EXP.ro,siteItems,null,t('execBudgetYear'))+
-    '</div></section>';
-}
 
 function execPanel(){
   if(!DATA||!DATA.sites||!DATA.sites.length) return '';
@@ -1854,8 +1683,7 @@ function execPanel(){
      zaten ust filtre barinda ve is kolu cubuk grafiginde secilebiliyor,
      ekranda ayni bilgi ucuncu kez tekrarlaniyordu. */
   return execPair('family')+
-    execPair('ro')+
-    execPies();
+    execPair('ro');
 }
 
 /* Arama sonucu / grafik cubugu -> site detayi. NAV.siteIdx o RO'nun TAM

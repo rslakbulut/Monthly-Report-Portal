@@ -400,7 +400,7 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
    "bilinmiyor" -- ikisi ayni sey degil, ust yonetime oyle gitmesin. */
 .ex-rep-nr.on .ex-rep-ch{transform:rotate(90deg)}
 
-/* ---------- birim secici (OI / adet) ---------- */
+/* ---------- grafik kart basligi ---------- */
 /* Kart basligi UC KADEMELI okunur: kapsam (eyebrow) -> OLCU (h3) -> seriler.
    Onceki halinde olcu 10px'lik soluk bir rozet, seriler de 11.5px gri bir
    satirdi; grafigin NEYI anlattigini soyleyen ogeler goze carpmiyordu. */
@@ -415,23 +415,6 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
   line-height:1.14; color:var(--text);
 }
 .bc-sub{margin:5px 0 0; font-size:12.5px; font-weight:600; color:var(--text-dim); line-height:1.35}
-.bc-unit{
-  font-size:10px; font-weight:800; letter-spacing:.1em; color:var(--valeo-mid);
-  background:rgba(0,114,206,.12); border-radius:6px; padding:2px 7px; margin-left:8px;
-  vertical-align:2px;
-}
-.bc-tools{display:flex; align-items:center; gap:16px; flex-wrap:wrap}
-.ex-seg{display:inline-flex; background:var(--sunken); border:1px solid var(--border); border-radius:11px; padding:3px; gap:3px}
-.ex-seg button{
-  background:transparent; color:var(--text-dim); border:none; cursor:pointer;
-  padding:0 13px; min-height:32px; font:inherit; font-size:12.5px; font-weight:700;
-  border-radius:8px; white-space:nowrap; transition:background .15s ease, color .15s ease;
-}
-.ex-seg button:hover{background:var(--card); color:var(--text)}
-.ex-seg button[aria-pressed="true"]{
-  background:linear-gradient(180deg,#0a7ddb,#0060b4); color:#fff;
-  box-shadow:0 1px 2px rgba(0,61,155,.4), 0 4px 10px -3px rgba(0,61,155,.55);
-}
 /* Efsane artik "kucuk gri yazi" degil: kendi yuzeyinde, metin murekkebiyle. */
 .bc-key{
   display:inline-flex; align-items:center; gap:12px; flex-wrap:wrap;
@@ -446,7 +429,7 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
 .bc-labels{display:flex; width:100%; margin-top:2px}
 .bc-lb{
   display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0;
-  background:none; border:none; font:inherit; cursor:pointer; padding:6px 2px 2px;
+  background:none; border:none; font:inherit; cursor:pointer; padding:6px 7px 2px;
   border-radius:10px; color:var(--text);
 }
 .bc-lb:hover{background:var(--sunken)}
@@ -462,43 +445,14 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
 }
 .xro .flag{border-radius:2px}
 .bc-lb-ros{display:flex; gap:4px; flex-wrap:wrap; justify-content:center; margin-top:2px}
+/* RO adi ONCE tek satira sikistirilip ucu kesiliyordu: "Power Asia" tam,
+   "Power Thermal A..." yarim goruyordu -- ayni turden yedi etiket birbirinden
+   farkli duruyordu. Artik SARIYOR (kesilmiyor) ve iki satirlik yer her
+   sutunda ayrilmis durumda, boylece hepsi ayni yuksekligi kapliyor; yan
+   sutunlarla arayi acmak icin etiketin kendi yan boslugu da buyutuldu. */
 .bc-lb-n{font-size:10.5px; font-weight:600; color:var(--text-mute); text-align:center;
-         overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%}
-
-/* ---------- iki pasta ---------- */
-/* Pastalar artik ortak bir panelin icinde (birim secici basligi orada). */
-.ex-pies-wrap{margin-bottom:18px}
-.ex-pies{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); gap:18px}
-/* Pastalar ortak panelin icinde: kart icinde kart olmasin. */
-.ex-pies .ex-pie{background:transparent; box-shadow:none; border:0; padding:6px 0 0}
-.ex-pie{background:var(--card); border-radius:var(--r-lg); box-shadow:var(--sh-2); padding:18px 20px 12px}
-.ex-pie h3{margin:0 0 4px; font-size:10px; font-weight:800; letter-spacing:.12em;
-           text-transform:uppercase; color:var(--text-mute)}
-/* Pasta dairesel: kap genisledikce boyu da buyuyup 1920'de 657px'e
-   ciikiyordu. Kart sayfayi doldurmaya devam ediyor, DAIRE icinde
-   sinirlanip ortalaniyor. */
-.ex-pie-w{width:100%; max-width:560px; margin:0 auto; aspect-ratio:560/430}
-.ex-pie-w svg{width:100%; height:100%; display:block}
-.ex-pie-empty{padding:60px 0; text-align:center; color:var(--text-mute); font-size:13px}
-.pie-sl{stroke:var(--card); stroke-width:2; cursor:pointer; transition:opacity .15s ease, transform .15s ease; transform-origin:280px 205px}
-.pie-sl:hover{opacity:.88}
-/* Secili dilim: hafif buyume + beyaz ayirici halka. Digerlerini soldurmak
-   ic yazilari okunmaz yapiyordu. */
-.pie-sl.pie-on{transform:scale(1.045); stroke-width:3}
-/* Etiketler dilimin USTUNDE duruyor ve tiklamayi yutuyordu: kullanici
-   dilimdeki RO adina bassa hicbir sey olmuyordu (testte yakalandi).
-   Etiket katmani tiklamaya saydam. */
-.pie-in,.pie-out,.pie-ctv,.pie-ctu,.pie-ctl{pointer-events:none}
-.pie-dim{opacity:.34}
-.pie-l1{font-size:13px; font-weight:800}
-.pie-l2{font-size:13px; font-weight:800}
-.pie-l3{font-size:11px; font-weight:700}
-.pie-lead{fill:none; stroke:var(--border-strong); stroke-width:1.2}
-.pie-o1{font-size:11.5px; font-weight:800; fill:var(--text)}
-.pie-o2{font-size:10.5px; font-weight:600; fill:var(--text-mute)}
-.pie-ctv{font-size:34px; font-weight:800; fill:var(--text)}
-.pie-ctu{font-size:12px; font-weight:700; fill:var(--text-mute)}
-.pie-ctl{font-size:10px; font-weight:700; fill:var(--text-mute); letter-spacing:.09em; text-transform:uppercase}
+         white-space:normal; overflow-wrap:anywhere; line-height:1.3;
+         min-height:2.6em; max-width:100%}
 
 /* sag paneldeki proje tipi tablosu */
 .dk-types{margin-top:14px}
@@ -1312,7 +1266,6 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
   .bc-wrap{aspect-ratio:760/300}
   .bc-pair{gap:18px; margin-bottom:18px}
   .bc-pair .bc-wrap{aspect-ratio:620/265}
-  .ex-pies{grid-template-columns:1fr}
   .bc-lb-n{display:none}
   .topsearch{flex:1 1 auto; margin-left:0}
   .ts-kbd{display:none}
