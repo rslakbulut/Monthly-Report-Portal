@@ -500,47 +500,8 @@ body.has-rail{padding-left:var(--rail-w)}
 /* Koyu temada gri plan cubugu zeminde kayboluyordu */
 
 /* halka listesindeki TOPLAM satiri (referans panodaki gibi) */
-.ex-lg-tot{
-  border-top:1px solid var(--border); border-radius:0; margin-top:4px; padding-top:9px;
-  cursor:default; font-weight:800;
-}
-.ex-lg-tot:hover{background:none}
-.ex-lg-tot .ex-lab,.ex-lg-tot .ex-v{font-weight:800}
 
 /* uc halka — hepsi tiklanabilir filtre */
-.ex-donuts{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:18px}
-.ex-donut{
-  background:var(--card); border-radius:var(--r-lg); box-shadow:var(--sh-2); padding:18px 20px;
-  display:flex; flex-direction:column; align-items:center; gap:12px;
-}
-.ex-donut h3{
-  margin:0; align-self:flex-start; font-size:10px; font-weight:800; letter-spacing:.12em;
-  text-transform:uppercase; color:var(--text-mute);
-}
-.ex-ring{position:relative; width:154px; height:154px}
-.ex-ring svg{width:100%; height:100%; display:block}
-.ex-ring circle[data-ex]{cursor:pointer; transition:opacity .15s ease, stroke-width .15s ease}
-.ex-ring circle[data-ex]:hover{opacity:.82}
-.ex-ring .ex-dim{opacity:.26}
-.ex-ctr{
-  position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
-  justify-content:center; pointer-events:none; gap:1px;
-}
-.ex-ctr b{font-size:28px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums}
-.ex-ctr i{font-style:normal; font-size:9.5px; font-weight:700; letter-spacing:.1em;
-          text-transform:uppercase; color:var(--text-mute)}
-.ex-legend{width:100%; display:flex; flex-direction:column; gap:2px}
-.ex-lg{
-  display:grid; grid-template-columns:10px 1fr auto 38px; align-items:center; gap:9px;
-  background:none; border:1px solid transparent; font:inherit; color:var(--text);
-  cursor:pointer; padding:6px 8px; border-radius:8px; min-height:34px; text-align:left;
-}
-.ex-lg:hover{background:var(--sunken)}
-.ex-lg.on{border-color:var(--valeo-mid); background:rgba(0,114,206,.08)}
-.ex-dot{width:10px; height:10px; border-radius:3px}
-.ex-lab{font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.ex-lg .ex-v{font-size:12.5px; font-weight:700; font-variant-numeric:tabular-nums}
-.ex-lg .ex-p{font-size:11px; color:var(--text-mute); text-align:right; font-variant-numeric:tabular-nums}
 
 /* "kim geride" — siralanmis cubuklar */
 
@@ -1282,7 +1243,6 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
   .bc-wrap{aspect-ratio:760/360}
   .ex-pies{grid-template-columns:1fr}
   .bc-lb-n{display:none}
-  .ex-donuts{grid-template-columns:1fr}
   .topsearch{flex:1 1 auto; margin-left:0}
   .ts-kbd{display:none}
   .drawer{width:100vw}

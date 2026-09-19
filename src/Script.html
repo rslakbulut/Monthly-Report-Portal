@@ -229,8 +229,7 @@ var T={
   readingPeriod:'Reading the monthly report…',rendering:'Preparing the dashboard…',ready:'Ready',
   skipToContent:'Skip to content',language:'Language',noPeriodYet:'No period registered yet. Open Settings and run the Gmail scan, or add this month’s spreadsheet link manually.',
   settingsIntro:'The monthly report arrives as a new spreadsheet each month. The Gmail scan finds it automatically; if it doesn’t, add the link manually.',
-  regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.',
-  execByFamily:'Business line',lnReal:'YTD real',
+  regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.',lnReal:'YTD real',
   execChartFam:'By business line — Budget Year · Budget YTD · launched',
   execChartTitle:'By RO — Budget Year · Budget YTD · launched',execTotal:'Total',
   execBudgetYear:'Budget Year',execUnit:'Unit',execOther:'Other',execQty:'Project Qty',execPieRo:'Order intake by RO',
@@ -249,9 +248,7 @@ var T={
   execChartTitle:'RO bazında — Budget Year · Budget YTD · gerçekleşen',execTotal:'Toplam',
   execBudgetYear:'Budget Year',execUnit:'Birim',execOther:'Diğer',execQty:'Project Qty',execPieRo:'RO bazında order intake',
   execPieSite:'Site bazında',noData:'Veri yok',
-  lnBdgt:'Budget YTD',
-  
-  execByFamily:'İş kolu',lnReal:'YTD gerçekleşen',
+  lnBdgt:'Budget YTD',lnReal:'YTD gerçekleşen',
   offroadEmpty:'Offroad verisi henüz yok. Offroad aylık raporu gelmeye başlayınca bu sekme dolacak.',
   whatAmILookingAt:'Bu ekran ne anlatıyor',year:'Yıl',month:'Ay',productType:'Ürün tipi',
   projectType:'Proje tipi',customer:'Müşteri',all:'Tümü',allROs:'Tüm RO’lar',sites:'site',site:'Site',
@@ -1324,15 +1321,6 @@ function renderRoLevel(){
      icin EX.fam, digerleri icin ZATEN VAR OLAN F.status / F.type -- yani
      halkaya tiklamak ust filtre barindaki dugmeye basmakla ayni sey, iki
      ayri "secili" durum olusmuyor. Ayni dilime tekrar tiklamak kaldirir. */
-  $('view').querySelectorAll('[data-ex]').forEach(function(b){
-    b.onclick=function(){
-      var kind=b.getAttribute('data-ex'), v=b.getAttribute('data-exv');
-      if(kind==='fam') EX.fam=(EX.fam===v)?null:v;
-      else if(kind==='status'){ F.status=(F.status===v)?'ALL':v; buildFilterSegs(); }
-      else if(kind==='type'){ F.type=(F.type===v)?'ALL':v; buildFilterSegs(); }
-      render();
-    };
-  });
   $('view').querySelectorAll('[data-exu]').forEach(function(b){
     b.onclick=function(){ EXV.unit=b.getAttribute('data-exu'); render(); };
   });
@@ -1363,13 +1351,6 @@ function renderRoLevel(){
     g.onclick=function(){
       F.ro=g.getAttribute('data-exro'); F.site='ALL'; NAV.expandedRo=F.ro;
       buildRoSiteSelects(); render(); window.scrollTo({top:0,behavior:'smooth'});
-    };
-  });
-  $('view').querySelectorAll('[data-exclr]').forEach(function(b){
-    b.onclick=function(){
-      var k=b.getAttribute('data-exclr');
-      if(k==='fam') EX.fam=null; else if(k==='status') F.status='ALL'; else F.type='ALL';
-      buildFilterSegs(); render();
     };
   });
   /* grafik cubuklari: RO seviyesinde RO'ya iner, site seviyesinde site detayina */
@@ -1492,47 +1473,6 @@ function execList(){
   return (DATA.sites||[]).filter(function(s){ return !EX.fam||FAMILY[s.ro]===EX.fam; });
 }
 function execTypeRow(){ return F.type==='ALL'?'TOTAL':F.type; }
-
-/* Halka: 2-3 dilim, tiklanabilir. Secim varsa secilmeyen dilimler soner.
-   Renk tek basina anlam tasimiyor: her dilimin degeri ve yuzdesi listede. */
-function execDonut(id,title,items,selKey){
-  var tot=0; items.forEach(function(it){ tot+=it.v; });
-  var R=44, C=2*Math.PI*R, off=0;
-  var arcs='';
-  items.forEach(function(it){
-    var frac=tot>0?it.v/tot:0, len=frac*C;
-    var dim=(selKey&&selKey!==it.k)?' class="ex-dim"':'';
-    arcs+='<circle'+dim+' r="'+R+'" cx="60" cy="60" fill="none" stroke="'+it.c+'" '+
-      'stroke-width="'+(selKey===it.k?22:17)+'" stroke-linecap="butt" '+
-      'stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" '+
-      'stroke-dashoffset="'+(-off).toFixed(2)+'" '+
-      'transform="rotate(-90 60 60)" data-ex="'+esc(id)+'" data-exv="'+esc(it.k)+'">'+
-      '<title>'+esc(it.lab+': '+nf(it.v)+(tot>0?(' ('+Math.round(frac*100)+'%)'):''))+'</title>'+
-      '</circle>';
-    off+=len;
-  });
-  /* Secim varsa merkez SECILEN dilimin degerini gosterir. Yoksa halkanin
-     kendi toplami kalir ve secim yapilan halka 1.417, digerleri 714 yazip
-     yan yana celisiyor gibi duruyordu (goruldu). */
-  var sel=null; items.forEach(function(it){ if(it.k===selKey) sel=it; });
-  var ctrVal=sel?sel.v:tot, ctrLab=sel?sel.lab:t('lnReal');
-  var legend=items.map(function(it){
-    var on=(selKey===it.k);
-    return '<button class="ex-lg'+(on?' on':'')+'" type="button" data-ex="'+esc(id)+
-      '" data-exv="'+esc(it.k)+'"><span class="ex-dot" style="background:'+it.c+'"></span>'+
-      '<span class="ex-lab">'+esc(it.lab)+'</span>'+
-      '<span class="ex-v">'+nf(it.v)+'</span>'+
-      '<span class="ex-p">'+(tot>0?Math.round(it.v/tot*100):0)+'%</span></button>';
-  }).join('');
-  legend+='<div class="ex-lg ex-lg-tot"><span></span><span class="ex-lab">'+
-    esc(t('execTotal'))+'</span><span class="ex-v">'+nf(tot)+'</span><span class="ex-p">100%</span></div>';
-  return '<section class="ex-donut"><h3>'+esc(title)+'</h3>'+
-    '<div class="ex-ring"><svg viewBox="0 0 120 120" aria-hidden="true">'+
-      '<circle r="'+R+'" cx="60" cy="60" fill="none" stroke="var(--sunken)" stroke-width="17"/>'+
-      arcs+'</svg>'+
-      '<span class="ex-ctr"><b>'+nf(ctrVal)+'</b><i>'+esc(ctrLab)+'</i></span></div>'+
-    '<div class="ex-legend">'+legend+'</div></section>';
-}
 
 /* ---------- gorunum birimi: OI (M€) / proje adedi ----------
    Acilista OI (kullanici karari). Tek dugmeyle adet gorunumune geciliyor;
@@ -1861,24 +1801,12 @@ function execPies(){
 
 function execPanel(){
   if(!DATA||!DATA.sites||!DATA.sites.length) return '';
-  var list=execList(), st=F.status, ty=execTypeRow();
-  var famItems=['DRIVE','THERMAL'].map(function(f){
-    var l=(DATA.sites||[]).filter(function(s){ return FAMILY[s.ro]===f; });
-    return {k:f,lab:'POWER '+f,v:execCountCell(l,ty,st).real,c:f==='DRIVE'?'#0072ce':'#8b5cf6'};
-  });
-  var prodItems=[{k:'NEW',lab:'NEW',v:execCountCell(list,ty,'NEW').real,c:'#0072ce'},
-                 {k:'REMAN',lab:'REMAN',v:execCountCell(list,ty,'REMAN').real,c:'#f59e0b'}];
-  var stageItems=EXEC_TYPES.map(function(x,i){
-    return {k:x,lab:x,v:execCountCell(list,x,st).real,c:['#0072ce','#8b5cf6','#06b6d4'][i]};
-  });
+  /* Uc halka (is kolu / urun tipi / proje tipi) kaldirildi: ayni kirilimler
+     zaten ust filtre barinda ve is kolu cubuk grafiginde secilebiliyor,
+     ekranda ayni bilgi ucuncu kez tekrarlaniyordu. */
   return execBarChart('family')+
     execBarChart('ro')+
-    execPies()+
-    '<div class="ex-donuts">'+
-      execDonut('fam',t('execByFamily'),famItems,EX.fam)+
-      execDonut('status',t('productType'),prodItems,F.status==='ALL'?null:F.status)+
-      execDonut('type',t('projectType'),stageItems,F.type==='ALL'?null:F.type)+
-    '</div>';
+    execPies();
 }
 
 /* Arama sonucu / grafik cubugu -> site detayi. NAV.siteIdx o RO'nun TAM
