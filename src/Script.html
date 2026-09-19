@@ -231,6 +231,7 @@ var T={
   settingsIntro:'The monthly report arrives as a new spreadsheet each month. The Gmail scan finds it automatically; if it doesn’t, add the link manually.',
   regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.',
   execByFamily:'Business line',lnReal:'YTD real',
+  execChartFam:'By business line — Budget Year · Budget YTD · launched',
   execChartTitle:'By RO — Budget Year · Budget YTD · launched',execTotal:'Total',
   execBudgetYear:'Budget Year',execUnit:'Unit',execOther:'Other',execQty:'Project Qty',execPieRo:'Order intake by RO',
   execPieSite:'By site',noData:'No data',
@@ -244,7 +245,8 @@ var T={
   help:'Help',feedback:'Feedback',settings:'Settings',helpTitle:'Help · User guide',helpSub:'Ask a question or browse the topics',helpSearchPh:'e.g. what is Budget YTD, why is a site red…',helpNotFound:'Didn’t find it?',feedbackSub:'Report a bug or suggest an improvement',type:'Type',priority:'Priority',message:'Message',screenshot:'Screenshot',optional:'optional',dropImage:'Upload an image',orPaste:'or paste (Ctrl+V)',cancel:'Cancel',send:'Send',sending:'Sending…',feedbackThanks:'Thanks — your feedback was recorded.',bug:'Bug',improvement:'Improvement',low:'Low',medium:'Medium',urgent:'Urgent',feedbackPh:'Write your feedback…',startHere:'Start here',noHelpMatch:'Nothing matched. Try another word, or send us feedback.',
   helpS1t:'The RO list is the start',helpS1b:'Seven regional organizations, the one furthest behind plan on top. The bar shows how much of that RO’s Budget Year has been launched.',helpS2t:'The left rail',helpS2b:'Hover it to open. Click an RO to narrow the whole screen to it; click a site to open its panel.',helpS3t:'Site panel',helpS3b:'Clicking a site opens a panel on the right: its KPIs, biggest projects and team. “Open full page” goes to the full detail.',helpS4t:'Filters and search',helpS4b:'Product type, project type and customer narrow every number on screen. The search box finds a site or an RO by name.',helpS5t:'How fresh is the data',helpS5b:'The stamp at the top right says when the data was built. It refreshes every hour; Refresh data rebuilds it now.',helpC1:'Budget YTD',helpC2:'Launch Done',helpC3:'why is a site late',helpC4:'P1 P10 TTM',
   pickType:'Please choose a type.',pickPriority:'Please choose a priority.',writeMessage:'Please write a message.',onlyImages:'Only image files are accepted.'},
- tr:{execChartTitle:'RO bazında — Budget Year · Budget YTD · gerçekleşen',execTotal:'Toplam',
+ tr:{execChartFam:'İş kolu bazında — Budget Year · Budget YTD · gerçekleşen',
+  execChartTitle:'RO bazında — Budget Year · Budget YTD · gerçekleşen',execTotal:'Toplam',
   execBudgetYear:'Budget Year',execUnit:'Birim',execOther:'Diğer',execQty:'Project Qty',execPieRo:'RO bazında order intake',
   execPieSite:'Site bazında',noData:'Veri yok',
   lnBdgt:'Budget YTD',
@@ -1342,6 +1344,15 @@ function renderRoLevel(){
       else if(v!=='__other') openDrawer(v);
     };
   });
+  /* Aile cubugu/etiketi EX.fam'i surer -- halkalardaki secimle AYNI durum,
+     iki ayri "secili aile" olusmuyor. Ayni aileye tekrar tiklamak kaldirir. */
+  $('view').querySelectorAll('[data-exfam]').forEach(function(g){
+    g.onclick=function(){
+      var v=g.getAttribute('data-exfam');
+      EX.fam=(EX.fam===v)?null:v;
+      render(); window.scrollTo({top:0,behavior:'smooth'});
+    };
+  });
   $('view').querySelectorAll('.bc-lb[data-exro]').forEach(function(g){
     g.onclick=function(){
       F.ro=g.getAttribute('data-exro'); F.site='ALL'; NAV.expandedRo=F.ro;
@@ -1572,16 +1583,30 @@ function execUnitToggle(){
 var BC_SERIES=[['b1','execBudgetYear','#94a3b8'],['ytd','lnBdgt','#0a7ddb'],['real','lnReal','#12803c']];
 var BC_TYPE_TONE={P1:0.0,P10:0.22,TTM:0.44};
 
-function execBarChart(){
+/* mode 'family' -> POWER DRIVE / POWER THERMAL, 'ro' -> tek tek RO'lar.
+   Ikisi ayni cizim koduyla uretiliyor; tek fark satir kumesi ve alt etiket. */
+function execBarRows(mode,st,ty,money){
+  var src;
+  if(mode==='family'){
+    src=['DRIVE','THERMAL'].filter(function(f){ return !EX.fam||EX.fam===f; })
+      .map(function(f){
+        return {key:f,label:'POWER '+f,
+                ros:BOOT.roOrder.filter(function(ro){ return FAMILY[ro]===f; }),
+                list:(DATA.sites||[]).filter(function(x){ return FAMILY[x.ro]===f; })};
+      });
+  } else {
+    src=BOOT.roOrder.filter(function(ro){ return !EX.fam||FAMILY[ro]===EX.fam; })
+      .map(function(ro){ return {key:ro,label:ro,ros:[ro],list:sitesOfRo(ro)}; });
+  }
+  return src.map(function(o){
+    o.c=execCell(o.list,ty,st);
+    if(!money) o.byType=EXEC_TYPES.map(function(tp){ return {tp:tp,c:execCountCell(o.list,tp,st)}; });
+    return o;
+  }).filter(function(r){ return r.c.b1>0||r.c.ytd>0||r.c.real>0; });
+}
+function execBarChart(mode){
   var st=F.status, ty=execTypeRow(), money=(EXV.unit==='OI');
-  var rows=BOOT.roOrder.filter(function(ro){ return !EX.fam||FAMILY[ro]===EX.fam; })
-    .map(function(ro){
-      var list=sitesOfRo(ro);
-      var o={ro:ro,c:execCell(list,ty,st)};
-      if(!money) o.byType=EXEC_TYPES.map(function(tp){ return {tp:tp,c:execCountCell(list,tp,st)}; });
-      return o;
-    })
-    .filter(function(r){ return r.c.b1>0||r.c.ytd>0||r.c.real>0; });
+  var rows=execBarRows(mode,st,ty,money);
   if(!rows.length) return '';
 
   var W=1180,H=360,PL=58,PR=16,PT=40,PB=18;
@@ -1601,13 +1626,16 @@ function execBarChart(){
       (money?nf(v,v<10?1:0):nf(Math.round(v)))+'</text>';
   }
 
-  var bw=iw/rows.length, bar=Math.min(30,bw*0.19), gap=6;
+  /* Iki kategoride (aile grafigi) sutun ekrani kapliyor ve cubuklar birbirinden
+     kopuk duruyordu: sutun genisligi sinirlanip blok ortalaniyor. */
+  var bw=Math.min(iw/rows.length,300), x0off=PL+(iw-bw*rows.length)/2;
+  var bar=Math.min(34,bw*0.19), gap=7;
   var span=bar*3+gap*2;
   var bars='';
   rows.forEach(function(r,i){
-    var cx=PL+bw*(i+0.5), x0=cx-span/2;
-    bars+='<g class="bc-g" data-exro="'+esc(r.ro)+'">'+
-      '<rect class="bc-hit" x="'+(PL+bw*i+3).toFixed(1)+'" y="'+(PT-18)+'" width="'+(bw-6).toFixed(1)+
+    var cx=x0off+bw*(i+0.5), x0=cx-span/2;
+    bars+='<g class="bc-g" data-'+(mode==='family'?'exfam':'exro')+'="'+esc(r.key)+'">'+
+      '<rect class="bc-hit" x="'+(x0off+bw*i+3).toFixed(1)+'" y="'+(PT-18)+'" width="'+(bw-6).toFixed(1)+
         '" height="'+(ih+18)+'" rx="12"/>';
     BC_SERIES.forEach(function(sr,k){
       var val=r.c[sr[0]], x=x0+k*(bar+gap), yv=y(val), h=Math.max(0,PT+ih-yv);
@@ -1640,15 +1668,20 @@ function execBarChart(){
         bars+='<text x="'+(x+bar/2).toFixed(1)+'" y="'+(yv-8).toFixed(1)+'" text-anchor="middle" '+
           'class="bc-v bc-v'+k+'">'+execFmt(val)+'</text>';
     });
-    bars+='<title>'+esc(r.ro+' — '+t('execBudgetYear')+' '+execFmt(r.c.b1)+' · '+
+    bars+='<title>'+esc(r.label+' — '+t('execBudgetYear')+' '+execFmt(r.c.b1)+' · '+
       t('lnBdgt')+' '+execFmt(r.c.ytd)+' · '+t('lnReal')+' '+execFmt(r.c.real)+' '+execUnit())+'</title></g>';
   });
 
   var labels=rows.map(function(r){
-    return '<button class="bc-lb" type="button" data-exro="'+esc(r.ro)+'" style="width:'+(100/rows.length)+'%">'+
-      '<span class="bc-lb-f">'+roRegionChip(r.ro)+'</span>'+
-      '<span class="bc-lb-c">'+esc(r.ro)+'</span>'+
-      '<span class="bc-lb-n">'+esc(BOOT.roLabels[r.ro]||'')+'</span></button>';
+    var inner = mode==='family'
+      ? '<span class="bc-lb-c">'+esc(r.label)+'</span>'+
+        '<span class="bc-lb-ros">'+r.ros.map(function(x){
+          return '<span class="xro" style="--rc:var(--ro-'+x+')">'+esc(x)+'</span>'; }).join('')+'</span>'
+      : '<span class="bc-lb-f">'+roRegionChip(r.key)+'</span>'+
+        '<span class="bc-lb-c">'+esc(r.key)+'</span>'+
+        '<span class="bc-lb-n">'+esc(BOOT.roLabels[r.key]||'')+'</span>';
+    return '<button class="bc-lb" type="button" data-'+(mode==='family'?'exfam':'exro')+
+      '="'+esc(r.key)+'" style="width:'+(100/rows.length)+'%">'+inner+'</button>';
   }).join('');
 
   var key=BC_SERIES.map(function(sr){
@@ -1656,7 +1689,8 @@ function execBarChart(){
   }).join('');
 
   return '<section class="panel bc-panel"><div class="panel-h bc-head">'+
-      '<h3>'+esc(t('execChartTitle'))+' <span class="bc-unit">'+esc(execUnitLabel())+'</span></h3>'+
+      '<h3>'+esc(mode==='family'?t('execChartFam'):t('execChartTitle'))+
+        ' <span class="bc-unit">'+esc(execUnitLabel())+'</span></h3>'+
       '<div class="bc-tools"><span class="bc-key">'+key+'</span>'+execUnitToggle()+'</div></div>'+
     '<div class="bc-wrap"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" '+
       'aria-label="'+esc(t('execChartTitle'))+'">'+
@@ -1665,7 +1699,7 @@ function execBarChart(){
           '<stop offset="0" stop-color="'+sr[2]+'"/>'+
           '<stop offset="1" stop-color="'+sr[2]+'" stop-opacity=".72"/></linearGradient>';
       }).join('')+'</defs>'+grid+bars+'</svg></div>'+
-    '<div class="bc-labels" style="padding-left:'+(PL/W*100)+'%;padding-right:'+(PR/W*100)+'%">'+
+    '<div class="bc-labels" style="width:'+(bw*rows.length/W*100)+'%;margin-left:'+(x0off/W*100)+'%">'+
       labels+'</div></section>';
 }
 
@@ -1837,7 +1871,8 @@ function execPanel(){
   var stageItems=EXEC_TYPES.map(function(x,i){
     return {k:x,lab:x,v:execCountCell(list,x,st).real,c:['#0072ce','#8b5cf6','#06b6d4'][i]};
   });
-  return execBarChart()+
+  return execBarChart('family')+
+    execBarChart('ro')+
     execPies()+
     '<div class="ex-donuts">'+
       execDonut('fam',t('execByFamily'),famItems,EX.fam)+
