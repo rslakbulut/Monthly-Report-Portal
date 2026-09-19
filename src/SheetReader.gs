@@ -84,9 +84,18 @@ function mapHeaderGroups_(headerRow, fromCol) {
 
 /** Grup listesinde etiketi ARANAN metni iceren grubu dondurur. */
 /** Hucreyi GOSTERIM icin metne cevirir (normText_ aksine buyuk harfe cevirmez). */
+var MONTHS_SHORT_ = ['Jan','Feb','Mar','Apr','May','Jun',
+                    'Jul','Aug','Sep','Oct','Nov','Dec'];
 function cellText_(v) {
   if (v === null || v === undefined) return '';
   if (isErrorCell_(v)) return '';
+  /* Gercek TARIH hucresi: String(Date) "Sat Jun 06 2026 10:00:00 GMT+0300
+     (Turkiye Standard Time)" uretiyordu ve TOP projeler tablosunda aynen
+     goruluyordu. Kisa ve tek anlamli bicim. Ay/yil mantigi bundan
+     etkilenmiyor -- parsePeriodCell_ ham hucreyi aliyor, bu metni degil. */
+  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime()))
+    return ('0' + v.getDate()).slice(-2) + ' ' + MONTHS_SHORT_[v.getMonth()] +
+           ' ' + v.getFullYear();
   return String(v).replace(/\s+/g, ' ').trim();
 }
 

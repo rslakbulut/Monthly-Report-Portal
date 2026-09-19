@@ -245,6 +245,11 @@ eq(readNumber_('').reason, 'empty', 'bos hucre != 0');
 eq(readNumber_(0).value, 0, 'gercek 0 okunur');
 eq(readNumber_('€ 1.234,56').value, 1234.56, 'TR bicimli para');
 eq(readNumber_('1,234.56').value, 1234.56, 'EN bicimli para');
+/* Tarih hucresi ekranda "Sat Jun 06 2026 10:00:00 GMT+0300 (...)" olarak
+   goruluyordu; kisa bicime cevriliyor. */
+eq(cellText_(new Date(2026,5,6,10,0,0)), '06 Jun 2026', 'Date hucresi kisa bicimde');
+eq(cellText_(new Date(2026,0,3)), '03 Jan 2026', 'Date hucresi: tek haneli gun sifirla');
+eq(cellText_('W23'), 'W23', 'metin hucresi degismiyor');
 
 console.log('\n'+(fail?'FAIL':'PASS')+' — '+pass+' gecti, '+fail+' kaldi');
 process.exit(fail?1:0);

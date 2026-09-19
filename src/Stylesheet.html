@@ -259,6 +259,8 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
   display:flex; align-items:center; gap:7px; order:-1;
 }
 .drawer-body{padding:18px; overflow:auto; flex:1 1 auto; display:flex; flex-direction:column; gap:18px}
+/* Site panelinde alt serit yok (o dugme kaldirildi); yardim paneli
+   hala kullaniyor. */
 .drawer-foot{
   padding:13px 18px; border-top:1px solid var(--border); background:var(--sunken);
   display:flex; justify-content:flex-end;
@@ -837,16 +839,6 @@ main{padding:26px 24px 56px; max-width:var(--maxw); margin:0 auto}
   color:var(--text-dim); margin:0;
 }
 .section-note{font-size:12.5px; color:var(--text-mute)}
-/* Cubuktaki dikey isaretin tanimi — isaretin kendisiyle ayni cizim. */
-.mark-key{display:inline-flex; align-items:center; gap:7px; margin-left:auto;
-  font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
-  color:var(--text-dim); background:var(--sunken); border:1px solid var(--border);
-  border-radius:999px; padding:4px 11px 4px 9px}
-.mark-pin{position:relative; display:inline-block; width:2px; height:13px; border-radius:2px;
-  background:var(--text); opacity:.6}
-.mark-pin::after{content:''; position:absolute; left:50%; top:-4px; transform:translateX(-50%);
-  border-left:4px solid transparent; border-right:4px solid transparent;
-  border-top:5px solid var(--text); opacity:.75}
 
 /* ---------- geri butonu ---------- */
 .backbtn{
@@ -957,7 +949,8 @@ main{padding:26px 24px 56px; max-width:var(--maxw); margin:0 auto}
   font-size:11px; font-weight:700; color:var(--text-mute); background:var(--sunken);
   border-radius:999px; padding:3px 9px; align-self:flex-start; letter-spacing:.02em;
 }
-.ro-bar{display:flex; flex-direction:column; gap:8px; min-width:0}
+/* Plan isaretinin adi barin ustunde durdugu icin arada yer gerekiyor. */
+.ro-bar{display:flex; flex-direction:column; gap:20px; min-width:0}
 .ro-bar-top{display:flex; align-items:baseline; justify-content:space-between; gap:10px}
 .ro-pct{font-size:17px; font-weight:800; letter-spacing:-.01em; font-variant-numeric:tabular-nums}
 .ro-plan-note{font-size:11.5px; color:var(--text-dim); font-weight:700; letter-spacing:.01em}
@@ -978,6 +971,15 @@ main{padding:26px 24px 56px; max-width:var(--maxw); margin:0 auto}
   border-left:4px solid transparent; border-right:4px solid transparent;
   border-top:5px solid var(--text); opacity:.75;
 }
+/* Isaretin adi: cizginin tam ustunde, ortali. Ucta duran isaretlerde
+   (baslangic/bitis) kutunun disina tasmasin diye hiza degisiyor. */
+.bar-plan b{
+  position:absolute; bottom:calc(100% + 4px); left:50%; transform:translateX(-50%);
+  font-size:9.5px; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--text-dim); white-space:nowrap; opacity:1;
+}
+.bar-plan.at-start b{left:-2px; transform:none}
+.bar-plan.at-end b{left:auto; right:-2px; transform:none}
 /* sag taraftaki KPI kumesi — barin icinde degil, ayri okunabilir bloklar */
 .ro-stats{display:flex; align-items:stretch; gap:0}
 .stat{
