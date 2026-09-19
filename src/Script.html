@@ -1211,13 +1211,18 @@ function roRowHtml(r){
     '</span>'+
     '<span class="ro-bar">'+
       '<span class="ro-bar-top">'+
-        '<span><span class="ro-pct">'+(pctYear==null?'—':pctYear+'%')+'</span> '+
-          '<span class="ro-plan-note">'+esc(t('ofBudgetYear'))+'</span></span>'+
-        deltaPill(a.delta)+
+        /* "20% of Budget Year" hangi iki sayinin orani oldugunu soylemiyordu
+           (YTD/Year sanildi). Oran: Launch Done / Budget Year -- ikisi de
+           sayfa terimi, cevrilmiyor. */
+        '<span class="ro-ratio"><span class="ro-pct">'+(pctYear==null?'—':pctYear+'%')+'</span> '+
+          '<span class="ro-plan-note">Launch Done / Budget Year</span></span>'+
+        '<span class="ro-delta"><span class="ro-delta-l">Launch Delay</span>'+
+          deltaPill(a.delta,t('projects'))+'</span>'+
       '</span>'+
       '<span class="bar">'+
         '<span class="bar-fill" style="width:'+w.toFixed(1)+'%"></span>'+
-        (p!=null?'<span class="bar-plan" style="left:'+p.toFixed(1)+'%"></span>':'')+
+        (p!=null?'<span class="bar-plan" style="left:'+p.toFixed(1)+'%" '+
+          'title="Budget YTD '+esc(m2(a.planTurnoverM))+' M€"></span>':'')+
       '</span>'+
     '</span>'+
     '<span class="ro-stats">'+
@@ -1248,7 +1253,7 @@ function siteListHtml(list,ro){
   var html='<div class="ro-expand" style="--ro-color:'+roColor(ro)+'">'+
     '<div class="tbl-toggle"><span class="flabel">'+esc(t('tableShows'))+'</span>'+
       '<div class="seg seg-sm" id="segTblView">'+
-      '<button type="button" data-tv="count" aria-pressed="'+(!isMoney)+'">'+esc(cap(t('projects')))+'</button>'+
+      '<button type="button" data-tv="count" aria-pressed="'+(!isMoney)+'" lang="en">'+esc(t('execQty'))+'</button>'+
       '<button type="button" data-tv="money" aria-pressed="'+isMoney+'" lang="en">O.I (M€)</button>'+
     '</div></div>'+
     '<div class="site-head">'+
@@ -1311,8 +1316,12 @@ function renderRoLevel(){
        Yalniz tek RO/site secilince gizleniyor: o kapsamin kendi ekrani
        zaten asagida. */
     if(F.ro==='ALL'&&F.site==='ALL') html+=execPanel();
+    /* Cubugun ustundeki dikey isaret tanimsizdi: ne oldugu belli olmayan
+       bir cizgi olarak goruluyordu. Tanimi bolum basliginda, bir kez. */
     html+='<div class="section-head"><h2 class="section-title">'+esc(t('byRO'))+'</h2>'+
-          '<span class="section-note">'+esc(t('clickRow'))+'</span></div><div class="rolist">';
+          '<span class="section-note">'+esc(t('clickRow'))+'</span>'+
+          '<span class="mark-key"><i class="mark-pin"></i>Budget YTD</span>'+
+          '</div><div class="rolist">';
     rows.forEach(function(r){
       html+=roRowHtml(r);
       if(NAV.expandedRo===r.ro) html+=siteListHtml(r.list,r.ro);
