@@ -650,6 +650,7 @@ body.has-rail{padding-left:var(--rail-w)}
       box-shadow:0 0 0 1px rgba(12,22,38,.2)}
 .flag svg{display:block}
 body.dark-mode .flag{box-shadow:0 0 0 1px rgba(255,255,255,.22)}
+body.dark-mode .filters-inner{box-shadow:var(--sh-2)}
 #langLabel{display:inline-flex; align-items:center; gap:7px}
 .headline .flag{vertical-align:-2px; margin-right:2px}
 
@@ -691,8 +692,27 @@ body.dark-mode .flag{box-shadow:0 0 0 1px rgba(255,255,255,.22)}
   max-width:var(--maxw); margin:0 auto; padding:13px 20px;
   display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;
   justify-content:center;
-  background:var(--card); border:1px solid var(--border);
-  border-radius:18px; box-shadow:var(--sh-2);
+  /* Icerik kartlari beyaz; filtre alani AYRI bir bolge oldugu okunsun diye
+     marka mavisinin cok hafif bir yikamasi. color-mix ile veriliyor, boylece
+     acik ve koyu temada ayni kural tek yerden calisiyor. */
+  background:linear-gradient(180deg,
+    color-mix(in srgb,var(--valeo-mid) 7%,var(--card)),
+    color-mix(in srgb,var(--valeo-mid) 4%,var(--card)));
+  border:1px solid color-mix(in srgb,var(--valeo-mid) 24%,var(--border));
+  border-radius:18px;
+  box-shadow:var(--sh-2), inset 0 1px 0 rgba(255,255,255,.5);
+}
+/* Kontroller artik BEYAZ: zemin renklendigi icin iliski tersine cevrildi,
+   yoksa --sunken kontroller renkli panele karisiyordu. */
+.filters-inner select.ctl{background-color:var(--card)}
+.filters-inner select.ctl:hover{background-color:var(--card)}
+.filters-inner .seg{background:var(--card); border-color:color-mix(in srgb,var(--valeo-mid) 18%,var(--border))}
+.filters-inner .seg button:hover{background:color-mix(in srgb,var(--valeo-mid) 9%,var(--card))}
+.filters-inner .flabel{color:color-mix(in srgb,var(--valeo-mid) 45%,var(--text-mute))}
+.filters-inner .fsep{
+  background:linear-gradient(180deg,transparent,
+    color-mix(in srgb,var(--valeo-mid) 28%,var(--border)) 22%,
+    color-mix(in srgb,var(--valeo-mid) 28%,var(--border)) 78%,transparent);
 }
 .fsep{
   align-self:stretch; width:1px; flex:none; margin:4px 4px 6px;
