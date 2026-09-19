@@ -445,7 +445,11 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
          overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%}
 
 /* ---------- iki pasta ---------- */
-.ex-pies{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px}
+/* Pastalar artik ortak bir panelin icinde (birim secici basligi orada). */
+.ex-pies-wrap{margin-bottom:18px}
+.ex-pies{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); gap:18px}
+/* Pastalar ortak panelin icinde: kart icinde kart olmasin. */
+.ex-pies .ex-pie{background:transparent; box-shadow:none; border:0; padding:6px 0 0}
 .ex-pie{background:var(--card); border-radius:var(--r-lg); box-shadow:var(--sh-2); padding:18px 20px 12px}
 .ex-pie h3{margin:0 0 4px; font-size:10px; font-weight:800; letter-spacing:.12em;
            text-transform:uppercase; color:var(--text-mute)}
@@ -501,7 +505,12 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
 .bc-wrap{width:100%; aspect-ratio:1180/260; max-width:100%}
 /* Aile grafigi: iki birim yan yana. Iki AYRI grafik -- ayni eksene iki olcek
    koymak (cift eksen) veriyi yanlis okutur. */
-.bc-pair{display:grid; grid-template-columns:1fr 1fr; gap:22px}
+/* Sutun sayisi uyarlamali. Aile grafiginde 2 kategori var, dar yerde de
+   rahat; RO grafiginde 7 kategori x 3 cubuk var, yari genislik ~1560px'in
+   altinda sikisiyor -- orada alt alta dusuyorlar. */
+.bc-pair{display:grid; gap:22px}
+.bc-pair-family{grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr))}
+.bc-pair-ro{grid-template-columns:repeat(auto-fit,minmax(min(100%,720px),1fr))}
 .bc-half{min-width:0}
 .bc-half h4{
   margin:0 0 2px; font-size:10px; font-weight:800; letter-spacing:.12em;
@@ -1265,7 +1274,7 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
      telefonda arama diye bir sey kalmaz. Kalan genisligi kaplar; kullanici
      cipinin metni zaten bu genislikte gizleniyor, yer aciliyor. */
   .bc-wrap{aspect-ratio:760/300}
-  .bc-pair{grid-template-columns:1fr; gap:18px}
+  .bc-pair{gap:18px}
   .bc-half .bc-wrap{aspect-ratio:620/265}
   .ex-pies{grid-template-columns:1fr}
   .bc-lb-n{display:none}

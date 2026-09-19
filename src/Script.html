@@ -232,7 +232,7 @@ var T={
   regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.',lnReal:'YTD real',
   execChartFam:'By business line — Budget Year · Budget YTD · launched',
   execChartTitle:'By RO — Budget Year · Budget YTD · launched',execTotal:'Total',
-  execBudgetYear:'Budget Year',execUnit:'Unit',execOther:'Other',execQty:'Project Qty',execPieRo:'Order intake by RO',
+  execBudgetYear:'Budget Year',execUnit:'Unit',execOther:'Other',execQty:'Project Qty',execPieWrap:'Composition — RO to site',execPieRo:'By RO',
   execPieSite:'By site',noData:'No data',
 
   lnBdgt:'Budget YTD',
@@ -246,7 +246,7 @@ var T={
   pickType:'Please choose a type.',pickPriority:'Please choose a priority.',writeMessage:'Please write a message.',onlyImages:'Only image files are accepted.'},
  tr:{execChartFam:'İş kolu bazında — Budget Year · Budget YTD · gerçekleşen',
   execChartTitle:'RO bazında — Budget Year · Budget YTD · gerçekleşen',execTotal:'Toplam',
-  execBudgetYear:'Budget Year',execUnit:'Birim',execOther:'Diğer',execQty:'Project Qty',execPieRo:'RO bazında order intake',
+  execBudgetYear:'Budget Year',execUnit:'Birim',execOther:'Diğer',execQty:'Project Qty',execPieWrap:'Dağılım — RO’dan site’a',execPieRo:'RO bazında',
   execPieSite:'Site bazında',noData:'Veri yok',
   lnBdgt:'Budget YTD',lnReal:'YTD gerçekleşen',
   offroadEmpty:'Offroad verisi henüz yok. Offroad aylık raporu gelmeye başlayınca bu sekme dolacak.',
@@ -1546,7 +1546,14 @@ function execBarRows(mode,st,ty,money,u){
 }
 /* unit verilirse secili birimden BAGIMSIZ cizer (aile grafigi iki birimi
    yan yana gosteriyor). half=true dar kolon icin daha kucuk viewBox. */
+/* Sayfada birden fazla grafik var; SVG id'leri BELGE genelinde benzersiz
+   olmali. clipPath id'leri ('bcC0_0'...) iki COUNT grafiginde ayni cikiyordu
+   ve tarayici url(#...) ile ILK esleseni kullandigi icin RO grafiginin
+   cubuklari aile grafiginin dikdortgenine kirpilip KAYBOLUYORDU (goruldu).
+   Her cizim icin benzersiz bir onek uretiliyor. */
+var BC_UID=0;
 function execBarChart(mode,unit,half){
+  var uid='c'+(++BC_UID)+'_';
   var u=unit||EXV.unit;
   var st=F.status, ty=execTypeRow(), money=(u==='OI');
   var rows=execBarRows(mode,st,ty,money,u);
@@ -1592,7 +1599,7 @@ function execBarChart(mode,unit,half){
            gorunuyor ve aralarinda basamak olusuyordu (onizlemede goruldu).
            Dogrusu, cubugun tamaminin sekliyle KIRPMAK; parcalar duz ciziliyor,
            yuvarlak tepe kirpma maskesinden geliyor. */
-        var cid='bcC'+i+'_'+k;
+        var cid='bc'+uid+i+'_'+k;
         var tot=0; r.byType.forEach(function(b){ tot+=b.c[sr[0]]||0; });
         var acc=0, segs='';
         r.byType.forEach(function(b){
@@ -1608,7 +1615,7 @@ function execBarChart(mode,unit,half){
           '<g clip-path="url(#'+cid+')">'+segs+'</g>';
       } else if(h>0){
         bars+='<rect x="'+x.toFixed(1)+'" y="'+yv.toFixed(1)+'" width="'+bar+'" height="'+h.toFixed(1)+
-          '" rx="'+Math.min(bar/2,6)+'" fill="url(#bcG'+k+')"/>';
+          '" rx="'+Math.min(bar/2,6)+'" fill="url(#bcG'+uid+k+')"/>';
       }
       if(val>0)
         bars+='<text x="'+(x+bar/2).toFixed(1)+'" y="'+(yv-8).toFixed(1)+'" text-anchor="middle" '+
@@ -1638,7 +1645,7 @@ function execBarChart(mode,unit,half){
     '<div class="bc-wrap"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" '+
       'aria-label="'+esc(t('execChartTitle'))+'">'+
       '<defs>'+BC_SERIES.map(function(sr,k){
-        return '<linearGradient id="bcG'+k+'" x1="0" y1="0" x2="0" y2="1">'+
+        return '<linearGradient id="bcG'+uid+k+'" x1="0" y1="0" x2="0" y2="1">'+
           '<stop offset="0" stop-color="'+sr[2]+'"/>'+
           '<stop offset="1" stop-color="'+sr[2]+'" stop-opacity=".72"/></linearGradient>';
       }).join('')+'</defs>'+grid+bars+'</svg></div>'+
@@ -1652,19 +1659,20 @@ function execBarChart(mode,unit,half){
     body+'</section>';
 }
 
-/* Aile grafiginde yalniz iki kategori var; tek birim tam genisligi bosa
-   harciyordu. Iki birim YAN YANA gosteriliyor -- ayni eksene iki olcek
-   koymak (cift eksen) yasak oldugu icin dogru cozum iki AYRI grafik. */
-function execFamilyPair(){
-  var a=execBarChart('family','OI',true), b=execBarChart('family','COUNT',true);
+/* Iki birim YAN YANA. Ayni eksene iki olcek koymak (cift eksen) yasak
+   oldugu icin dogru cozum iki AYRI grafik.
+   Sutun sayisi CSS'te uyarlamali: dar ekranda alt alta duserler, cunku
+   RO grafiginde 7 kategori x 3 cubuk yari genislige sigmiyor. */
+function execPair(mode){
+  var a=execBarChart(mode,'OI',true), b=execBarChart(mode,'COUNT',true);
   if(!a&&!b) return '';
   var key=BC_SERIES.map(function(sr){
     return '<span class="bc-kk"><i style="background:'+sr[2]+'"></i>'+esc(t(sr[1]))+'</span>';
   }).join('');
   return '<section class="panel bc-panel"><div class="panel-h bc-head">'+
-      '<h3>'+esc(t('execChartFam'))+'</h3>'+
+      '<h3>'+esc(mode==='family'?t('execChartFam'):t('execChartTitle'))+'</h3>'+
       '<div class="bc-tools"><span class="bc-key">'+key+'</span></div></div>'+
-    '<div class="bc-pair">'+a+b+'</div></section>';
+    '<div class="bc-pair bc-pair-'+esc(mode)+'">'+a+b+'</div></section>';
 }
 
 /* ---------- iki pasta: RO -> site ----------
@@ -1817,10 +1825,16 @@ function execPies(){
                             c:PIE_OTHER,hex:PIE_OTHER,noClick:true}]);
   }
 
-  return '<div class="ex-pies">'+
-    execPie('ro',t('execPieRo'),roItems,EXP.ro,t('execBudgetYear'))+
-    execPie('site',t('execPieSite')+' — '+EXP.ro,siteItems,null,t('execBudgetYear'))+
-  '</div>';
+  /* Birim secici buraya tasindi: cubuk grafiklerin ikisi de artik iki birimi
+     birden gosteriyor, secime ihtiyaci kalmadi. Secim yalnizca pastalari
+     ilgilendiriyor, kontrol de onlarin basinda duruyor. */
+  return '<section class="panel ex-pies-wrap"><div class="panel-h bc-head">'+
+      '<h3>'+esc(t('execPieWrap'))+' <span class="bc-unit">'+esc(execUnitLabel())+'</span></h3>'+
+      '<div class="bc-tools">'+execUnitToggle()+'</div></div>'+
+    '<div class="ex-pies">'+
+      execPie('ro',t('execPieRo'),roItems,EXP.ro,t('execBudgetYear'))+
+      execPie('site',t('execPieSite')+' — '+EXP.ro,siteItems,null,t('execBudgetYear'))+
+    '</div></section>';
 }
 
 function execPanel(){
@@ -1828,8 +1842,8 @@ function execPanel(){
   /* Uc halka (is kolu / urun tipi / proje tipi) kaldirildi: ayni kirilimler
      zaten ust filtre barinda ve is kolu cubuk grafiginde secilebiliyor,
      ekranda ayni bilgi ucuncu kez tekrarlaniyordu. */
-  return execFamilyPair()+
-    execBarChart('ro')+
+  return execPair('family')+
+    execPair('ro')+
     execPies();
 }
 
