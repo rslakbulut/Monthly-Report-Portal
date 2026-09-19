@@ -232,7 +232,7 @@ var T={
   regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.',
   execByFamily:'Business line',lnReal:'YTD real',
   execChartTitle:'By RO — Budget Year · Budget YTD · launched',execTotal:'Total',
-  execBudgetYear:'Budget Year',execUnit:'Unit',execOther:'Other',execPieRo:'Order intake by RO',
+  execBudgetYear:'Budget Year',execUnit:'Unit',execOther:'Other',execQty:'Project Qty',execPieRo:'Order intake by RO',
   execPieSite:'By site',noData:'No data',
 
   lnBdgt:'Budget YTD',
@@ -245,7 +245,7 @@ var T={
   helpS1t:'The RO list is the start',helpS1b:'Seven regional organizations, the one furthest behind plan on top. The bar shows how much of that RO’s Budget Year has been launched.',helpS2t:'The left rail',helpS2b:'Hover it to open. Click an RO to narrow the whole screen to it; click a site to open its panel.',helpS3t:'Site panel',helpS3b:'Clicking a site opens a panel on the right: its KPIs, biggest projects and team. “Open full page” goes to the full detail.',helpS4t:'Filters and search',helpS4b:'Product type, project type and customer narrow every number on screen. The search box finds a site or an RO by name.',helpS5t:'How fresh is the data',helpS5b:'The stamp at the top right says when the data was built. It refreshes every hour; Refresh data rebuilds it now.',helpC1:'Budget YTD',helpC2:'Launch Done',helpC3:'why is a site late',helpC4:'P1 P10 TTM',
   pickType:'Please choose a type.',pickPriority:'Please choose a priority.',writeMessage:'Please write a message.',onlyImages:'Only image files are accepted.'},
  tr:{execChartTitle:'RO bazında — Budget Year · Budget YTD · gerçekleşen',execTotal:'Toplam',
-  execBudgetYear:'Budget Year',execUnit:'Birim',execOther:'Diğer',execPieRo:'RO bazında order intake',
+  execBudgetYear:'Budget Year',execUnit:'Birim',execOther:'Diğer',execQty:'Project Qty',execPieRo:'RO bazında order intake',
   execPieSite:'Site bazında',noData:'Veri yok',
   lnBdgt:'Budget YTD',
   
@@ -1529,7 +1529,7 @@ function execDonut(id,title,items,selKey){
 var EXV={unit:'OI'};          // 'OI' | 'COUNT'
 var EXP={ro:null};            // sag pastada gosterilen RO
 
-function execUnit(){ return EXV.unit==='OI'?'M€':t('projects'); }
+function execUnit(){ return EXV.unit==='OI'?'M€':t('execQty'); }
 function execFmt(v){ return EXV.unit==='OI'?nf(v,1):nf(Math.round(v)); }
 
 /* Ciro kupu (M€). B1 YTD ciro plani detay satirlarinin PLAN tarihinden
@@ -1551,7 +1551,7 @@ function execCell(list,type,status){
 }
 function execUnitToggle(){
   return '<span class="ex-seg" role="group" aria-label="'+esc(t('execUnit'))+'">'+
-    [['OI','OI (M€)'],['COUNT',t('projects')]].map(function(x){
+    [['OI','OI (M€)'],['COUNT',t('execQty')]].map(function(x){
       return '<button type="button" data-exu="'+x[0]+'" aria-pressed="'+(EXV.unit===x[0])+'">'+
         esc(x[1])+'</button>';
     }).join('')+'</span>';

@@ -672,13 +672,31 @@ body.dark-mode .flag{box-shadow:0 0 0 1px rgba(255,255,255,.22)}
 .langmenu .flag{font-size:15px; line-height:1; width:22px; text-align:center; flex:none}
 
 /* ---------- filtre bari ---------- */
+/* Filtre seridi: duz beyaz bant yerine SAYFADA YUZEN yuvarlak bir kontrol
+   karti. Yapiskan oldugu icin altindan icerik geciyor -> yari saydam zemin +
+   blur, aksi halde kartin arkasindan yazi goruluyor. Gruplar yatayda
+   ORTALI (kullanici talebi) ve mantiksal uc kumeye ayrilmis:
+   donem | kapsam | kirilim. */
 .filters{
-  background:var(--card); border-bottom:1px solid var(--border);
-  position:sticky; top:var(--topbar-h); z-index:50; box-shadow:var(--sh-1);
+  background:transparent; border:0; box-shadow:none;
+  position:sticky; top:var(--topbar-h); z-index:50;
+  padding:12px 24px 10px;
+}
+.filters::before{
+  content:""; position:absolute; inset:0; z-index:-1;
+  background:color-mix(in srgb,var(--bg) 78%,transparent);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
 }
 .filters-inner{
-  max-width:var(--maxw); margin:0 auto; padding:14px 24px;
+  max-width:var(--maxw); margin:0 auto; padding:13px 20px;
   display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;
+  justify-content:center;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:18px; box-shadow:var(--sh-2);
+}
+.fsep{
+  align-self:stretch; width:1px; flex:none; margin:4px 4px 6px;
+  background:linear-gradient(180deg,transparent,var(--border) 22%,var(--border) 78%,transparent);
 }
 /* Yedi grubun TEK SATIRDA durmasi icin secicilere sabit genislik verildi
    (kullanici talebi: Customer alt satira kayiyordu). Icerige gore buyumeyi
@@ -687,16 +705,16 @@ body.dark-mode .flag{box-shadow:0 0 0 1px rgba(255,255,255,.22)}
 #selYear{width:94px} #selMonth{width:122px} #selRo{width:150px} #selSite{width:168px}
 .fgroup{display:flex; flex-direction:column; gap:7px}
 .fgroup .flabel{
-  font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.11em;
-  color:var(--text-mute);
+  font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.13em;
+  color:var(--text-mute); padding-left:2px;
 }
 .seg{
   display:inline-flex; background:var(--sunken); border:1px solid var(--border);
-  border-radius:12px; padding:4px; gap:4px;
+  border-radius:11px; padding:3px; gap:3px;
 }
 .seg button{
   background:transparent; color:var(--text-dim); border:none; cursor:pointer;
-  padding:0 10px; min-height:38px; font:inherit; font-size:13px; font-weight:600;
+  padding:0 11px; min-height:34px; font:inherit; font-size:12.5px; font-weight:700;
   border-radius:9px; letter-spacing:.005em; white-space:nowrap;
   transition:background .15s ease, color .15s ease, box-shadow .15s ease;
 }
@@ -707,14 +725,16 @@ body.dark-mode .flag{box-shadow:0 0 0 1px rgba(255,255,255,.22)}
 }
 .seg button[aria-pressed="true"]:hover{background:linear-gradient(180deg,#0a7ddb,#0060b4); color:#fff}
 select.ctl{
-  min-height:44px; padding:0 34px 0 12px; font:inherit; font-size:13.5px; font-weight:600;
-  border:1px solid var(--border-strong); border-radius:12px;
+  min-height:40px; padding:0 32px 0 13px; font:inherit; font-size:13.5px; font-weight:650;
+  border:1px solid var(--border); border-radius:11px;
   background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a6b80' stroke-width='1.9' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 14px center;
   color:var(--text); -webkit-appearance:none; appearance:none; cursor:pointer;
   box-shadow:var(--sh-1);
   transition:border-color .15s ease, box-shadow .15s ease;
 }
-select.ctl:hover{border-color:var(--valeo-mid); box-shadow:var(--sh-2)}
+select.ctl{background-color:var(--sunken)}
+select.ctl:hover{border-color:var(--valeo-mid); background-color:var(--card); box-shadow:var(--sh-1)}
+select.ctl:focus{outline:none; border-color:var(--valeo-mid); box-shadow:var(--ring)}
 .fgroup.grow{flex:1 1 240px; min-width:200px; max-width:400px}
 .searchwrap{position:relative; display:flex; align-items:center}
 .searchwrap svg{position:absolute; left:13px; color:var(--text-mute); pointer-events:none}
@@ -755,6 +775,9 @@ select.ctl:hover{border-color:var(--valeo-mid); box-shadow:var(--sh-2)}
 
 /* ---------- yerlesim ---------- */
 main{padding:26px 24px 56px; max-width:var(--maxw); margin:0 auto}
+/* KPI seridi ile altindaki grafik kartinin cerceveleri ic ice girmis
+   gibi duruyordu; aralarina net bir bosluk. */
+.kpis{margin-bottom:22px}
 .crumbrow{display:flex; align-items:center; gap:16px; margin-bottom:16px; flex-wrap:wrap}
 .crumbrow .crumb{margin-bottom:0}
 .stamp{
@@ -1228,8 +1251,9 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
   .drawer{width:100vw}
   .userchip .uc-text{display:none}
   .panelx.fb{width:96vw}
-  .filters{position:static}
-  .filters-inner{gap:16px; padding:14px 16px}
+  .filters{position:static; padding:10px 16px}
+  .filters-inner{gap:14px; padding:13px 14px; justify-content:flex-start; border-radius:14px}
+  .fsep{display:none}
   #selYear,#selMonth,#selRo,#selSite{width:auto; min-width:140px}
   .selstrip{padding:0 16px 12px}
   .fgroup.grow{flex:1 1 100%}
