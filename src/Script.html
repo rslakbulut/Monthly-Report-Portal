@@ -164,7 +164,7 @@ function flagChip(cc,w){
    ekranindaki ayni kara verisinden (WORLD_MAP) uretilen minik bolge
    haritasi kullaniliyor. Avrupa AB bayragini, Cin kendi bayragini alir. */
 var REGION_BOX={ ASIA:[55,150,58,-12], AMERICAS:[-170,-32,72,-56] };
-function regionChip(reg,color){
+function regionChip(reg,color,w){
   var box=REGION_BOX[reg]; if(!box||!window.WORLD_MAP) return '';
   var lon0=box[0],lon1=box[1],lat1=box[2],lat0=box[3];
   var s='<rect width="20" height="14" rx="0" fill="#0c2140"/>';
@@ -183,14 +183,17 @@ function regionChip(reg,color){
   }
   /* Noktalar RO renginde — boylece Asya ve Amerika rozetleri birbirinden
      ayirt ediliyor (ikisi de ayni acik maviyle cizilince benzer duruyordu). */
-  return '<span class="flag" style="width:22px;height:16px;color:'+(color||'#7fd4ff')+'">'+
-    '<svg viewBox="0 0 20 14" width="22" height="16" aria-hidden="true">'+s+'</svg></span>';
+  w=w||22; var h=Math.round(w*0.7);
+  return '<span class="flag" style="width:'+w+'px;height:'+h+'px;color:'+(color||'#7fd4ff')+'">'+
+    '<svg viewBox="0 0 20 14" width="'+w+'" height="'+h+'" aria-hidden="true">'+s+'</svg></span>';
 }
 var RO_REGION={PAS:'ASIA',PDA:'AMERICAS',PDC:'CN',PDE:'EU',PTA:'AMERICAS',PTC:'CN',PTE:'EU'};
-function roRegionChip(ro){
+/* Boy disaridan verilebiliyor: aile grafigindeki uye RO cipleri 10px'lik
+   kucuk rozetler, 22px'lik bayrak oraya sigmiyor. */
+function roRegionChip(ro,w){
   var reg=RO_REGION[ro];
-  if(reg==='EU'||reg==='CN') return flagChip(reg,22);
-  return regionChip(reg,roColor(ro));
+  if(reg==='EU'||reg==='CN') return flagChip(reg,w||22);
+  return regionChip(reg,roColor(ro),w);
 }
 function siteFlag(site){
   var g=(window.SITE_GEO&&site.key)?SITE_GEO[site.key]:null;
@@ -1633,7 +1636,8 @@ function execBarChart(mode,unit,half){
     var inner = mode==='family'
       ? '<span class="bc-lb-c">'+esc(r.label)+'</span>'+
         '<span class="bc-lb-ros">'+r.ros.map(function(x){
-          return '<span class="xro" style="--rc:var(--ro-'+x+')">'+esc(x)+'</span>'; }).join('')+'</span>'
+          return '<span class="xro" style="--rc:var(--ro-'+x+')">'+roRegionChip(x,15)+
+                 esc(x)+'</span>'; }).join('')+'</span>'
       : '<span class="bc-lb-f">'+roRegionChip(r.key)+'</span>'+
         '<span class="bc-lb-c">'+esc(r.key)+'</span>'+
         '<span class="bc-lb-n">'+esc(BOOT.roLabels[r.key]||'')+'</span>';
