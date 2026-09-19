@@ -231,6 +231,8 @@ var T={
   settingsIntro:'The monthly report arrives as a new spreadsheet each month. The Gmail scan finds it automatically; if it doesn’t, add the link manually.',
   regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.',lnReal:'YTD real',
   execChartFam:'By business line — Budget Year · Budget YTD · launched',
+  execScopeFam:'By business line',execScopeRo:'By RO',
+  execSeries:'Budget Year · Budget YTD · launched',
   execChartTitle:'By RO — Budget Year · Budget YTD · launched',execTotal:'Total',
   execBudgetYear:'Budget Year',execUnit:'Unit',execOther:'Other',execQty:'Project Qty',execPieWrap:'Composition — RO to site',execPieRo:'By RO',
   execPieSite:'By site',noData:'No data',
@@ -245,6 +247,8 @@ var T={
   helpS1t:'The RO list is the start',helpS1b:'Seven regional organizations, the one furthest behind plan on top. The bar shows how much of that RO’s Budget Year has been launched.',helpS2t:'The left rail',helpS2b:'Hover it to open. Click an RO to narrow the whole screen to it; click a site to open its panel.',helpS3t:'Site panel',helpS3b:'Clicking a site opens a panel on the right: its KPIs, biggest projects and team. “Open full page” goes to the full detail.',helpS4t:'Filters and search',helpS4b:'Product type, project type and customer narrow every number on screen. The search box finds a site or an RO by name.',helpS5t:'How fresh is the data',helpS5b:'The stamp at the top right says when the data was built. It refreshes every hour; Refresh data rebuilds it now.',helpC1:'Budget YTD',helpC2:'Launch Done',helpC3:'why is a site late',helpC4:'P1 P10 TTM',
   pickType:'Please choose a type.',pickPriority:'Please choose a priority.',writeMessage:'Please write a message.',onlyImages:'Only image files are accepted.'},
  tr:{execChartFam:'İş kolu bazında — Budget Year · Budget YTD · gerçekleşen',
+  execScopeFam:'İş kolu bazında',execScopeRo:'RO bazında',
+  execSeries:'Budget Year · Budget YTD · gerçekleşen',
   execChartTitle:'RO bazında — Budget Year · Budget YTD · gerçekleşen',execTotal:'Toplam',
   execBudgetYear:'Budget Year',execUnit:'Birim',execOther:'Diğer',execQty:'Project Qty',execPieWrap:'Dağılım — RO’dan site’a',execPieRo:'RO bazında',
   execPieSite:'Site bazında',noData:'Veri yok',
@@ -1641,7 +1645,7 @@ function execBarChart(mode,unit,half){
     return '<span class="bc-kk"><i style="background:'+sr[2]+'"></i>'+esc(t(sr[1]))+'</span>';
   }).join('');
 
-  var body=
+  var body='<div class="bc-body">'+
     '<div class="bc-wrap"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" '+
       'aria-label="'+esc(t('execChartTitle'))+'">'+
       '<defs>'+BC_SERIES.map(function(sr,k){
@@ -1650,12 +1654,21 @@ function execBarChart(mode,unit,half){
           '<stop offset="1" stop-color="'+sr[2]+'" stop-opacity=".72"/></linearGradient>';
       }).join('')+'</defs>'+grid+bars+'</svg></div>'+
     '<div class="bc-labels" style="width:'+(bw*rows.length/W*100)+'%;margin-left:'+(x0off/W*100)+'%">'+
-      labels+'</div>';
-  if(half) return '<div class="bc-half"><h4>'+esc(execUnitLabel(u))+'</h4>'+body+'</div>';
-  return '<section class="panel bc-panel"><div class="panel-h bc-head">'+
-      '<h3>'+esc(mode==='family'?t('execChartFam'):t('execChartTitle'))+
-        ' <span class="bc-unit">'+esc(execUnitLabel(u))+'</span></h3>'+
-      '<div class="bc-tools"><span class="bc-key">'+key+'</span>'+execUnitToggle()+'</div></div>'+
+      labels+'</div></div>';
+  /* HER BIRIM KENDI KARTINDA. Tek cerceveye iki farkli olcegi koymak
+     "sikistirilmis tablo" etkisi yapiyordu: kart basligi neyi anlattigini
+     soylemiyordu. Benchmark: bir kart = bir kavram (PatternFly, stan.vision);
+     farkli olcekler ayri panellere bolunur (DataCamp, datawirefra.me).
+     Baslik hiyerarsisi: kapsam (kucuk, ust) -> OLCU (buyuk) -> seriler. */
+  return '<section class="panel bc-panel">'+
+      '<div class="bc-head">'+
+        '<div class="bc-title">'+
+          '<span class="bc-eyebrow">'+esc(mode==='family'?t('execScopeFam'):t('execScopeRo'))+'</span>'+
+          '<h3>'+esc(execUnitLabel(u))+'</h3>'+
+          '<p class="bc-sub">'+esc(t('execSeries'))+'</p>'+
+        '</div>'+
+        '<span class="bc-key">'+key+'</span>'+
+      '</div>'+
     body+'</section>';
 }
 
@@ -1666,13 +1679,7 @@ function execBarChart(mode,unit,half){
 function execPair(mode){
   var a=execBarChart(mode,'OI',true), b=execBarChart(mode,'COUNT',true);
   if(!a&&!b) return '';
-  var key=BC_SERIES.map(function(sr){
-    return '<span class="bc-kk"><i style="background:'+sr[2]+'"></i>'+esc(t(sr[1]))+'</span>';
-  }).join('');
-  return '<section class="panel bc-panel"><div class="panel-h bc-head">'+
-      '<h3>'+esc(mode==='family'?t('execChartFam'):t('execChartTitle'))+'</h3>'+
-      '<div class="bc-tools"><span class="bc-key">'+key+'</span></div></div>'+
-    '<div class="bc-pair bc-pair-'+esc(mode)+'">'+a+b+'</div></section>';
+  return '<div class="bc-pair bc-pair-'+esc(mode)+'">'+a+b+'</div>';
 }
 
 /* ---------- iki pasta: RO -> site ----------

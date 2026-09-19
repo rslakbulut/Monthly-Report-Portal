@@ -401,7 +401,20 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
 .ex-rep-nr.on .ex-rep-ch{transform:rotate(90deg)}
 
 /* ---------- birim secici (OI / adet) ---------- */
-.bc-head{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap}
+/* Kart basligi UC KADEMELI okunur: kapsam (eyebrow) -> OLCU (h3) -> seriler.
+   Onceki halinde olcu 10px'lik soluk bir rozet, seriler de 11.5px gri bir
+   satirdi; grafigin NEYI anlattigini soyleyen ogeler goze carpmiyordu. */
+.bc-head{display:flex; align-items:flex-start; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:14px}
+.bc-title{min-width:0}
+.bc-eyebrow{
+  display:block; font-size:11px; font-weight:800; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--valeo-mid); margin-bottom:5px;
+}
+.bc-panel .bc-head h3{
+  margin:0; font-size:clamp(19px,1.5vw,25px); font-weight:800; letter-spacing:-.015em;
+  line-height:1.14; color:var(--text);
+}
+.bc-sub{margin:5px 0 0; font-size:12.5px; font-weight:600; color:var(--text-dim); line-height:1.35}
 .bc-unit{
   font-size:10px; font-weight:800; letter-spacing:.1em; color:var(--valeo-mid);
   background:rgba(0,114,206,.12); border-radius:6px; padding:2px 7px; margin-left:8px;
@@ -419,9 +432,15 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
   background:linear-gradient(180deg,#0a7ddb,#0060b4); color:#fff;
   box-shadow:0 1px 2px rgba(0,61,155,.4), 0 4px 10px -3px rgba(0,61,155,.55);
 }
-.bc-key{display:inline-flex; align-items:center; gap:14px; font-size:11.5px; font-weight:600; color:var(--text-mute)}
-.bc-kk{display:inline-flex; align-items:center; gap:6px}
-.bc-kk i{width:10px; height:10px; border-radius:3px; display:inline-block}
+/* Efsane artik "kucuk gri yazi" degil: kendi yuzeyinde, metin murekkebiyle. */
+.bc-key{
+  display:inline-flex; align-items:center; gap:12px; flex-wrap:wrap;
+  padding:7px 11px; border-radius:11px;
+  background:var(--sunken); border:1px solid var(--border);
+}
+.bc-kk{display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:700; color:var(--text)}
+.bc-kk i{width:11px; height:11px; border-radius:3px; display:inline-block;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.10)}
 
 /* RO bayrak satiri — SVG'nin ALTINDA, ayni sutun genisliginde */
 .bc-labels{display:flex; width:100%; margin-top:2px}
@@ -499,7 +518,6 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
 .panel-h{display:flex; align-items:baseline; justify-content:space-between; gap:14px; flex-wrap:wrap}
 .bc-panel{margin-bottom:18px}
 .bc-panel .panel-h{display:flex; align-items:center; justify-content:space-between; gap:16px}
-.bc-key{display:inline-flex; align-items:center; gap:8px; font-size:11.5px; font-weight:600; color:var(--text-mute)}
 /* Sabit yukseklik + preserveAspectRatio:none yazilari yatayda geriyordu.
    Oranla verilince SVG kendi olceginde kaliyor. */
 .bc-wrap{width:100%; aspect-ratio:1180/260; max-width:100%}
@@ -508,15 +526,25 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
 /* Sutun sayisi uyarlamali. Aile grafiginde 2 kategori var, dar yerde de
    rahat; RO grafiginde 7 kategori x 3 cubuk var, yari genislik ~1560px'in
    altinda sikisiyor -- orada alt alta dusuyorlar. */
-.bc-pair{display:grid; gap:22px}
+/* Iki OLCU = iki KART. Tek cercevede "OI (M€)" ve "Project Qty" ayni
+   baslik altinda duruyordu; birim farki ancak kucuk bir alt etiketten
+   okunuyordu. Benchmark (PatternFly, stan.vision, DataCamp): bir kart bir
+   kavram; farkli olcekli seriler ayri panellere bolunur. */
+.bc-pair{display:grid; gap:22px; margin-bottom:22px}
 .bc-pair-family{grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr))}
 .bc-pair-ro{grid-template-columns:repeat(auto-fit,minmax(min(100%,720px),1fr))}
-.bc-half{min-width:0}
-.bc-half h4{
-  margin:0 0 2px; font-size:10px; font-weight:800; letter-spacing:.12em;
-  text-transform:uppercase; color:var(--valeo-mid);
-}
-.bc-half .bc-wrap{aspect-ratio:620/265}
+.bc-pair>*{min-width:0}
+/* Izgara icinde kartin kendi alt bosluguna gerek yok; ikisi ayni yukseklikte. */
+.bc-pair .bc-panel{margin-bottom:0; height:100%; display:flex; flex-direction:column;
+  container-type:inline-size}
+.bc-pair .bc-wrap{aspect-ratio:620/265}
+/* Izgara tek sutuna dustugunde kart tum satiri kapliyor ve ayni oranla
+   grafik ~550px'e uzuyordu. Kap sorgusu, medya sorgusunun bilemedigi
+   sutun sayisini bilir: genis kartta cizim alani sinirlanip ortalaniyor.
+   (Oran SVG viewBox'iyla ayni kalmali; degistirilirse SVG mektup-kutusuna
+   dusup cubuklar ortada daraliyor -- onizlemede goruldu.) */
+.bc-body{min-width:0}
+@container (min-width:1000px){ .bc-body{max-width:980px; margin:0 auto} }
 .bc-wrap svg{width:100%; height:100%; display:block; overflow:visible}
 .bc-ax{font-size:11px; fill:var(--text-mute); font-weight:600}
 .bc-grid{stroke:var(--border); stroke-width:1}
@@ -1274,8 +1302,8 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
      telefonda arama diye bir sey kalmaz. Kalan genisligi kaplar; kullanici
      cipinin metni zaten bu genislikte gizleniyor, yer aciliyor. */
   .bc-wrap{aspect-ratio:760/300}
-  .bc-pair{gap:18px}
-  .bc-half .bc-wrap{aspect-ratio:620/265}
+  .bc-pair{gap:18px; margin-bottom:18px}
+  .bc-pair .bc-wrap{aspect-ratio:620/265}
   .ex-pies{grid-template-columns:1fr}
   .bc-lb-n{display:none}
   .topsearch{flex:1 1 auto; margin-left:0}
