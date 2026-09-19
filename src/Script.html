@@ -1530,6 +1530,10 @@ var EXV={unit:'OI'};          // 'OI' | 'COUNT'
 var EXP={ro:null};            // sag pastada gosterilen RO
 
 function execUnit(){ return EXV.unit==='OI'?'M€':t('execQty'); }
+/* Baslik rozeti secili dugmenin ETIKETININ AYNISINI gosterir ('OI (M€)'),
+   yalin 'M€' degil. Pasta ortasindaki birim satiri ve ipuclari kisa
+   halini kullanmaya devam ediyor -- orada zaten deger yaninda duruyor. */
+function execUnitLabel(){ return EXV.unit==='OI'?'OI (M€)':t('execQty'); }
 function execFmt(v){ return EXV.unit==='OI'?nf(v,1):nf(Math.round(v)); }
 
 /* Ciro kupu (M€). B1 YTD ciro plani detay satirlarinin PLAN tarihinden
@@ -1652,7 +1656,7 @@ function execBarChart(){
   }).join('');
 
   return '<section class="panel bc-panel"><div class="panel-h bc-head">'+
-      '<h3>'+esc(t('execChartTitle'))+' <span class="bc-unit">'+esc(execUnit())+'</span></h3>'+
+      '<h3>'+esc(t('execChartTitle'))+' <span class="bc-unit">'+esc(execUnitLabel())+'</span></h3>'+
       '<div class="bc-tools"><span class="bc-key">'+key+'</span>'+execUnitToggle()+'</div></div>'+
     '<div class="bc-wrap"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" '+
       'aria-label="'+esc(t('execChartTitle'))+'">'+
