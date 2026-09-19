@@ -1552,7 +1552,10 @@ function execBarChart(mode,unit,half){
   var rows=execBarRows(mode,st,ty,money,u);
   if(!rows.length) return '';
 
-  var W=half?620:1180,H=half?330:360,PL=half?50:58,PR=16,PT=36,PB=18;
+  /* Genis ekranda kap genisledikce SVG de uzuyordu (1920'de 538px).
+     viewBox daha BASIK: oran korunarak yukseklik makul kaliyor ve kap
+     orani ayni oldugu icin mektup-kutusu (bos kenar) olusmuyor. */
+  var W=half?620:1180,H=half?265:260,PL=half?50:58,PR=16,PT=34,PB=16;
   var iw=W-PL-PR, ih=H-PT-PB;
   var max=0; rows.forEach(function(r){ max=Math.max(max,r.c.b1,r.c.ytd,r.c.real); });
   var step=Math.pow(10,Math.floor(Math.log(Math.max(max,1))/Math.LN10));
