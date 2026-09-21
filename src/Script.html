@@ -240,6 +240,11 @@ var T={
   execScopeFam:'By business line',execScopeRo:'By RO',
   scopeNow:'Showing',scopeSwitchTo:'switch to',
   show:'Show',hide:'Hide',roListHidden:'Hidden — open to compare ROs side by side',
+  viewAs:'View as',viewChart:'Chart',viewTable:'Table',
+  execB1:'B1',execB1Ytd:'B1 YTD',execYtdReal:'YTD Real',behindPlan:'Behind Budget YTD',
+  mxTypology:'Project typology',mxEyebrow:'Management view',
+  mxTitle:'RO × project typology',
+  mxSub:'P1 · P10 · TTM × NEW / REMAN — B1, B1 YTD and YTD Real side by side',
   hcBudget:'budget',sample:'sample',
   demoNote:'Sample figure — there is no headcount budget in the source sheets yet. It will be replaced when the real data arrives.',
   execSeries:'Budget Year · Budget YTD · launched',
@@ -261,6 +266,11 @@ var T={
   execScopeFam:'İş kolu bazında',execScopeRo:'RO bazında',
   scopeNow:'Gösterilen',scopeSwitchTo:'geçmek için tıklayın:',
   show:'Göster',hide:'Gizle',roListHidden:'Gizli — RO’ları yan yana görmek için açın',
+  viewAs:'Görünüm',viewChart:'Grafik',viewTable:'Tablo',
+  execB1:'B1',execB1Ytd:'B1 YTD',execYtdReal:'YTD Real',behindPlan:'B1 YTD’nin gerisinde',
+  mxTypology:'Proje tipolojisi',mxEyebrow:'Yönetim görünümü',
+  mxTitle:'RO × proje tipolojisi',
+  mxSub:'P1 · P10 · TTM × NEW / REMAN — B1, B1 YTD ve YTD Real yan yana',
   hcBudget:'bütçe',sample:'örnek',
   demoNote:'Örnek rakam — kaynak sayfalarda henüz headcount bütçesi yok. Gerçek veri gelince değiştirilecek.',
   execSeries:'Budget Year · Budget YTD · gerçekleşen',
@@ -1390,6 +1400,13 @@ function renderRoLevel(){
      icin EX.fam, digerleri icin ZATEN VAR OLAN F.status / F.type -- yani
      halkaya tiklamak ust filtre barindaki dugmeye basmakla ayni sey, iki
      ayri "secili" durum olusmuyor. Ayni dilime tekrar tiklamak kaldirir. */
+  $('view').querySelectorAll('[data-exview]').forEach(function(b){
+    b.onclick=function(){
+      EXVIEW.mode=b.getAttribute('data-exview');
+      try{ localStorage.setItem('roDashExecView',EXVIEW.mode); }catch(e){}
+      render();
+    };
+  });
   var rl=$('view').querySelector('#btnRoList');
   if(rl) rl.onclick=function(){
     ROLIST.open=!ROLIST.open;
@@ -1554,6 +1571,10 @@ var EXV={unit:'OI'};          // 'OI' | 'COUNT'
 /* Grafik kirilimi: iki kart ayni anda ayni kirilimi gosterir. Onceden iki
    kirilim ALT ALTA duruyordu (dort kart); anahtar ikisini tek yere indirdi. */
 var EXM={mode:'family'};      // 'family' | 'ro'
+/* Gorunum: grafik mi, mudurun slaytindaki matris mi (kullanici talebi).
+   Secim tarayicida saklaniyor. */
+var EXVIEW={mode:'chart'};    // 'chart' | 'table'
+(function(){ try{ if(localStorage.getItem('roDashExecView')==='table') EXVIEW.mode='table'; }catch(e){} })();
 /* RO listesi acik mi? Varsayilan KAPALI: grafikler ust yonetimin bakacagi
    yer, RO satirlari detay. Secim tarayicida saklaniyor. */
 var ROLIST={open:false};
@@ -1729,17 +1750,26 @@ function execBarChart(mode,unit,half,withSwitch){
      soylemiyordu. Benchmark: bir kart = bir kavram (PatternFly, stan.vision);
      farkli olcekler ayri panellere bolunur (DataCamp, datawirefra.me).
      Baslik hiyerarsisi: kapsam (kucuk, ust) -> OLCU (buyuk) -> seriler. */
+  /* Baslik bloku: UST SATIR (kapsam/anahtar + efsane) tam genislikte, altinda
+     olcu ve seriler. Efsane eskiden basligin YANINDAYDI; anahtar satiri
+     genis oldugu icin dar kartta alt satira kayiyor ve iki kartin grafik
+     baslangici farkli yukseklige dusuyordu. */
   return '<section class="panel bc-panel">'+
       '<div class="bc-head">'+
-        '<div class="bc-title">'+
+        '<div class="bc-top">'+
           (withSwitch?execScopeSwitch()
             :'<span class="bc-eyebrow">'+esc(mode==='family'?t('execScopeFam'):t('execScopeRo'))+'</span>')+
-          '<h3>'+esc(execUnitLabel(u))+'</h3>'+
-          '<p class="bc-sub">'+esc(t('execSeries'))+'</p>'+
         '</div>'+
-        '<span class="bc-key">'+key+'</span>'+
+        '<h3>'+esc(execUnitLabel(u))+'</h3>'+
+        '<p class="bc-sub">'+esc(t('execSeries'))+'</p>'+
       '</div>'+
-    body+'</section>';
+    body+
+    /* Efsane GRAFIGIN ALTINDA, ortali. Baslik satirinda anahtar + gorunum
+       secici + efsane ayni satira sigmiyordu (olculdu: 757px icerik, 737px
+       yer) ve dar kartta efsane alt satira kayip grafigi asagi itiyordu --
+       iki kartin grafik baslangici farkli yukseklige dusuyordu. */
+    '<div class="bc-keywrap"><span class="bc-key">'+key+'</span></div>'+
+    '</section>';
 }
 
 /* Iki birim YAN YANA. Ayni eksene iki olcek koymak (cift eksen) yasak
@@ -1782,11 +1812,108 @@ function execScopeSwitch(){
       '<span class="sw-k"></span></button>'+
     '<span class="scope-l'+(ro?' on':'')+'">'+esc(t('execScopeRo'))+'</span>'+
     '<span class="scope-hint">'+esc(t('scopeSwitchTo'))+' <b>'+esc(other)+'</b></span>'+
+    /* Gorunum secici de bu satirin sagina: baslik satirinda efsanenin
+       yanina konunca dar kartta alt satira kayip grafigi asagi itiyordu. */
+    execViewSeg()+
   '</div>';
 }
+/* Grafik / Tablo secici. Ikisi AYNI veriyi gosterir, yalnizca bicim degisir. */
+function execViewSeg(){
+  return '<span class="ex-view" role="group" aria-label="'+esc(t('viewAs'))+'">'+
+    [['chart',t('viewChart')],['table',t('viewTable')]].map(function(x){
+      return '<button type="button" data-exview="'+x[0]+'" aria-pressed="'+
+        (EXVIEW.mode===x[0])+'">'+esc(x[1])+'</button>';
+    }).join('')+'</span>';
+}
+
+/* ---------- yonetim matrisi (mudurun slayti) ----------
+   Satirlar: P1/P10 x NEW/REMAN, TTM, TOPLAM (adet) + OI NEW/REMAN/TOPLAM (M€).
+   Sutunlar: her RO icin B1 / B1 YTD / YTD Real, sonda TOTAL.
+   Slayttaki kirmizi isaretleme: YTD Real, B1 YTD'nin ALTINDA kalmissa.
+   ONEMLI: hesaplar ust filtre barindan BAGIMSIZ -- matrisin kendisi zaten
+   NEW/REMAN ve P1/P10/TTM kirilimini satir satir veriyor; F.status ile
+   ikinci kez daraltmak slaytla ayni sey olmazdi (grafik tarafinda da ayni
+   kural gecerli). */
+var MX_COLS=[['b1','execB1'],['ytd','execB1Ytd'],['real','execYtdReal']];
+function mxCell(c,money){
+  var late=(c.real<c.ytd);
+  var f=function(v){ return money?nf(v,2):nf(Math.round(v)); };
+  return '<td class="mx-v">'+f(c.b1)+'</td>'+
+    '<td class="mx-v mx-dim">'+f(c.ytd)+'</td>'+
+    '<td class="mx-v'+(late?' mx-late':'')+'"'+
+      (late?' title="'+esc(t('behindPlan'))+'"':'')+'>'+f(c.real)+'</td>';
+}
+/* Satir basligi HER ZAMAN iki hucre genisliginde: birinci sutun grup adi
+   (P1/P10/OI), ikinci sutun alt kirilim (NEW/REMAN). Ilk surumde REMAN
+   satirlari tek hucreyle basliyordu ve butun satir bir sutun KAYIYORDU --
+   B1 degeri B1 YTD sutununda gorunuyordu. */
+function mxRow(label,sub,lists,fn,money,cls){
+  var html='<tr'+(cls?' class="'+cls+'"':'')+'>';
+  if(sub==null){
+    html+='<th class="mx-rh" scope="row" colspan="2">'+esc(label||'')+'</th>';
+  } else {
+    html+='<th class="mx-rh" scope="row">'+esc(label||'')+'</th>'+
+          '<th class="mx-rh2" scope="row">'+esc(sub)+'</th>';
+  }
+  lists.forEach(function(L){ html+=mxCell(fn(L.list),money); });
+  return html+'</tr>';
+}
+function execMatrix(){
+  var ros=BOOT.roOrder.filter(function(ro){ return sitesOfRo(ro).length; });
+  if(!ros.length) return '';
+  var cols=ros.map(function(ro){ return {key:ro,label:ro,list:sitesOfRo(ro)}; });
+  cols.push({key:'TOTAL',label:t('execTotal'),list:(DATA.sites||[]),total:true});
+
+  var head='<thead><tr><td class="mx-corner" colspan="2"></td>'+
+    cols.map(function(c){
+      return '<th class="mx-ro'+(c.total?' mx-tot':'')+'" colspan="3" scope="colgroup">'+esc(c.label)+'</th>';
+    }).join('')+'</tr><tr><td class="mx-corner" colspan="2"></td>'+
+    cols.map(function(c){
+      return MX_COLS.map(function(k){
+        return '<th class="mx-sub'+(c.total?' mx-tot':'')+'" scope="col">'+esc(t(k[1]))+'</th>';
+      }).join('');
+    }).join('')+'</tr></thead>';
+
+  var body='<tbody>';
+  /* 1) Proje adedi: tip x urun tipi */
+  body+='<tr class="mx-band"><th colspan="'+(2+cols.length*3)+'" scope="colgroup">'+
+    esc(t('mxTypology'))+' <span class="mx-unit">'+esc(t('execQty'))+'</span></th></tr>';
+  [['P1','NEW'],['P1','REMAN'],['P10','NEW'],['P10','REMAN']].forEach(function(r,i){
+    body+=mxRow(i%2===0?r[0]:null, r[1], cols, function(list){
+      return execCountCell(list,r[0],r[1]);
+    }, false, i%2===0?'mx-grp':'');
+  });
+  body+=mxRow('TTM',null,cols,function(list){ return execCountCell(list,'TTM','ALL'); },false,'mx-grp');
+  body+=mxRow(t('execTotal'),null,cols,function(list){
+    return execCountCell(list,'TOTAL','ALL'); },false,'mx-sum');
+
+  /* 2) Ciro (OI) */
+  body+='<tr class="mx-band"><th colspan="'+(2+cols.length*3)+'" scope="colgroup">'+
+    'OI <span class="mx-unit">M€</span></th></tr>';
+  ['NEW','REMAN'].forEach(function(st,i){
+    body+=mxRow(i===0?'OI':null, st, cols, function(list){
+      return execMoneyCell(list,st,'TOTAL'); }, true, i===0?'mx-grp':'');
+  });
+  body+=mxRow(t('execTotal'),null,cols,function(list){
+    return execMoneyCell(list,'ALL','TOTAL'); },true,'mx-sum');
+  body+='</tbody>';
+
+  return '<section class="panel bc-panel mx-panel">'+
+      '<div class="bc-head">'+
+        '<div class="bc-top">'+
+          '<span class="bc-eyebrow">'+esc(t('mxEyebrow'))+'</span>'+
+          execViewSeg()+
+        '</div>'+
+        '<h3>'+esc(t('mxTitle'))+'</h3>'+
+        '<p class="bc-sub">'+esc(t('mxSub'))+'</p>'+
+      '</div>'+
+      '<div class="mx-wrap"><table class="mx">'+head+body+'</table></div>'+
+    '</section>';
+}
+
 function execPanel(){
   if(!DATA||!DATA.sites||!DATA.sites.length) return '';
-  return execPair(EXM.mode);
+  return EXVIEW.mode==='table' ? execMatrix() : execPair(EXM.mode);
 }
 
 /* Arama sonucu / grafik cubugu -> site detayi. NAV.siteIdx o RO'nun TAM

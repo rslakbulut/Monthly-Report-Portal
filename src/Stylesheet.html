@@ -440,7 +440,11 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
 /* Kart basligi UC KADEMELI okunur: kapsam (eyebrow) -> OLCU (h3) -> seriler.
    Onceki halinde olcu 10px'lik soluk bir rozet, seriler de 11.5px gri bir
    satirdi; grafigin NEYI anlattigini soyleyen ogeler goze carpmiyordu. */
-.bc-head{display:flex; align-items:flex-start; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:14px}
+.bc-head{margin-bottom:14px}
+/* Ust satir: kapsam/anahtar solda, efsane veya gorunum secici sagda. */
+.bc-top{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:5px}
+.bc-top>.ex-view{margin-left:auto}
+.bc-keywrap{display:flex; justify-content:center; margin-top:10px}
 .bc-title{min-width:0}
 .bc-eyebrow{
   display:block; font-size:11px; font-weight:800; letter-spacing:.16em;
@@ -527,11 +531,93 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
   vertical-align:1px; cursor:help;
 }
 
+/* ---------- gorunum secici (Grafik / Tablo) ---------- */
+.scope-sw .ex-view{margin-left:auto}
+.ex-view{display:inline-flex; background:var(--sunken); border:1px solid var(--border);
+  border-radius:11px; padding:3px; gap:3px}
+.ex-view button{
+  background:transparent; color:var(--text-dim); border:none; cursor:pointer;
+  padding:0 13px; min-height:30px; font:inherit; font-size:12px; font-weight:700;
+  border-radius:8px; white-space:nowrap; transition:background .15s ease, color .15s ease;
+}
+.ex-view button:hover{background:var(--card); color:var(--text)}
+.ex-view button[aria-pressed="true"]{
+  background:linear-gradient(180deg,#0a7ddb,#0060b4); color:#fff;
+  box-shadow:0 1px 2px rgba(0,61,155,.4);
+}
+
+/* ---------- yonetim matrisi ----------
+   24 deger sutunu var; dar ekranda yatay kayar, satir basliklari yapisik
+   kalir ki hangi satira baktigin kaybolmasin. */
+.mx-panel{margin-bottom:22px}
+/* Yatay kaydirma kabi: yapisik sutunlar kabin SOL KENARINA yapisir, o
+   yuzden kapta yan bosluk olmamali -- negatif margin + padding denemesinde
+   kayan hucreler yapisik sutunun solundan sizip goruluyordu. */
+.mx-wrap{overflow-x:auto}
+.mx{border-collapse:separate; border-spacing:0; width:100%; font-variant-numeric:tabular-nums}
+.mx th,.mx td{white-space:nowrap}
+.mx-corner{background:var(--card); position:sticky; left:0; z-index:3}
+.mx-ro{
+  font-size:13px; font-weight:800; letter-spacing:.06em; color:var(--text);
+  padding:7px 10px; text-align:center;
+  background:var(--sunken); border-bottom:1px solid var(--border);
+  border-left:2px solid var(--card);
+}
+.mx-sub{
+  font-size:9.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--label-accent); padding:5px 10px; text-align:right;
+  background:var(--sunken); border-bottom:1px solid var(--border-strong);
+}
+.mx-ro.mx-tot,.mx-sub.mx-tot{background:color-mix(in srgb,var(--valeo-mid) 12%,var(--sunken))}
+/* Yapisik hucrelerin ARDI SAYDAM OLMAMALI: kayan degerler altindan
+   goruluyordu. */
+.mx-band th{
+  text-align:left; font-size:10.5px; font-weight:800; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--label-accent);
+  padding:13px 8px 6px; position:sticky; left:0; background:var(--card); z-index:2;
+}
+.mx-band{background:var(--card)}
+.mx-rh,.mx-rh2,.mx-corner{background:var(--card)}
+/* Yapisik blogun bittigi yer gorunsun. */
+.mx-rh2,.mx-rh[colspan="2"]{box-shadow:1px 0 0 var(--border)}
+.mx-unit{font-weight:700; color:var(--text-mute); letter-spacing:.04em; text-transform:none}
+/* Iki baslik sutununun genisligi SABIT: yapisik (sticky) ikinci sutunun
+   sol konumu birincinin genisligine esit olmali, yoksa uzun bir etiket
+   (ornegin "OI") ikinci sutunu ilk deger hucresinin uzerine bindiriyordu
+   ("16.81" -> ".6.81" olarak goruldu). */
+.mx-rh{
+  width:62px; min-width:62px; box-sizing:border-box;
+  font-size:12px; font-weight:800; color:var(--text); text-align:left;
+  padding:6px 8px; position:sticky; left:0; background:var(--card); z-index:2;
+}
+.mx-rh2{
+  width:74px; min-width:74px; box-sizing:border-box;
+  font-size:11.5px; font-weight:700; color:var(--text-dim); text-align:left;
+  padding:6px 10px 6px 0; position:sticky; left:62px; background:var(--card); z-index:2;
+}
+.mx-corner{width:136px; min-width:136px}
+.mx-v{
+  font-size:12.5px; font-weight:700; color:var(--text); text-align:right;
+  padding:6px 10px; border-top:1px solid var(--border);
+}
+.mx-dim{color:var(--text-mute); font-weight:600}
+/* Slayttaki kirmizi: YTD Real, B1 YTD'nin altinda. Renk tek isaret degil --
+   hucrenin title'i de "B1 YTD'nin gerisinde" diyor. */
+.mx-late{
+  background:var(--bad-bg); color:var(--bad); font-weight:800;
+  box-shadow:inset 0 0 0 1px var(--bad-line);
+}
+.mx-grp .mx-v,.mx-grp .mx-rh,.mx-grp .mx-rh2{border-top:1px solid var(--border-strong)}
+.mx-sum .mx-v{font-weight:800; background:var(--sunken)}
+.mx-sum .mx-rh{font-weight:800}
+.mx tbody tr:hover .mx-v{background:color-mix(in srgb,var(--valeo-mid) 7%,transparent)}
+.mx tbody tr:hover .mx-late{background:var(--bad-bg)}
+
 /* ---------- kirilim anahtari (is kolu <-> RO) ----------
    Ayri bir satir degil: ilk kartin UST ETIKETININ yerinde duruyor -- o
    etiket zaten kirilim adiydi. Iki ucunda da kirilim adi yazili (aktif olan
    vurgulu) ve yanindaki kisa cumle neye gecilecegini soyluyor. */
-.scope-sw{display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:5px}
+.scope-sw{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
 .scope-l{
   font-size:11px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
   color:var(--text-mute); transition:color .15s ease;
