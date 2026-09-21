@@ -243,6 +243,7 @@ var T={
   viewAs:'View as',viewChart:'Chart',viewGap:'Gap',viewTable:'Table',
   gapTitle:'Gap to plan',
   gapSub:'YTD Real − B1 YTD per RO and project type. Number = projects behind/ahead; colour = how big that gap is against its own plan.',
+  gapSubOi:'YTD Real − B1 YTD per RO and project type, in M€. Number = order intake behind/ahead; colour = how big that gap is against its own plan.',
   gapBehind:'Behind',gapAhead:'Ahead',
   gapNote:'Colour is relative to each cell’s own B1 YTD',
   execB1:'B1',execB1Ytd:'B1 YTD',execYtdReal:'YTD Real',behindPlan:'Behind Budget YTD',
@@ -273,6 +274,7 @@ var T={
   viewAs:'Görünüm',viewChart:'Grafik',viewGap:'Sapma',viewTable:'Tablo',
   gapTitle:'Plana göre sapma',
   gapSub:'RO ve proje tipi bazında YTD Real − B1 YTD. Sayı = kaç proje geride/önde; renk = bu sapmanın kendi planına göre büyüklüğü.',
+  gapSubOi:'RO ve proje tipi bazında YTD Real − B1 YTD, M€ olarak. Sayı = kaç M€ geride/önde; renk = bu sapmanın kendi planına göre büyüklüğü.',
   gapBehind:'Geride',gapAhead:'Önde',
   gapNote:'Renk, her hücrenin KENDİ B1 YTD’sine göre',
   execB1:'B1',execB1Ytd:'B1 YTD',execYtdReal:'YTD Real',behindPlan:'B1 YTD’nin gerisinde',
@@ -1408,6 +1410,13 @@ function renderRoLevel(){
      icin EX.fam, digerleri icin ZATEN VAR OLAN F.status / F.type -- yani
      halkaya tiklamak ust filtre barindaki dugmeye basmakla ayni sey, iki
      ayri "secili" durum olusmuyor. Ayni dilime tekrar tiklamak kaldirir. */
+  $('view').querySelectorAll('[data-gapu]').forEach(function(b){
+    b.onclick=function(){
+      EXU.unit=b.getAttribute('data-gapu');
+      try{ localStorage.setItem('roDashGapUnit',EXU.unit); }catch(e){}
+      render();
+    };
+  });
   $('view').querySelectorAll('[data-exview]').forEach(function(b){
     b.onclick=function(){
       EXVIEW.mode=b.getAttribute('data-exview');
@@ -1581,7 +1590,10 @@ var EXV={unit:'OI'};          // 'OI' | 'COUNT'
 var EXM={mode:'family'};      // 'family' | 'ro'
 /* Gorunum: grafik mi, mudurun slaytindaki matris mi (kullanici talebi).
    Secim tarayicida saklaniyor. */
-var EXVIEW={mode:'chart'};    // 'chart' | 'table'
+var EXVIEW={mode:'chart'};    // 'chart' | 'gap' | 'table'
+/* Sapma matrisinin birimi: adet mi, ciro mu. */
+var EXU={unit:'COUNT'};       // 'COUNT' | 'OI'
+(function(){ try{ if(localStorage.getItem('roDashGapUnit')==='OI') EXU.unit='OI'; }catch(e){} })();
 (function(){ try{ if(localStorage.getItem('roDashExecView')==='table') EXVIEW.mode='table'; }catch(e){} })();
 /* RO listesi acik mi? Varsayilan KAPALI: grafikler ust yonetimin bakacagi
    yer, RO satirlari detay. Secim tarayicida saklaniyor. */
@@ -1964,7 +1976,13 @@ function gapCell(c,money,label){
 }
 /* Satir toplami: cubuk = gerceklesen, ince cizgi = plan, soluk ray = B1. */
 function gapTotal(c,money){
-  var max=Math.max(c.b1,c.ytd,c.real,1);
+  /* Olcek PLAN ile GERCEKLESENIN buyugu -- yillik B1 DEGIL. Bu gorunumun
+     sorusu "YTD planini tutturduk mu"; olcegi yillik butceye baglayinca hem
+     cubuk hem plan isareti sol uca sikisip kiyas okunmaz oluyordu.
+     (Onceki "...,1" tabani da ciro tarafinda degerler 1 M€ altinda kalinca
+     butun cubuklari sahte sekilde kisaltiyordu.) */
+  var max=Math.max(c.ytd,c.real);
+  if(!(max>0)) max=1;
   var w=clamp01(c.real/max)*100, p=clamp01(c.ytd/max)*100;
   return '<div class="gp-tot">'+
     '<div class="gp-bar"><i style="width:'+w.toFixed(1)+'%"></i>'+
@@ -1993,22 +2011,35 @@ function gapBlock(title,unit,rows,cols,money){
   });
   return html+'</div></div>';
 }
+function gapUnitSeg(){
+  return '<span class="ex-view ex-unit" role="group" aria-label="'+esc(t('execUnit'))+'">'+
+    [['COUNT',t('execQty')],['OI','OI (M€)']].map(function(x){
+      return '<button type="button" data-gapu="'+x[0]+'" aria-pressed="'+
+        (EXU.unit===x[0])+'">'+esc(x[1])+'</button>';
+    }).join('')+'</span>';
+}
 function execGapMatrix(){
   var ros=BOOT.roOrder.filter(function(ro){ return sitesOfRo(ro).length; });
   if(!ros.length) return '';
   var cols=ros.map(function(ro){ return {label:ro,list:sitesOfRo(ro)}; });
-
-  var qty=[
-    {g:'P1', s:'NEW',   fn:function(l){ return execCountCell(l,'P1','NEW'); }},
-    {g:'',   s:'REMAN', fn:function(l){ return execCountCell(l,'P1','REMAN'); }},
-    {g:'P10',s:'NEW',   fn:function(l){ return execCountCell(l,'P10','NEW'); }},
-    {g:'',   s:'REMAN', fn:function(l){ return execCountCell(l,'P10','REMAN'); }},
-    {g:'TTM',s:'',      fn:function(l){ return execCountCell(l,'TTM','ALL'); }}
-  ];
-  var oi=[
-    {g:'OI', s:'NEW',   fn:function(l){ return execMoneyCell(l,'NEW','TOTAL'); }},
-    {g:'',   s:'REMAN', fn:function(l){ return execMoneyCell(l,'REMAN','TOTAL'); }},
-    {g:'',   s:t('execTotal'), fn:function(l){ return execMoneyCell(l,'ALL','TOTAL'); }}
+  var money=(EXU.unit==='OI');
+  /* Ayni tipoloji IKI birimde de kuruluyor. Adet tarafi Bolum 4'ten,
+     ciro tarafi detay bloklarindan (byType) geliyor -- ikisi de tip
+     kirilimini tasiyor, o yuzden satirlar birebir ayni.
+     NOT: cironun BUDGET YEAR'i (B1) tip bazinda KAYNAKTA YOK (Bolum 3
+     yalniz TOTAL/VS/OES veriyor). Sapma gorunumu B1'i kullanmiyor --
+     hesap YTD Real - B1 YTD, ikisi de var. */
+  var cell=function(type,st){
+    return money ? function(l){ return execMoneyCell(l,st,type); }
+                 : function(l){ return execCountCell(l,type,st); };
+  };
+  var rows=[
+    {g:'P1', s:'NEW',   fn:cell('P1','NEW')},
+    {g:'',   s:'REMAN', fn:cell('P1','REMAN')},
+    {g:'P10',s:'NEW',   fn:cell('P10','NEW')},
+    {g:'',   s:'REMAN', fn:cell('P10','REMAN')},
+    {g:'TTM',s:'',      fn:cell('TTM','ALL')},
+    {g:t('execTotal'),s:'', fn:cell('TOTAL','ALL')}
   ];
 
   var scale='<div class="gp-legend"><span>'+esc(t('gapBehind'))+'</span>'+
@@ -2021,14 +2052,13 @@ function execGapMatrix(){
       '<div class="bc-head">'+
         '<div class="bc-top">'+
           '<span class="bc-eyebrow">'+esc(t('mxEyebrow'))+'</span>'+
-          execViewSeg()+
+          gapUnitSeg()+execViewSeg()+
         '</div>'+
-        '<h3>'+esc(t('gapTitle'))+'</h3>'+
-        '<p class="bc-sub">'+esc(t('gapSub'))+'</p>'+
+        '<h3>'+esc(t('gapTitle'))+' <span class="gp-u">'+esc(money?'OI (M€)':t('execQty'))+'</span></h3>'+
+        '<p class="bc-sub">'+esc(money?t('gapSubOi'):t('gapSub'))+'</p>'+
       '</div>'+
       '<div class="gp-wrap">'+
-        gapBlock(t('mxTypology'),t('execQty'),qty,cols,false)+
-        gapBlock('OI','M€',oi,cols,true)+
+        gapBlock(t('mxTypology'),money?'M€':t('execQty'),rows,cols,money)+
       '</div>'+scale+
     '</section>';
 }
