@@ -240,7 +240,11 @@ var T={
   execScopeFam:'By business line',execScopeRo:'By RO',
   scopeNow:'Showing',scopeSwitchTo:'switch to',
   show:'Show',hide:'Hide',roListHidden:'Hidden — open to compare ROs side by side',
-  viewAs:'View as',viewChart:'Chart',viewTable:'Table',
+  viewAs:'View as',viewChart:'Chart',viewGap:'Gap',viewTable:'Table',
+  gapTitle:'Gap to plan',
+  gapSub:'YTD Real − B1 YTD per RO and project type. Number = projects behind/ahead; colour = how big that gap is against its own plan.',
+  gapBehind:'Behind',gapAhead:'Ahead',
+  gapNote:'Colour is relative to each cell’s own B1 YTD',
   execB1:'B1',execB1Ytd:'B1 YTD',execYtdReal:'YTD Real',behindPlan:'Behind Budget YTD',
   mxTypology:'Project typology',mxEyebrow:'Management view',
   mxTitle:'RO × project typology',
@@ -266,7 +270,11 @@ var T={
   execScopeFam:'İş kolu bazında',execScopeRo:'RO bazında',
   scopeNow:'Gösterilen',scopeSwitchTo:'geçmek için tıklayın:',
   show:'Göster',hide:'Gizle',roListHidden:'Gizli — RO’ları yan yana görmek için açın',
-  viewAs:'Görünüm',viewChart:'Grafik',viewTable:'Tablo',
+  viewAs:'Görünüm',viewChart:'Grafik',viewGap:'Sapma',viewTable:'Tablo',
+  gapTitle:'Plana göre sapma',
+  gapSub:'RO ve proje tipi bazında YTD Real − B1 YTD. Sayı = kaç proje geride/önde; renk = bu sapmanın kendi planına göre büyüklüğü.',
+  gapBehind:'Geride',gapAhead:'Önde',
+  gapNote:'Renk, her hücrenin KENDİ B1 YTD’sine göre',
   execB1:'B1',execB1Ytd:'B1 YTD',execYtdReal:'YTD Real',behindPlan:'B1 YTD’nin gerisinde',
   mxTypology:'Proje tipolojisi',mxEyebrow:'Yönetim görünümü',
   mxTitle:'RO × proje tipolojisi',
@@ -1820,7 +1828,7 @@ function execScopeSwitch(){
 /* Grafik / Tablo secici. Ikisi AYNI veriyi gosterir, yalnizca bicim degisir. */
 function execViewSeg(){
   return '<span class="ex-view" role="group" aria-label="'+esc(t('viewAs'))+'">'+
-    [['chart',t('viewChart')],['table',t('viewTable')]].map(function(x){
+    [['chart',t('viewChart')],['gap',t('viewGap')],['table',t('viewTable')]].map(function(x){
       return '<button type="button" data-exview="'+x[0]+'" aria-pressed="'+
         (EXVIEW.mode===x[0])+'">'+esc(x[1])+'</button>';
     }).join('')+'</span>';
@@ -1911,9 +1919,125 @@ function execMatrix(){
     '</section>';
 }
 
+/* ---------- SAPMA MATRISI (gap matrix) ----------
+   Mudurun tablosu 72 sayi gosterip kiyasi okuyucuya yaptiriyor. Bu gorunum
+   ayni veriden TEK soruyu cevapliyor: "hangi RO, hangi proje tipinde plandan
+   ne kadar sapmis?"
+     - Hucredeki sayi: YTD Real - B1 YTD (mutlak sapma; aksiyona cevrilebilen
+       tek sayi). Isaret (+/-) rengin YEDEK kanali -- renk tek basina bilgi
+       tasimiyor (renk korlugu / yazici).
+     - Hucrenin rengi: ayni sapmanin ORANSAL buyuklugu (Real / B1 YTD). 41
+       hedefin icinde 29 proje geri kalmak, 500 hedefin icinde 29'dan cok daha
+       kotudur; sayi bunu soylemez, renk soyler.
+     - Sagdaki sutun: satir toplami icin cubuk + plan isareti. Uzunluk insanin
+       en hassas okudugu boyut, satir toplamlarinin kiyasi orada yapilir.
+   Palet kurali (dataviz skill): ayrisan (diverging) olcek = iki uc + NOTR gri
+   orta; gokkusagi yok, ortada renk yok. Tonlar acik tutuldu ki hucre yazisi
+   tek murekkeple okunsun -- olculdu: en dusuk kontrast acikta 9.4:1,
+   gecede 5.5:1. */
+var GAP_STEPS=7;            // 3 geri + notr + 3 onde
+function gapTone(c){
+  /* Plan yoksa: gerceklesen de yoksa notr, varsa "plansiz launch" = en onde. */
+  if(!(c.ytd>0)) return (c.real>0)?6:3;
+  var r=c.real/c.ytd;
+  if(r<0.70) return 0;
+  if(r<0.90) return 1;
+  if(r<0.98) return 2;
+  if(r<=1.02) return 3;
+  if(r<=1.10) return 4;
+  if(r<=1.30) return 5;
+  return 6;
+}
+/* Isaret YUVARLANMIS degere gore: -0.04 once "−0.0" yaziyordu, yani sifir
+   olan bir sapma eksi gibi goruluyordu. */
+function gapNum(v,money){
+  var a=money?Math.round(Math.abs(v)*10)/10:Math.abs(Math.round(v));
+  var sign=(a===0)?'±':(v>0?'+':'−');
+  return sign+(money?nf(a,1):nf(a));
+}
+function gapCell(c,money,label){
+  var gap=c.real-c.ytd, tone=gapTone(c);
+  var tip=label+' — B1 '+(money?nf(c.b1,1):nf(Math.round(c.b1)))+
+    ' · B1 YTD '+(money?nf(c.ytd,1):nf(Math.round(c.ytd)))+
+    ' · YTD Real '+(money?nf(c.real,1):nf(Math.round(c.real)));
+  return '<div class="gp-c gp-t'+tone+'" title="'+esc(tip)+'">'+esc(gapNum(gap,money))+'</div>';
+}
+/* Satir toplami: cubuk = gerceklesen, ince cizgi = plan, soluk ray = B1. */
+function gapTotal(c,money){
+  var max=Math.max(c.b1,c.ytd,c.real,1);
+  var w=clamp01(c.real/max)*100, p=clamp01(c.ytd/max)*100;
+  return '<div class="gp-tot">'+
+    '<div class="gp-bar"><i style="width:'+w.toFixed(1)+'%"></i>'+
+      '<u style="left:'+p.toFixed(1)+'%"></u></div>'+
+    '<b class="gp-tv gp-'+(c.real<c.ytd?'neg':'pos')+'">'+esc(gapNum(c.real-c.ytd,money))+'</b>'+
+  '</div>';
+}
+function gapBlock(title,unit,rows,cols,money){
+  var html='<div class="gp-block"><div class="gp-bh">'+esc(title)+
+    ' <span class="mx-unit">'+esc(unit)+'</span></div>'+
+    '<div class="gp-grid" style="--gp-cols:'+cols.length+'">'+
+    '<div class="gp-h"></div><div class="gp-h"></div>'+
+    cols.map(function(c){ return '<div class="gp-h gp-hc">'+esc(c.label)+'</div>'; }).join('')+
+    '<div class="gp-h gp-ht">'+esc(t('execTotal'))+'</div>';
+  rows.forEach(function(r){
+    var all=[];
+    html+='<div class="gp-r1">'+esc(r.g||'')+'</div><div class="gp-r2">'+esc(r.s||'')+'</div>';
+    cols.forEach(function(c){
+      var cell=r.fn(c.list);
+      all.push(cell);
+      html+=gapCell(cell,money,c.label+' · '+((r.g?r.g+' ':'')+(r.s||'')).trim());
+    });
+    var sum={b1:0,ytd:0,real:0};
+    all.forEach(function(x){ sum.b1+=x.b1; sum.ytd+=x.ytd; sum.real+=x.real; });
+    html+=gapTotal(sum,money);
+  });
+  return html+'</div></div>';
+}
+function execGapMatrix(){
+  var ros=BOOT.roOrder.filter(function(ro){ return sitesOfRo(ro).length; });
+  if(!ros.length) return '';
+  var cols=ros.map(function(ro){ return {label:ro,list:sitesOfRo(ro)}; });
+
+  var qty=[
+    {g:'P1', s:'NEW',   fn:function(l){ return execCountCell(l,'P1','NEW'); }},
+    {g:'',   s:'REMAN', fn:function(l){ return execCountCell(l,'P1','REMAN'); }},
+    {g:'P10',s:'NEW',   fn:function(l){ return execCountCell(l,'P10','NEW'); }},
+    {g:'',   s:'REMAN', fn:function(l){ return execCountCell(l,'P10','REMAN'); }},
+    {g:'TTM',s:'',      fn:function(l){ return execCountCell(l,'TTM','ALL'); }}
+  ];
+  var oi=[
+    {g:'OI', s:'NEW',   fn:function(l){ return execMoneyCell(l,'NEW','TOTAL'); }},
+    {g:'',   s:'REMAN', fn:function(l){ return execMoneyCell(l,'REMAN','TOTAL'); }},
+    {g:'',   s:t('execTotal'), fn:function(l){ return execMoneyCell(l,'ALL','TOTAL'); }}
+  ];
+
+  var scale='<div class="gp-legend"><span>'+esc(t('gapBehind'))+'</span>'+
+    '<span class="gp-scale">'+[0,1,2,3,4,5,6].map(function(i){
+      return '<i class="gp-t'+i+'"></i>'; }).join('')+'</span>'+
+    '<span>'+esc(t('gapAhead'))+'</span>'+
+    '<span class="gp-note">'+esc(t('gapNote'))+'</span></div>';
+
+  return '<section class="panel bc-panel gap-panel">'+
+      '<div class="bc-head">'+
+        '<div class="bc-top">'+
+          '<span class="bc-eyebrow">'+esc(t('mxEyebrow'))+'</span>'+
+          execViewSeg()+
+        '</div>'+
+        '<h3>'+esc(t('gapTitle'))+'</h3>'+
+        '<p class="bc-sub">'+esc(t('gapSub'))+'</p>'+
+      '</div>'+
+      '<div class="gp-wrap">'+
+        gapBlock(t('mxTypology'),t('execQty'),qty,cols,false)+
+        gapBlock('OI','M€',oi,cols,true)+
+      '</div>'+scale+
+    '</section>';
+}
+
 function execPanel(){
   if(!DATA||!DATA.sites||!DATA.sites.length) return '';
-  return EXVIEW.mode==='table' ? execMatrix() : execPair(EXM.mode);
+  if(EXVIEW.mode==='table') return execMatrix();
+  if(EXVIEW.mode==='gap')   return execGapMatrix();
+  return execPair(EXM.mode);
 }
 
 /* Arama sonucu / grafik cubugu -> site detayi. NAV.siteIdx o RO'nun TAM

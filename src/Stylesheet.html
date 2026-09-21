@@ -546,6 +546,79 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
   box-shadow:0 1px 2px rgba(0,61,155,.4);
 }
 
+/* ---------- sapma matrisi (gap matrix) ----------
+   Ayrisan (diverging) olcek: iki uc + NOTR gri orta, kol basina esit adim.
+   Tonlar ACIK tutuldu ki hucre yazisi tek murekkeple okunsun; olculdu:
+   en dusuk metin kontrasti acikta 9.43:1, gecede 5.47:1 (WCAG AA 4.5).
+   Renk TEK kanal degil -- her hucrede sapmanin isaretli sayisi yaziyor. */
+:root{
+  --gp0:#f6a6a6; --gp1:#fac7c7; --gp2:#fde4e4; --gp3:#eef2f8;
+  --gp4:#dcf3e5; --gp5:#b6e7c9; --gp6:#8ddcae;
+}
+body.dark-mode{
+  --gp0:#7a2430; --gp1:#5a1e28; --gp2:#3a1820; --gp3:#1b2841;
+  --gp4:#12301f; --gp5:#1a4a2c; --gp6:#236e3e;
+}
+.gp-t0{background:var(--gp0)} .gp-t1{background:var(--gp1)} .gp-t2{background:var(--gp2)}
+.gp-t3{background:var(--gp3)} .gp-t4{background:var(--gp4)} .gp-t5{background:var(--gp5)}
+.gp-t6{background:var(--gp6)}
+.gp-wrap{display:flex; flex-direction:column; gap:18px}
+.gp-bh{
+  font-size:10.5px; font-weight:800; letter-spacing:.11em; text-transform:uppercase;
+  color:var(--label-accent); margin-bottom:7px;
+}
+.gp-grid{
+  display:grid; gap:3px;
+  grid-template-columns:54px 66px repeat(var(--gp-cols),minmax(52px,1fr)) minmax(150px,1.5fr);
+  align-items:stretch;
+}
+.gp-h{
+  font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-mute); display:flex; align-items:flex-end; justify-content:center;
+  padding-bottom:4px;
+}
+.gp-hc{color:var(--text); font-size:12px; letter-spacing:.04em}
+.gp-ht{justify-content:flex-start; padding-left:6px}
+.gp-r1{font-size:12px; font-weight:800; color:var(--text); display:flex; align-items:center}
+.gp-r2{font-size:11px; font-weight:700; color:var(--text-dim); display:flex; align-items:center}
+.gp-c{
+  display:flex; align-items:center; justify-content:center; min-height:38px;
+  border-radius:8px; font-size:13px; font-weight:800; color:var(--text);
+  font-variant-numeric:tabular-nums; cursor:help;
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+.gp-c:hover{transform:scale(1.04); box-shadow:0 0 0 2px var(--card), 0 2px 8px rgba(12,22,38,.2)}
+/* Satir toplami: uzunluk kanali. Cubuk = gerceklesen, cizgi = plan. */
+.gp-tot{display:flex; align-items:center; gap:9px; padding-left:6px}
+.gp-bar{
+  position:relative; flex:1 1 auto; height:9px; border-radius:999px;
+  background:var(--track); min-width:60px;
+}
+.gp-bar i{
+  position:absolute; left:0; top:0; bottom:0; border-radius:999px; min-width:3px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--valeo-mid) 55%,#fff),var(--valeo-mid));
+}
+.gp-bar u{
+  position:absolute; top:-4px; bottom:-4px; width:2px; border-radius:2px;
+  background:var(--text); opacity:.6;
+}
+.gp-tv{font-size:12.5px; font-weight:800; font-variant-numeric:tabular-nums; min-width:52px; text-align:right}
+.gp-pos{color:var(--good-line)} .gp-neg{color:var(--bad-line)}
+.gp-legend{
+  display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:16px;
+  font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--text-mute);
+}
+.gp-scale{display:inline-flex; gap:2px}
+.gp-scale i{width:22px; height:11px; border-radius:3px; display:inline-block}
+.gp-note{margin-left:auto; text-transform:none; letter-spacing:0; font-weight:600}
+@media (max-width:900px){
+  .gp-grid{grid-template-columns:44px 56px repeat(var(--gp-cols),minmax(40px,1fr)); }
+  .gp-ht,.gp-tot{display:none}
+  .gp-c{font-size:12px; min-height:34px}
+}
+@media (prefers-reduced-motion:reduce){ .gp-c{transition:none} }
+
 /* ---------- yonetim matrisi ----------
    24 deger sutunu var; dar ekranda yatay kayar, satir basliklari yapisik
    kalir ki hangi satira baktigin kaybolmasin. */
