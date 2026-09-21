@@ -348,6 +348,17 @@ artık `CLAUDE.md` değil, burasıdır.
   dosya) bilinçli olarak dokunulmadı — bunlar kopyala-yapıştır içerik kütüphanesi, prosedür
   değil, skill'e çevrilmeleri yanlış soyutlama olurdu.
 
+- **2026-09-21 — Headcount bütçesi: geçici ÖRNEK veri (gerçek değil).** RO Monthly Report
+  dashboard'unda Headcount KPI kartının bütçeye kıyaslı gösterilmesi istendi; ancak kaynak
+  spreadsheet'lerde headcount bütçesi diye bir alan **yok**. Projenin değişmez kuralı "asla
+  veri uydurma" olduğu için karar kullanıcıya bırakıldı ve kullanıcı açıkça "datası yok, fake
+  bir sayı yaz, görsel olarak görünür olsun, datası gelince şuradan alacağız" dedi. Uygulama:
+  değer tek bir sabitten üretiliyor (`HC_BUDGET_PER_SITE_DEMO`, `src/Script.html`), kartta
+  turuncu **SAMPLE** rozeti ve üstüne gelince "kaynak sayfalarda henüz headcount bütçesi yok"
+  açıklaması duruyor. Gerçek veri geldiğinde yapılacak tek iş `hcBudgetDemo()` fonksiyonunun
+  gövdesini gerçek alanla değiştirmek. **Bu istisna yalnız bu karttır**; başka hiçbir yerde
+  uydurma sayı yoktur ve yenisi eklenmeyecektir.
+
 ## Yeni İçerik Eklerken
 
 Yeni bir kaynak proje eklenecekse: `tokens/colors-<proje-adı>.css` (aynen kopya, kaynak yorum

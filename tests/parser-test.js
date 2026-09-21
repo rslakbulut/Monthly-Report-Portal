@@ -141,6 +141,9 @@ eq(Math.round(vs.total.planYtdTurnover*100)/100, 92.34, 'Ciro YTD PLANI = 15.68+
 eq(vs.projects.length, 4, 'TOPS: 4 proje satiri toplandi');
 eq(vs.projects[0].model, 'OPEL ASTRA K (B16)', 'TOPS: en buyuk cirolu proje basta');
 eq(vs.projects[0].turnover, 58.91, 'TOPS: ciro k€ olarak tasindi');
+/* Referans "Ref" sutunundan gelir; "Project Ref. in WishList" DEGIL. */
+eq(ttm.projects[0].ref, '836403', 'TOPS: referans Ref sutunundan okundu (ciroya gore sirali)');
+eq(ttm.projects[1].ref, '832857', 'TOPS: her satirin kendi referansi');
 eq(vs.projects[0].segment, '2PK+CSC', 'TOPS: Segment sutunu okundu');
 eq(vs.projects[0].type, 'P10', 'TOPS: proje tipi tasindi');
 eq(vs.projects[0].realMonth, 3, 'TOPS: Real launch ayi (Mart)');

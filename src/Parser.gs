@@ -150,6 +150,22 @@ function findIn_(row, needle) {
  * Bir detay blogunu okur ve proje tipine gore olcum uretir.
  * @return {{byType:Object, total:Object, rows:number, typeColFound:boolean}}
  */
+/* Proje referansi (kullanici talebi). Baslik satirinda IKI "ref" var:
+   "Project Ref. in WishList" (wishlist capraz referansi, genelde bos) ve
+   "Ref" (projenin kendi referans numarasi -- ornek 832857). Istenen
+   ikincisi, o yuzden once TAM "REF" esitligi aranir; bulunamazsa icinde
+   REF gecen ama WISHLIST gecmeyen sutuna dusulur. Sadece indexOf('REF')
+   arayan bir secim wishlist sutununu getirir ve tablo bos gorunur. */
+function findRefColumn_(groups) {
+  var i;
+  for (i = 0; i < groups.length; i++) if (groups[i].label === 'REF') return groups[i];
+  for (i = 0; i < groups.length; i++) {
+    if (groups[i].label.indexOf('REF') !== -1 &&
+        groups[i].label.indexOf('WISHLIST') === -1) return groups[i];
+  }
+  return null;
+}
+
 function parseDetailBlock_(grid, startRow, spec, year, reportMonth, warnings) {
   var res = { byType: {}, total: emptyMeasure_(), rows: 0, typeColFound: false, projects: [] };
 
@@ -171,9 +187,11 @@ function parseDetailBlock_(grid, startRow, spec, year, reportMonth, warnings) {
   var gModel = pickGroup_(groups, 'MODEL');
   var gSeg   = pickGroup_(groups, 'SEGMENT');
   var gProd  = pickGroup_(groups, 'PRODUCT');
+  var gRef   = findRefColumn_(groups);
   var modelCol = gModel ? gModel.start : null;
   var segCol   = gSeg ? gSeg.start : null;
   var prodCol  = gProd ? gProd.start : null;
+  var refCol   = gRef ? gRef.start : null;
   if (!gDate) warnings.push(spec.match + ': Launch Sheet Date column missing');
   if (!gTurn) warnings.push(spec.match + ': Turnover column missing');
 
@@ -254,6 +272,7 @@ function parseDetailBlock_(grid, startRow, spec, year, reportMonth, warnings) {
     if (pName || turnover > 0) {
       res.projects.push({
         model: pName,
+        ref: refCol !== null ? cellText_(row[refCol]) : '',
         segment: (segCol !== null ? cellText_(row[segCol]) : '') ||
                  (prodCol !== null ? cellText_(row[prodCol]) : ''),
         type: type || null,

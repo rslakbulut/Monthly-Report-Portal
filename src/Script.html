@@ -235,6 +235,9 @@ var T={
   regionalOrgs:'regional organizations',scanningSheets:'scanning 48 sheets, the first load may take a moment.',lnReal:'YTD real',
   execChartFam:'By business line — Budget Year · Budget YTD · launched',
   execScopeFam:'By business line',execScopeRo:'By RO',
+  scopeNow:'Showing',scopeSwitchTo:'switch to',
+  hcBudget:'budget',sample:'sample',
+  demoNote:'Sample figure — there is no headcount budget in the source sheets yet. It will be replaced when the real data arrives.',
   execSeries:'Budget Year · Budget YTD · launched',
   execChartTitle:'By RO — Budget Year · Budget YTD · launched',execTotal:'Total',
   execBudgetYear:'Budget Year',execQty:'Project Qty',noData:'No data',
@@ -250,6 +253,9 @@ var T={
   pickType:'Please choose a type.',pickPriority:'Please choose a priority.',writeMessage:'Please write a message.',onlyImages:'Only image files are accepted.'},
  tr:{execChartFam:'İş kolu bazında — Budget Year · Budget YTD · gerçekleşen',
   execScopeFam:'İş kolu bazında',execScopeRo:'RO bazında',
+  scopeNow:'Gösterilen',scopeSwitchTo:'geçmek için tıklayın:',
+  hcBudget:'bütçe',sample:'örnek',
+  demoNote:'Örnek rakam — kaynak sayfalarda henüz headcount bütçesi yok. Gerçek veri gelince değiştirilecek.',
   execSeries:'Budget Year · Budget YTD · gerçekleşen',
   execChartTitle:'RO bazında — Budget Year · Budget YTD · gerçekleşen',execTotal:'Toplam',
   execBudgetYear:'Budget Year',execQty:'Project Qty',noData:'Veri yok',
@@ -1040,6 +1046,22 @@ function scopeSiteCount(){
 }
 /* "1 sites" olmasin; kucuk harfle satir icinde kullanilir. */
 function sitesWord(n){ return (n===1?t('site'):t('sites')).toLocaleLowerCase(LOCALE); }
+/* ---------------------------------------------------------------
+   GECICI ORNEK VERI -- GERCEK DEGIL.
+   Headcount butcesi henuz hicbir kaynakta yok; kullanici kartin gorsel
+   olarak yerini almasini istedi ("datasi gelince suradan alacagiz").
+   Uydurma bir sayinin gercek sanilmasi bu projede acikca yasak, bu yuzden:
+     - deger tek bir yerden, bu sabitten uretiliyor,
+     - kartta "sample" etiketi ve aciklamasi duruyor,
+     - gercek veri gelince yapilacak tek is: asagidaki fonksiyonun govdesini
+       gercek alanla degistirmek (ornegin a.headcountBudget).
+   Site basina ornek kadro; kapsamdaki site sayisiyla carpiliyor ki oran
+   RO'dan RO'ya degissin, her yerde ayni yuzde cikmasin. */
+var HC_BUDGET_PER_SITE_DEMO=23;
+function hcBudgetDemo(){ return HC_BUDGET_PER_SITE_DEMO*scopeSiteCount(); }
+function demoTag(){
+  return '<span class="demo-tag" title="'+esc(t('demoNote'))+'">'+esc(t('sample'))+'</span>';
+}
 function kpiRow(a){
   var pctYear=pct(a.realTurnoverM,a.budgetTurnover);
   var pctPlan=pct(a.realTurnoverM,a.planTurnoverM);
@@ -1071,14 +1093,17 @@ function kpiRow(a){
       footR:'<span>'+(pctSites==null?'—':pctSites+'%')+'</span>'
     })+
     /* Headcount — Bolum 2 HUMAN RESOURCES'taki benzersiz kisi sayisi.
-       Olcer, secili kapsamin TUM site'lar icindeki payini gosterir. */
+       Butceye kiyas kullanici talebi; butce rakami HENUZ YOK (bkz.
+       hcBudgetDemo). Ornek deger oldugu kartta ACIKCA yaziyor. */
     kpiCard({
       hue:'var(--ro-PDC)', icon:ICON_TEAM, label:'Headcount', gloss:'Headcount',
       value:nf(a.headcount)+'<span class="unit">'+esc(t('people'))+'</span>',
-      sub:esc(scopeLabel()),
-      meter:pct(a.headcount,totalHeadcount())||0,
-      footL:esc(cap(t('inSelection'))),
-      footR:'<span>'+nf(a.reported)+' '+esc(sitesWord(a.reported))+'</span>'
+      sub:'<b>'+nf(a.headcount)+'</b> '+esc(t('of'))+' '+nf(hcBudgetDemo())+' '+
+          esc(t('hcBudget'))+' '+demoTag(),
+      meter:pct(a.headcount,hcBudgetDemo())||0,
+      footL:esc(scopeLabel()),
+      footR:'<span>'+(pct(a.headcount,hcBudgetDemo())==null?'—':
+              pct(a.headcount,hcBudgetDemo())+'%')+'</span>'
     })+
   '</div>';
 }
@@ -1154,15 +1179,19 @@ function topProjectsPanel(list,showSite,limit){
   }
   var html='<div class="panel tops">'+head+
     '<div class="tops-head'+(showSite?' with-site':'')+'">'+
-      '<span>Model</span><span>'+esc(t('segment'))+'</span>'+
+      '<span>Model · Ref</span><span>'+esc(t('segment'))+'</span>'+
       (showSite?'<span>'+esc(t('site'))+'</span>':'')+
       '<span class="r">'+esc(t('planCol'))+'</span><span class="r">'+esc(t('realCol'))+'</span>'+
       '<span class="r" lang="en">O.I</span></div>';
   rows.forEach(function(r){
     var p=r.p, launched=!!p.realMonth;
     html+='<div class="tops-row'+(showSite?' with-site':'')+'" style="--ro-color:'+roColor(r.site.ro)+'">'+
-      '<span class="tp-model"><b>'+esc(p.model||'—')+'</b>'+
+      /* Proje referansi (kullanici talebi). Ayri bir sutun yerine model
+         adinin ALTINDA: sag panel 5 sutunda zaten dar, altinci sutun
+         sigmiyordu; alt satir her genislikte okunuyor. */
+      '<span class="tp-model"><span class="tp-m1"><b>'+esc(p.model||'—')+'</b>'+
         (p.type?'<i class="tp-type">'+esc(p.type)+'</i>':'')+'</span>'+
+        (p.ref?'<span class="tp-ref">Ref '+esc(p.ref)+'</span>':'')+'</span>'+
       '<span class="tp-seg">'+esc(p.segment||'—')+'</span>'+
       (showSite?'<span class="tp-site">'+esc(r.site.site)+'</span>':'')+
       '<span class="r dim">'+esc(p.planRaw||'—')+'</span>'+
@@ -1340,6 +1369,13 @@ function renderRoLevel(){
      icin EX.fam, digerleri icin ZATEN VAR OLAN F.status / F.type -- yani
      halkaya tiklamak ust filtre barindaki dugmeye basmakla ayni sey, iki
      ayri "secili" durum olusmuyor. Ayni dilime tekrar tiklamak kaldirir. */
+  /* Kirilim anahtari: iki karti birlikte cevirir. */
+  var sw=$('view').querySelector('#btnScope');
+  if(sw) sw.onclick=function(){
+    EXM.mode=(EXM.mode==='ro')?'family':'ro';
+    if(EXM.mode==='ro') EX.fam=null;   // is kolu secimi RO kiriliminda anlamsiz
+    render();
+  };
   /* Aile cubugu/etiketi EX.fam'i surer -- halkalardaki secimle AYNI durum,
      iki ayri "secili aile" olusmuyor. Ayni aileye tekrar tiklamak kaldirir. */
   $('view').querySelectorAll('[data-exfam]').forEach(function(g){
@@ -1488,6 +1524,9 @@ function execTypeRow(){ return F.type==='ALL'?'TOTAL':F.type; }
 /* Birim artik SECIM degil: iki grafik iki birimi birden gosteriyor.
    Kalan tek is, birim verilmeyen cagrilarda varsayilan olmak. */
 var EXV={unit:'OI'};          // 'OI' | 'COUNT'
+/* Grafik kirilimi: iki kart ayni anda ayni kirilimi gosterir. Onceden iki
+   kirilim ALT ALTA duruyordu (dort kart); anahtar ikisini tek yere indirdi. */
+var EXM={mode:'family'};      // 'family' | 'ro'
 
 function execUnit(u){ return (u||EXV.unit)==='OI'?'M€':t('execQty'); }
 /* Baslik rozeti secili dugmenin ETIKETININ AYNISINI gosterir ('OI (M€)'),
@@ -1691,13 +1730,26 @@ function cssVar(n){
 function roHex(ro){ return cssVar('--ro-'+ro)||'#0072ce'; }
 
 
+/* Kirilim anahtari. Iki karti BIRLIKTE cevirir: ust yonetim ekraninda
+   ayni anda iki farkli kirilim gostermek satir sayisini ikiye katliyordu.
+   Anahtarin iki ucunda da kirilim adi yazili; hangisinden hangisine
+   gecildigi yazidan okunuyor, ayrica altinda tam cumlesi var. */
+function execScopeSwitch(){
+  var ro=(EXM.mode==='ro');
+  return '<div class="scope-sw">'+
+    '<span class="scope-l'+(ro?'':' on')+'">'+esc(t('execScopeFam'))+'</span>'+
+    '<button class="sw" type="button" id="btnScope" role="switch" '+
+      'aria-checked="'+ro+'" aria-label="'+esc(t('execScopeFam')+' / '+t('execScopeRo'))+'">'+
+      '<span class="sw-k"></span></button>'+
+    '<span class="scope-l'+(ro?' on':'')+'">'+esc(t('execScopeRo'))+'</span>'+
+    '<span class="scope-hint">'+esc(t('scopeNow'))+' <b>'+
+      esc(ro?t('execScopeRo'):t('execScopeFam'))+'</b> · '+esc(t('scopeSwitchTo'))+' <b>'+
+      esc(ro?t('execScopeFam'):t('execScopeRo'))+'</b></span>'+
+  '</div>';
+}
 function execPanel(){
   if(!DATA||!DATA.sites||!DATA.sites.length) return '';
-  /* Uc halka (is kolu / urun tipi / proje tipi) kaldirildi: ayni kirilimler
-     zaten ust filtre barinda ve is kolu cubuk grafiginde secilebiliyor,
-     ekranda ayni bilgi ucuncu kez tekrarlaniyordu. */
-  return execPair('family')+
-    execPair('ro');
+  return execScopeSwitch()+execPair(EXM.mode);
 }
 
 /* Arama sonucu / grafik cubugu -> site detayi. NAV.siteIdx o RO'nun TAM
