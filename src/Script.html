@@ -1593,7 +1593,7 @@ function execBarRows(mode,st,ty,money,u){
    cubuklari aile grafiginin dikdortgenine kirpilip KAYBOLUYORDU (goruldu).
    Her cizim icin benzersiz bir onek uretiliyor. */
 var BC_UID=0;
-function execBarChart(mode,unit,half){
+function execBarChart(mode,unit,half,withSwitch){
   var uid='c'+(++BC_UID)+'_';
   var u=unit||EXV.unit;
   var st=F.status, ty=execTypeRow(), money=(u==='OI');
@@ -1701,7 +1701,8 @@ function execBarChart(mode,unit,half){
   return '<section class="panel bc-panel">'+
       '<div class="bc-head">'+
         '<div class="bc-title">'+
-          '<span class="bc-eyebrow">'+esc(mode==='family'?t('execScopeFam'):t('execScopeRo'))+'</span>'+
+          (withSwitch?execScopeSwitch()
+            :'<span class="bc-eyebrow">'+esc(mode==='family'?t('execScopeFam'):t('execScopeRo'))+'</span>')+
           '<h3>'+esc(execUnitLabel(u))+'</h3>'+
           '<p class="bc-sub">'+esc(t('execSeries'))+'</p>'+
         '</div>'+
@@ -1715,7 +1716,9 @@ function execBarChart(mode,unit,half){
    Sutun sayisi CSS'te uyarlamali: dar ekranda alt alta duserler, cunku
    RO grafiginde 7 kategori x 3 cubuk yari genislige sigmiyor. */
 function execPair(mode){
-  var a=execBarChart(mode,'OI',true), b=execBarChart(mode,'COUNT',true);
+  /* Anahtar yalniz ILK kartta: ikisini birden cevirdigi icin iki kopya
+     ayni isi yapan iki kontrol gibi gorunurdu. */
+  var a=execBarChart(mode,'OI',true,true), b=execBarChart(mode,'COUNT',true);
   if(!a&&!b) return '';
   return '<div class="bc-pair bc-pair-'+esc(mode)+'">'+a+b+'</div>';
 }
@@ -1732,24 +1735,27 @@ function roHex(ro){ return cssVar('--ro-'+ro)||'#0072ce'; }
 
 /* Kirilim anahtari. Iki karti BIRLIKTE cevirir: ust yonetim ekraninda
    ayni anda iki farkli kirilim gostermek satir sayisini ikiye katliyordu.
-   Anahtarin iki ucunda da kirilim adi yazili; hangisinden hangisine
-   gecildigi yazidan okunuyor, ayrica altinda tam cumlesi var. */
+   AYRI BIR SATIR DEGIL -- ilk kartin ust etiketinin yerinde duruyor
+   (kullanici talebi): o etiket zaten kirilim adiydi, anahtar onun yerine
+   gecti. Iki ucunda da kirilim adi yazili, aktif olan vurgulu; yanindaki
+   kisa cumle neye gecilecegini soyluyor. */
 function execScopeSwitch(){
   var ro=(EXM.mode==='ro');
+  var now=ro?t('execScopeRo'):t('execScopeFam');
+  var other=ro?t('execScopeFam'):t('execScopeRo');
   return '<div class="scope-sw">'+
     '<span class="scope-l'+(ro?'':' on')+'">'+esc(t('execScopeFam'))+'</span>'+
     '<button class="sw" type="button" id="btnScope" role="switch" '+
-      'aria-checked="'+ro+'" aria-label="'+esc(t('execScopeFam')+' / '+t('execScopeRo'))+'">'+
+      'aria-checked="'+ro+'" title="'+esc(t('scopeNow')+': '+now+' — '+t('scopeSwitchTo')+' '+other)+'" '+
+      'aria-label="'+esc(t('scopeSwitchTo')+' '+other)+'">'+
       '<span class="sw-k"></span></button>'+
     '<span class="scope-l'+(ro?' on':'')+'">'+esc(t('execScopeRo'))+'</span>'+
-    '<span class="scope-hint">'+esc(t('scopeNow'))+' <b>'+
-      esc(ro?t('execScopeRo'):t('execScopeFam'))+'</b> · '+esc(t('scopeSwitchTo'))+' <b>'+
-      esc(ro?t('execScopeFam'):t('execScopeRo'))+'</b></span>'+
+    '<span class="scope-hint">'+esc(t('scopeSwitchTo'))+' <b>'+esc(other)+'</b></span>'+
   '</div>';
 }
 function execPanel(){
   if(!DATA||!DATA.sites||!DATA.sites.length) return '';
-  return execScopeSwitch()+execPair(EXM.mode);
+  return execPair(EXM.mode);
 }
 
 /* Arama sonucu / grafik cubugu -> site detayi. NAV.siteIdx o RO'nun TAM
