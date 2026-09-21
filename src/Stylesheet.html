@@ -219,6 +219,33 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
 .rail-btn[aria-expanded="true"] .rail-chev{transform:rotate(90deg)}
 .rail-sep{width:30px; height:1px; background:rgba(255,255,255,.14); margin:6px 0 6px 19px; flex:none}
 
+/* ---------- iki kademeli ray ----------
+   Ust baslik (Dashboard / Monthly Report) + alt sayfalar. Ray KAPALIYKEN
+   yalniz ust baslik ikonlari gorunur: 64px'lik seritte alt sayfa adlari
+   okunamazdi. Ikona tiklamak o grubun ilk sayfasini acar; ray acilinca
+   alt sayfalar gorunur ve dogrudan secilir. */
+.rail-grp{display:flex; flex-direction:column; width:100%; margin-bottom:4px}
+.rail-head .rail-name{font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase}
+.rail-kids{display:none; flex-direction:column; gap:2px; margin:2px 8px 4px; width:var(--rail-inner)}
+.rail:hover .rail-kids,.rail:focus-within .rail-kids{display:flex}
+.rail-kid{
+  display:flex; align-items:center; gap:9px; min-height:34px; padding:0 13px 0 22px;
+  background:transparent; border:none; border-radius:9px; cursor:pointer;
+  color:rgba(255,255,255,.62); font:inherit; font-size:12.5px; font-weight:600;
+  text-align:left; white-space:nowrap;
+  transition:background .15s ease, color .15s ease;
+}
+.rail-kid:hover{background:rgba(255,255,255,.10); color:#fff}
+.rail-kid[aria-current="true"]{background:rgba(255,255,255,.16); color:#fff; font-weight:700}
+.rk-dot{
+  width:6px; height:6px; border-radius:50%; flex:none;
+  background:rgba(255,255,255,.35); transition:background .15s ease, box-shadow .15s ease;
+}
+.rail-kid[aria-current="true"] .rk-dot{
+  background:var(--valeo-green); box-shadow:0 0 0 3px rgba(118,255,3,.18);
+}
+@media (prefers-reduced-motion:reduce){ .rail-kid,.rk-dot{transition:none} }
+
 /* Bir RO acilinca site'lari satir ICINDE listelenir (flyout yerine) —
    yalniz ray genisken gorunur. */
 .rail-sites{display:none; flex-direction:column; width:var(--rail-inner); margin:0 8px 4px; flex:none}
@@ -877,6 +904,21 @@ main{padding:26px 24px 56px; max-width:var(--maxw); margin:0 auto}
   color:var(--text-dim); margin:0;
 }
 .section-note{font-size:12.5px; color:var(--text-mute)}
+/* Bolum ac/kapa (RO listesi). Ust yonetim grafiklerle yetiniyorsa liste
+   kapali kalir; secim tarayicida saklanir. */
+.sect-toggle{
+  margin-left:auto; display:inline-flex; align-items:center; gap:5px;
+  min-height:32px; padding:0 12px; border-radius:999px; cursor:pointer;
+  background:var(--card); border:1px solid var(--border); color:var(--text-dim);
+  font:inherit; font-size:11.5px; font-weight:800; letter-spacing:.06em;
+  text-transform:uppercase; box-shadow:var(--sh-1);
+  transition:border-color .15s ease, color .15s ease, background .15s ease;
+}
+.sect-toggle:hover{border-color:var(--label-accent); color:var(--label-accent)}
+.sect-toggle:focus-visible{outline:none; box-shadow:var(--ring)}
+.st-ch{display:inline-flex; transform:rotate(90deg); transition:transform .18s ease}
+.sect-toggle[aria-expanded="true"] .st-ch{transform:rotate(-90deg)}
+@media (prefers-reduced-motion:reduce){ .st-ch{transition:none} }
 
 /* ---------- geri butonu ---------- */
 .backbtn{
