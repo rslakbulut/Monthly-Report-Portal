@@ -250,7 +250,10 @@ function uiRemovePeriod(key) {
   return removePeriod(key);
 }
 function uiListPeriods() {
-  return listPeriodsDetailed();   // kendi icinde requireAdmin_ var
+  /* Liste HERKESE acik (Ayarlar paneli goruntulenebilir); yonetici olmayan
+     dosya kimligi gormez ve yanit readOnly ile isaretlenir. Degistiren
+     cagrilar (ekle/sil/tara/kaydet) ayrica requireAdmin_ ile korunuyor. */
+  return listPeriodsDetailed();
 }
 function uiSetGmailQuery(q) {
   var deny = requireAdmin_(); if (deny) return deny;

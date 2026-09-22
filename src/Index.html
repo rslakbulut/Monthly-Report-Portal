@@ -308,6 +308,12 @@
       The monthly report arrives as a new spreadsheet each month. The Gmail scan finds
       it automatically; if it doesn't, add the link manually.
     </p>
+    <!-- Yonetici olmayana: panel acik ama degistirilemez oldugunu SOYLE.
+         Sessizce eksik dugme, bozuk ekran gibi gorunur. -->
+    <p class="ro-note" id="setRoNote" hidden>
+      Read-only view. Adding, removing or editing periods is done by the
+      dashboard owner.
+    </p>
     <div class="fgroup">
       <label class="flabel" for="inpQuery" data-i18n="gmailQuery">Gmail search query</label>
       <input type="text" id="inpQuery" spellcheck="false">
@@ -335,7 +341,7 @@
       <span class="flabel" data-i18n="registeredPeriods">Registered periods</span>
       <div class="plist" id="periodList"></div>
     </div>
-    <div class="log" id="settingsLog" aria-live="polite"></div>
+    <div class="log" id="settingsLog" aria-live="polite" hidden></div>
   </div>
 </dialog>
 

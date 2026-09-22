@@ -1278,12 +1278,61 @@ function searchResultsHtml(hits){
 /* ---------- level 1: RO karsilastirma kartlari ---------- */
 /* Bar olcegi = bu RO'nun kendi Budget Year cirosu (%100). KPI degerleri
    barin ICINDE degil, sagda ayri okunabilir bloklarda (kullanici talebi). */
+/* Tek bir ilerleme cubugu: gerceklesen dolgusu + plan (Budget YTD) isareti.
+   Once yalniz CIRO icin vardi; kullanici ayni gosterimi PROJE ADEDI icin de
+   istedi (geri bildirim #2) -- ayni fonksiyon iki birimde de kullaniliyor,
+   iki ayri cizim kodu olusmasin. */
+function roBar(real, plan, budget, opts){
+  var o=opts||{};
+  var scale=budget>0?budget:1;
+  var w=clamp01(real/scale)*100;
+  var p=(plan>0)?clamp01(plan/scale)*100:null;
+  var planTitle='Budget YTD '+(o.money?esc(m2(plan))+' M€':nf(plan)+' '+t('projects'));
+  return '<span class="bar'+(o.small?' bar-sm':'')+'">'+
+    '<span class="bar-fill" style="width:'+w.toFixed(1)+'%"></span>'+
+    /* Isaretin adi ISARETIN USTUNDE, barin icinde (kullanici talebi).
+       Uctaki isaretlerde yazi kutudan tasmasin diye hiza siniflari var. */
+    (p!=null?'<span class="bar-plan'+(p<14?' at-start':(p>86?' at-end':''))+
+      '" style="left:'+p.toFixed(1)+'%" title="'+planTitle+'">'+
+      '<b>Budget YTD</b></span>':'')+
+  '</span>';
+}
+
+/* Bir satirin govdesi: iki cubuk (ciro + adet) ve ucu de iki birimli
+   LAUNCH DONE / BUDGET YTD / BUDGET YEAR bloklari. Hem RO satirlari hem
+   TOPLAM satiri bunu kullanir -- toplam satiri "farkli bir sey" gibi
+   gorunmesin, ayni dille okunsun. */
+function roRowBody(a, deltaLabel){
+  var pctMoney=pct(a.realTurnoverM,a.budgetTurnover);
+  var pctCount=pct(a.realCount,a.budgetCount);
+  return '<span class="ro-bar">'+
+    '<span class="ro-bar-top">'+
+      /* "20% of Budget Year" hangi iki sayinin orani oldugunu soylemiyordu
+         (YTD/Year sanildi). Oran: Launch Done / Budget Year -- ikisi de
+         sayfa terimi, cevrilmiyor. */
+      '<span class="ro-ratio"><span class="ro-pct">'+(pctMoney==null?'—':pctMoney+'%')+'</span> '+
+        '<span class="ro-plan-note">Launch Done / Budget Year · O.I</span></span>'+
+      '<span class="ro-delta"><span class="ro-delta-l">Launch Delay</span>'+
+        deltaPill(a.delta,t('projects'))+'</span>'+
+    '</span>'+
+    roBar(a.realTurnoverM, a.planTurnoverM, a.budgetTurnover, {money:true})+
+    /* Ikinci satir ADET: para once, adet sonra (panonun genel kurali). */
+    '<span class="ro-bar-top second">'+
+      '<span class="ro-ratio"><span class="ro-pct sm">'+(pctCount==null?'—':pctCount+'%')+'</span> '+
+        '<span class="ro-plan-note">Real Launches / Budget Year · '+esc(t('projects'))+
+        '</span></span>'+
+    '</span>'+
+    roBar(a.realCount, a.budgetYTD, a.budgetCount, {money:false, small:true})+
+  '</span>'+
+  '<span class="ro-stats">'+
+    roStat('Launch Done', moneyTag(a.realTurnoverM), nf(a.realCount)+' '+t('projects'), true)+
+    roStat('Budget YTD', moneyTag(a.planTurnoverM), nf(a.budgetYTD)+' '+t('projects'), false)+
+    roStat('Budget Year', moneyTag(a.budgetTurnover), nf(a.budgetCount)+' '+t('projects'), false)+
+  '</span>';
+}
+
 function roRowHtml(r){
-  var a=r.a, open=(NAV.expandedRo===r.ro);
-  var scale=a.budgetTurnover>0?a.budgetTurnover:1;
-  var w=clamp01(a.realTurnoverM/scale)*100;
-  var p=a.planTurnoverM>0?clamp01(a.planTurnoverM/scale)*100:null;
-  var pctYear=pct(a.realTurnoverM,a.budgetTurnover);
+  var open=(NAV.expandedRo===r.ro);
   return '<button class="ro-row'+(open?' open':'')+'" type="button" data-ro="'+r.ro+'" '+
     'style="--ro-color:'+roColor(r.ro)+'" aria-expanded="'+open+'">'+
     '<span class="ro-id">'+
@@ -1291,34 +1340,29 @@ function roRowHtml(r){
       '<span class="ro-name">'+esc(BOOT.roLabels[r.ro]||'')+'</span>'+
       '<span class="ro-sites">'+r.list.length+' '+esc(sitesWord(r.list.length))+'</span>'+
     '</span>'+
-    '<span class="ro-bar">'+
-      '<span class="ro-bar-top">'+
-        /* "20% of Budget Year" hangi iki sayinin orani oldugunu soylemiyordu
-           (YTD/Year sanildi). Oran: Launch Done / Budget Year -- ikisi de
-           sayfa terimi, cevrilmiyor. */
-        '<span class="ro-ratio"><span class="ro-pct">'+(pctYear==null?'—':pctYear+'%')+'</span> '+
-          '<span class="ro-plan-note">Launch Done / Budget Year</span></span>'+
-        '<span class="ro-delta"><span class="ro-delta-l">Launch Delay</span>'+
-          deltaPill(a.delta,t('projects'))+'</span>'+
-      '</span>'+
-      '<span class="bar">'+
-        '<span class="bar-fill" style="width:'+w.toFixed(1)+'%"></span>'+
-        /* Isaretin adi bolum basliginda tek bir aciklama rozetiydi; kullanici
-           adin ISARETIN USTUNDE, barin icinde durmasini istedi. Uctaki
-           isaretlerde yazi kutudan tasmasin diye hiza siniflari var. */
-        (p!=null?'<span class="bar-plan'+(p<14?' at-start':(p>86?' at-end':''))+
-          '" style="left:'+p.toFixed(1)+'%" '+
-          'title="Budget YTD '+esc(m2(a.planTurnoverM))+' M€">'+
-          '<b>Budget YTD</b></span>':'')+
-      '</span>'+
-    '</span>'+
-    '<span class="ro-stats">'+
-      roStat('Launch Done', moneyTag(a.realTurnoverM), nf(a.realCount)+' '+t('projects'), true)+
-      roStat('Budget YTD', moneyTag(a.planTurnoverM), nf(a.budgetYTD)+' '+t('projects'), false)+
-      roStat('Budget Year', moneyTag(a.budgetTurnover), nf(a.budgetCount)+' '+t('projects'), false)+
-    '</span>'+
+    roRowBody(r.a)+
     '<span class="chev" aria-hidden="true">'+ICON_CHEVRON+'</span>'+
   '</button>';
+}
+
+/* TUM RO'larin toplami (geri bildirim #1). Listedeki satirlarla ayni dilde,
+   ayni olcekte; tiklanabilir DEGIL -- acilacak bir alt kirilimi yok.
+   Toplam, gorunen satirlarin toplamidir: bir RO filtresi acikken "tum
+   bolgeler" yaziyor olmasi yaniltici olurdu. */
+function roTotalRowHtml(rows){
+  if(!rows||rows.length<2) return '';      /* tek satirin toplami kendisidir */
+  var list=[];
+  rows.forEach(function(r){ list=list.concat(r.list); });
+  var a=sumMetrics(list);
+  return '<div class="ro-row total" aria-label="Total of all regional organizations">'+
+    '<span class="ro-id">'+
+      '<span class="ro-code">TOTAL</span>'+
+      '<span class="ro-name">'+esc(rows.length)+' regional organizations</span>'+
+      '<span class="ro-sites">'+list.length+' '+esc(sitesWord(list.length))+'</span>'+
+    '</span>'+
+    roRowBody(a)+
+    '<span class="chev" aria-hidden="true"></span>'+
+  '</div>';
 }
 function roStat(label,value,sub,accent){
   return '<span class="stat'+(accent?' accent':'')+'">'+
@@ -1424,6 +1468,7 @@ function renderRoLevel(){
         html+=roRowHtml(r);
         if(NAV.expandedRo===r.ro) html+=siteListHtml(r.list,r.ro);
       });
+      html+=roTotalRowHtml(rows);
       html+='</div>';
     }
     if(F.ro!=='ALL') html+='<div class="panels one">'+topProjectsPanel(scope,F.site==='ALL')+'</div>';
@@ -3233,7 +3278,10 @@ function applyBootstrap(res){
   if($('inpQuery')) $('inpQuery').value=res.gmailQuery||'';
   /* Settings sadece yetkili hesaplarda gorunur — asil kontrol Code.gs'te
      (requireAdmin_), bu yalniz gereksiz bir butonu gizleyen UX katmani. */
-  $('btnSettings').hidden=!res.isAdmin;
+  /* Ayarlar herkese gorunur; icerideki eylemler yoneticiye ozel
+     (applySettingsPerms). */
+  $('btnSettings').hidden=false;
+  SET.readOnly=!res.isAdmin;
   bellRefresh();
   renderUserChip();
 }
@@ -3303,7 +3351,11 @@ function initTheme(){
 }
 
 /* ---------- panels ---------- */
-function logS(m){ $('settingsLog').textContent=m; }
+function logS(m){
+  var el=$('settingsLog');
+  el.textContent=m||'';
+  el.hidden=!m;              /* bos kutu eksik bir sey varmis gibi duruyor */
+}
 /**
  * Yeni kaydedilen bir donemin snapshot'ini hemen kurar.
  * Bu yapilmazsa o donemi ilk acan kullanici parcali okuma yolunu (ve uzun
@@ -3315,6 +3367,39 @@ function logS(m){ $('settingsLog').textContent=m; }
    yolu Apps Script editoru idi. Liste hangi ayin hangi dosyadan geldigini
    ve KAC SITE TANINDIGINI gosteriyor -- yanlis dosya oradan hemen belli
    oluyor (48 yerine 1). */
+/* ---- Ayarlar: herkes GORUR, yalniz yonetici DEGISTIRIR ----
+ * Once bu panel yoneticiden baskasina hic gosterilmiyordu; "hangi ay hangi
+ * dosyadan geliyor, bu donem kac site tanidi" bilgisi kimse tarafindan
+ * gorulemiyordu. Artik panel herkese acik, eylemler yoneticiye kapali.
+ *
+ * Bu yalniz GORUNURLUK katmani: uiScanGmail / uiAddPeriod / uiRemovePeriod /
+ * uiSaveQuery ve tetikleyici kurucular sunucuda requireAdmin_ ile korunuyor,
+ * buradaki gizleme kaldirilsa bile yetkisiz cagri reddedilir.
+ */
+var SET={readOnly:!(window.BOOT&&BOOT.isAdmin)};
+
+/* Yalniz yoneticiye ait eylemler. Geri bildirim dugmeleri de burada: gelen
+   kutusu BASKA kullanicilarin mesajlarini ve ekran goruntulerini tasiyor,
+   "panel herkese acik" bunu kapsamaz. */
+var SET_ADMIN_ONLY=['btnScan','btnSaveQuery','btnTrigger','btnSnapTrigger',
+                    'btnEnsureSnaps','btnInbox','btnCheckFb','btnTestMail','btnAdd'];
+
+function applySettingsPerms(){
+  var ro=SET.readOnly;
+  SET_ADMIN_ONLY.forEach(function(id){ var el=$(id); if(el) el.hidden=ro; });
+  ['inpQuery','inpUrl'].forEach(function(id){
+    var el=$(id); if(!el) return;
+    el.readOnly=ro;                     /* disabled DEGIL: metin secilip
+                                           kopyalanabilsin, soluk gorunmesin */
+    el.setAttribute('aria-readonly',ro?'true':'false');
+  });
+  /* Link kutusunun etiketi "elle donem ekle" diyor; ekleyemeyecek kisiye
+     bu kutuyu hic gostermemek daha durust. */
+  var urlGroup=$('inpUrl'); 
+  if(urlGroup&&urlGroup.parentNode) urlGroup.parentNode.hidden=ro;
+  var note=$('setRoNote'); if(note) note.hidden=!ro;
+}
+
 function renderPeriodList(rows){
   var box=$('periodList'); if(!box) return;
   if(!rows||!rows.length){ box.innerHTML='<div class="p-empty">'+esc(t('noPeriods'))+'</div>'; return; }
@@ -3326,8 +3411,9 @@ function renderPeriodList(rows){
         '<span class="p-file">'+esc(r.name||'')+'</span></div>'+
       '<span class="p-sites'+(bad?' bad':'')+'">'+
         (n==null?'—':nf(n)+' '+esc(sitesWord(n)))+'</span>'+
-      '<button class="btn ghost p-del" type="button" data-delkey="'+esc(r.key)+'">'+
-        esc(t('remove'))+'</button>'+
+      (SET.readOnly?'':
+        '<button class="btn ghost p-del" type="button" data-delkey="'+esc(r.key)+'">'+
+        esc(t('remove'))+'</button>')+
     '</div>';
   }).join('');
   box.querySelectorAll('[data-delkey]').forEach(function(b){
@@ -3352,7 +3438,15 @@ var SITE_WARN_MIN=10;
 function loadPeriodList(){
   if(!hasServer()) return;
   google.script.run
-    .withSuccessHandler(function(r){ if(r&&r.periods) renderPeriodList(r.periods); })
+    .withSuccessHandler(function(r){
+      if(!r||!r.periods) return;
+      /* Sunucu kimin ne yapabilecegini soyluyor; istemci buna gore ciziyor.
+         Gercek engel yine sunucuda (requireAdmin_) -- burasi yalniz
+         gorunurluk, bkz. docs/yetki-gorunumu.md. */
+      if(r.readOnly!==undefined) SET.readOnly=!!r.readOnly;
+      applySettingsPerms();
+      renderPeriodList(r.periods);
+    })
     .withFailureHandler(function(){})
     .uiListPeriods();
 }
@@ -3630,7 +3724,9 @@ function initPanels(){
   $('btnHelp').onclick=function(){ openHelp(''); };
   $('btnHelpClose').onclick=closeHelp;
   $('helpScrim').onclick=closeHelp;
-  $('btnSettings').onclick=function(){ $('dlgSettings').showModal(); loadPeriodList(); };
+  $('btnSettings').onclick=function(){
+    $('dlgSettings').showModal(); applySettingsPerms(); loadPeriodList();
+  };
   $('btnCloseSettings').onclick=function(){ $('dlgSettings').close(); };
   $('btnInbox').onclick=function(){ $('dlgSettings').close(); openInbox(); };
   $('btnBell').onclick=function(){ openInbox(); };

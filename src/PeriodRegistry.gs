@@ -58,6 +58,9 @@ function getGmailQuery_() {
 }
 
 function setGmailQuery(query) {
+  /* Metin donduren bir fonksiyon oldugu icin deny NESNESI donduremiyor;
+     yetkisiz dogrudan cagri hata olarak geri gidiyor. */
+  if (!isAuthorizedAdmin_()) throw new Error('Not authorized.');
   PropertiesService.getScriptProperties()
     .setProperty(PROP_GMAIL_QUERY, String(query || '').trim() || DEFAULT_GMAIL_QUERY);
   return getGmailQuery_();
@@ -162,6 +165,11 @@ function dominantSheetMonth_(ss) {
  * Gmail taramasi bir ayi kacirirsa emniyet supabi budur.
  */
 function addPeriodByUrl(url) {
+  /* Yetki kontrolu ui* sarmalayicisinda DEGIL burada da: google.script.run
+     projedeki HER ust duzey fonksiyonu cagirabiliyor, yani sarmalayiciyi
+     atlayip dogrudan bu isimle cagirmak mumkundu. Ayarlar paneli artik
+     herkese gorunur oldugu icin bu kapinin kapali olmasi sart. */
+  var deny = requireAdmin_(); if (deny) return deny;
   var id = extractSpreadsheetId_(url) || String(url || '').trim();
   if (!/^[a-zA-Z0-9_-]{20,}$/.test(id)) {
     return { error: 'Not a valid Google Sheets link or file ID.' };
@@ -180,6 +188,15 @@ function addPeriodByUrl(url) {
  * fonksiyonu calistirir.
  */
 function scanGmailForPeriods() {
+  /* Bu fonksiyon HEM Ayarlar dugmesinden HEM gunluk zamanlayicidan calisiyor.
+     Zamanlayici calismasinda etkilesimli bir cagiran yoktur; o durumu
+     engellememek icin kontrol "etkilesimli bir cagiran VARSA yonetici olmali"
+     seklinde. Boylece tetikleyici bozulmadan dogrudan cagri kapaniyor. */
+  var caller = '';
+  try { caller = Session.getActiveUser().getEmail() || ''; } catch (e) { caller = ''; }
+  if (caller && !isAuthorizedAdmin_()) {
+    return { error: 'Not authorized. Ask the dashboard owner to add you as an admin.' };
+  }
   var query = getGmailQuery_();
   var found = [], errors = [], seen = {};
   var threads;
@@ -210,6 +227,7 @@ function scanGmailForPeriods() {
 
 /** Gunluk Gmail taramasi tetikleyicisini kurar (bir kez calistirilir). */
 function installDailyScanTrigger() {
+  if (!isAuthorizedAdmin_()) throw new Error('Not authorized.');
   var existing = ScriptApp.getProjectTriggers();
   for (var i = 0; i < existing.length; i++) {
     if (existing[i].getHandlerFunction() === 'scanGmailForPeriods') {
@@ -237,6 +255,7 @@ function listPeriods_() {
  * Kaynak spreadsheet'e DOKUNULMAZ -- yalniz dashboard'un kendi kaydi silinir.
  */
 function removePeriod(key) {
+  var deny = requireAdmin_(); if (deny) return deny;   /* dogrudan cagriya karsi */
   var periods = readPeriods_();
   if (!periods[key]) return { error: 'Not in registry: ' + key };
   var name = periods[key].name;
@@ -268,8 +287,14 @@ function setPeriodMonths_(key, months) {
  * gormek icin gerekiyor -- panelde yalniz "ekle" vardi, "hangileri ekli"
  * ve "sil" yoktu.
  */
+/* Ayarlar ekrani HERKESE acik, degistirme yalniz yoneticide (kullanici
+   karari). Bu yuzden liste okumasi artik yonetici sarti aramiyor; yonetici
+   olmayana dosya KIMLIGI verilmiyor (gormeye yetkisi olmayabilecegi bir
+   dosyanin adresini dagitmanin anlami yok) ve donus readOnly ile isaretleniyor
+   ki istemci Sil dugmelerini hic cizmesin. Gercek engel yine sunucuda:
+   removePeriod / uiAddPeriod / uiScanGmail requireAdmin_ ile korunuyor. */
 function listPeriodsDetailed() {
-  var deny = requireAdmin_(); if (deny) return deny;
+  var admin = isAuthorizedAdmin_();
   var trend = {};
   try { trend = readTrend_(); } catch (e) {}
   var out = listPeriods_().map(function (p) {
@@ -288,7 +313,8 @@ function listPeriodsDetailed() {
         row.sites = n;
       }
     } catch (e) {}
+    if (!admin) delete row.id;
     return row;
   });
-  return { ok: true, periods: out };
+  return { ok: true, periods: out, readOnly: !admin };
 }
