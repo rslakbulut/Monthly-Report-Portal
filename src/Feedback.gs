@@ -282,8 +282,12 @@ function checkDirectory() {
 /* Geri bildirimler bu dosyadaki BU SEKMEYE yaziliyor (kullanici talimati).
    Baska sekmelere dokunulmuyor. */
 var FEEDBACK_TAB_NAME = 'RO Monthly Report';
+/* Sekme YOKSA bu basliklarla olusturulur. Canlidaki sekmenin duzeniyle ayni
+   (Screenshot sutunu dahil) + FeedbackID. Var olan bir sekmenin duzenine
+   DOKUNULMAZ: sutunlar adlarindan bulunur, olmayan sutun atlanir. */
 var FEEDBACK_HEADERS = ['FeedbackID', 'Email', 'Feedback_Type', 'Priority', 'Message',
-                        'CreatedAt', 'Comments', 'Status', 'Standardization Y/N'];
+                        'CreatedAt', 'Screenshot', 'Comments', 'Status',
+                        'Standardization Y/N'];
 
 /* Sayfadaki mevcut kayitlarla ayni bicim: 8 haneli BUYUK harf onaltilik
    (ornek: CC0B73C0). Satiri e-postadan takip edebilmek icin gerekiyor --
@@ -528,6 +532,41 @@ function submitFeedback(payload) {
                                  : '') };
   } finally {
     try { lock.releaseLock(); } catch (e2) {}
+  }
+}
+
+/**
+ * Ayarlar ekranindaki "Test e-mail" dugmesi.
+ * Bildirim postasi gitmiyorsa SEBEBI soyler. Onceden hata try/catch'te
+ * yutuluyor, kullaniciya yalnizca "kaydedildi" deniyordu -- postanin neden
+ * gitmedigi hicbir yerde gorunmuyordu. En sik sebep: script.send_mail
+ * kapsami eklendikten sonra betigin YENIDEN YETKILENDIRILMEMIS olmasi.
+ */
+function uiTestMail() {
+  var deny = requireAdmin_(); if (deny) return deny;
+  var to = feedbackRecipients_();
+  if (!to.length) {
+    return { ok: true, message: 'No recipient. Set RO_DASH_ADMIN_EMAILS in Script Properties.' };
+  }
+  var left = null;
+  try { left = MailApp.getRemainingDailyQuota(); } catch (e) { left = null; }
+  try {
+    MailApp.sendEmail({
+      to: to.join(','),
+      subject: '[RO Dashboard] Test e-mail',
+      body: 'This is a test from the RO Monthly Report dashboard.\n' +
+            'If you received it, feedback notifications work.\n\n' +
+            'Sent at ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(),
+                                              'yyyy-MM-dd HH:mm')
+    });
+    return { ok: true, message: 'Test e-mail SENT to ' + to.join(', ') +
+                                (left == null ? '' : '  (daily quota left: ' + left + ')') };
+  } catch (e) {
+    return { ok: true, message: 'Test e-mail FAILED: ' + e.message +
+      '\n\nMost likely the script has not been re-authorized after the' +
+      ' "send e-mail" permission was added.\nFix: open the Apps Script editor' +
+      ' (Extensions > Apps Script), pick any function and press Run once,' +
+      ' then approve the permission dialog.' };
   }
 }
 

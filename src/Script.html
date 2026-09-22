@@ -2764,6 +2764,9 @@ function sendFeedback(){
       if(!r||r.error){ fbNote((r&&r.error)||'Could not send','err'); return; }
       $('dlgFeedback').close();
       showToast(t('feedbackThanks'),'success');
+      /* Kayit olup BILDIRIM gidemediyse bu sessiz kaliyordu: sunucu uyariyi
+         donuyordu ama istemci okumuyordu. */
+      if(r.warning) showToast(r.warning,'error');
     })
     .withFailureHandler(function(e){
       FB.busy=false;
@@ -3441,6 +3444,13 @@ function initPanels(){
       })
       .withFailureHandler(function(e){ logS('Server error: '+((e&&e.message)||e)); })
       .uiCheckFeedback();
+  };
+  $('btnTestMail').onclick=function(){
+    logS('Sending test e-mail…');
+    google.script.run
+      .withSuccessHandler(function(r){ logS((r&&r.message)||(r&&r.error)||'unknown'); })
+      .withFailureHandler(function(e){ logS('Server error: '+((e&&e.message)||e)); })
+      .uiTestMail();
   };
   $('btnAdd').onclick=function(){
     logS('Adding…');
