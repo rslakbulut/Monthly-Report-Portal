@@ -5,6 +5,11 @@ description: Bir projeyi Valeo Standartlar reposundaki (eng-furkany/Standartlar)
 
 # Standartlar Uyumluluk
 
+**Son doğrulama:** 2026-09-22, bu repo `.claude/skills/standartlar-uyumluluk/` altına
+taşındıktan sonra Claude Code'un skill listesinde göründüğü teyit edildi (bkz.
+`docs/karar-gecmisi.md`). Denetim Modu'nun ürettiği `report-template.html` aynı turda
+doctype/lang/viewport eksikliği için düzeltildi.
+
 ## Bu skill ne için var
 
 `eng-furkany/Standartlar` reposu (bu repo) Valeo projeleri arasında ortak tasarım/mühendislik

@@ -5,6 +5,9 @@ description: Bir kullanıcı sıfırdan bir MVP/dashboard/portal/uygulama kurmak
 
 # MVP Akışı — Sıfırdan Kurulum ve Analiz
 
+**Son doğrulama:** 2026-09-22, bu repo `.claude/skills/mvp-akisi/` altına taşındıktan sonra
+Claude Code'un skill listesinde göründüğü teyit edildi (bkz. `docs/karar-gecmisi.md`).
+
 ## Bu skill ne için var
 
 `docs/mvp-akisi.md`, `docs/playbook.md` ve `docs/dokuman-standartlari.md` — bu üç doküman

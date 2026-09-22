@@ -18,10 +18,31 @@ taşırken buradan başla.
 Köşe yarıçapı ölçeği de bu kaynaktan resmidir: `--radius-sm:6px` · `--radius-md:8px` ·
 `--radius-lg:12px`.
 
-**Bilinen eksik:** bu palette WCAG kontrast ölçümü belgeli değil ve dark-mode varyantı yok
-(proje tek temalı). Yeni bir sayfa/bileşen bu renklerle koyu zemin üzerine metin
-yerleştirecekse kontrastı elle doğrula — aşağıdaki Bursa CV paletindeki gibi hazır,
-doğrulanmış bir `-text` varyantı yok.
+**Bilinen eksik:** bu palette dark-mode varyantı yok (proje tek temalı). Yeni bir sayfa/bileşen
+bu renklerle koyu zemin üzerine metin yerleştirecekse kontrastı aşağıdaki tabloyla karşılaştır
+— aşağıdaki Bursa CV paletindeki gibi hazır, doğrulanmış bir `-text` varyantı yok.
+
+### Kontrast Ölçümleri (2026-09-22, MEASURED)
+
+`ExpertAI`'ın 2026-09-22 denetiminde bu paletin kontrastının hiç ölçülmediği tespit edildi
+(bkz. `reports/monthly-report-portal/2026-09-22-denetim-raporu.html`, Accessibility bölümü).
+Aşağıdaki oranlar standart WCAG 2.1 relative-luminance formülüyle hesaplandı (sRGB, D65) —
+aracı kod: `Contrast(L1,L2) = (L1+0.05)/(L2+0.05)`, `L` = relative luminance. Bu, `tokens/colors.css`'in
+kendi yorumunda da kısaca tekrarlanıyor.
+
+| Metin | Zemin | Oran | Seviye |
+|---|---|---:|---|
+| `--valeo-blue` (`#041b3c`) | beyaz (`#ffffff`) | 17.11:1 | AAA |
+| `--valeo-green` (`#76ff03`) | `--valeo-blue` (`#041b3c`, CTA) | 13.10:1 | AAA |
+| `--valeo-dark` (`#003d9b`) | beyaz | 9.81:1 | AAA |
+| `--blue-800` (`#0d3d6e`) | beyaz | 11.00:1 | AAA |
+| `--neutral-600` (`#4a6070`) | beyaz | 6.57:1 | AA (AAA değil) |
+| `--valeo-mid` (`#0072ce`) | beyaz | 4.89:1 | AA — sınıra yakın, ince gövde metninde dikkatli kullan |
+| `--neutral-300` (`#9aaab8`) | beyaz | 2.38:1 | **YETERSİZ** — yalnız kenarlık/ayırıcı, metin rengi olarak kullanma |
+
+`--valeo-green` yalnız `--valeo-blue` zeminde (CTA deseni) yüksek kontrastlı; açık bir zeminde
+(ör. beyaz) doğrudan metin rengi olarak **kullanılmadı**, oranı burada ayrıca ölçülmedi —
+kullanılacaksa önce ölçülmeli.
 
 ## İkincil / Referans — Bursa CV Projects (`tokens/colors-bursa-cv-projects.css`)
 

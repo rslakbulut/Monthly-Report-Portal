@@ -27,6 +27,14 @@ inline SVG'lere işaret ediyordu — her yeni proje ikon seçimini kendi başın
 - **`sidebar.md`'deki `ICONS` nesnesi** artık Lucide'dan seçilen ikonlarla doldurulur — yeni
   bir projeye taşınırken Bursa CV Projects'in elle çizilmiş özel SVG'leri birebir kopyalanmaz,
   Lucide karşılığıyla değiştirilir.
+- **Erişilebilir isim (2026-09-22 kararı):** yanında görünür metin olmayan **ikon-only**
+  bir buton/chip (ör. yalnız `x` ikonu taşıyan bir kapatma butonu) mutlaka bir
+  `aria-label="..."` (veya eşdeğer erişilebilir isim — `title` değil, ekran okuyucu için
+  `aria-label`/`aria-labelledby`) taşır. Yanında görünür metin varsa (ör. "Ayarlar" yazılı bir
+  buton içindeki `settings` ikonu) ikonun kendisi `aria-hidden="true"` alır, tekrar okunmaz.
+  Gerekçe: `ExpertAI`'ın 2026-09-22 tarihli denetiminde `report-template.html`'de bu kuralın
+  yazılı olmadığı tespit edildi (`reports/monthly-report-portal/2026-09-22-denetim-raporu.html`,
+  Accessibility bölümü).
 
 ## Ne Zaman Hangi İkon (öneri, zorunlu değil)
 

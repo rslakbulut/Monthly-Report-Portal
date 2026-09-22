@@ -1,0 +1,20 @@
+name: Verify repo structure
+
+# 2026-09-22 eklendi (ExpertAI denetimi) - bu repo bir kez GitHub'a duz dosya listesi olarak
+# yuklenip .claude/hooks, .claude/skills/*, tokens/, docs/, assets/ yapisi kaybolmustu, fark
+# edilmeden aylarca oyle kaldi. Bu is akisi scripts/verify-repo.sh'i her push/PR'da calistirip
+# ayni sinif hatayi (klasor yapisi bozulmasi, hook/skill yolu eksikligi, token dosyalarinin
+# senkronsuz kalmasi, dokumanlardaki repo-goreli linklerin kirilmasi) erken yakalar.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: verify-repo.sh
+        run: bash scripts/verify-repo.sh

@@ -16,6 +16,15 @@ case "$tool" in
     if echo "$path" | grep -qiE 'ValeoDashboard|Bursa-CV-Projects'; then
       deny "hedef yol kaynak depo icinde gorunuyor: $path"
     fi
+    # 2026-09-22 sertlestirme: literal yol string'i temiz olsa bile, path bir symlink
+    # uzerinden kaynak depoya cikabilir (ör. proje icinde "myLink -> ../ValeoDashboard/x.md").
+    # Var olan bir dosya/symlink ise cozulmus (resolved) hedefi de ayrica kontrol et.
+    if [ -e "$path" ] || [ -L "$path" ]; then
+      resolved="$(readlink -f -- "$path" 2>/dev/null || true)"
+      if [ -n "$resolved" ] && echo "$resolved" | grep -qiE 'ValeoDashboard|Bursa-CV-Projects'; then
+        deny "hedef yol bir symlink uzerinden kaynak depoya cozuluyor: $path -> $resolved"
+      fi
+    fi
     ;;
   Bash)
     cmd="$(echo "$input" | jq -r '.tool_input.command // empty')"

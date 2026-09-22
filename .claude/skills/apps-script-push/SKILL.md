@@ -5,6 +5,16 @@ description: Bir Google Apps Script (GAS) projesine `clasp` ile kod push etmek/d
 
 # Apps Script'e Push (Claude Code Web'den)
 
+**Kapsam dışı (2026-09-22 notu):** Bu skill yalnız Google Apps Script/GAS hedefleri (`clasp
+push`) için yazıldı — başka bir CI/CD hedefine (ör. `npm publish`, Vercel/Netlify deploy, bir
+sunucuya `rsync`/`scp`, Docker push) genellenmez. Böyle bir istek gelirse bu skill'i zorlama,
+kullanıcıya doğrudan ilgili aracın kendi komutlarını öner.
+
+**Son doğrulama:** 2026-09-22, bu repo `.claude/skills/apps-script-push/` altına taşındıktan
+sonra Claude Code'un skill listesinde göründüğü teyit edildi (bkz. `docs/karar-gecmisi.md`).
+Adım adım akışın (0-6) uçtan uca gerçek bir `clasp push` ile denenmesi henüz yapılmadı — bu ayrı
+bir veri boşluğu, bkz. `ExpertAI`'daki `repos/monthly-report-portal.md`.
+
 ## Bu skill ne için var
 
 Bir Claude Code web oturumu, kullanıcının kendi bilgisayarında değil Anthropic'in bulut

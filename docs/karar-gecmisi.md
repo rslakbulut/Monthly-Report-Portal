@@ -347,6 +347,38 @@ artık `CLAUDE.md` değil, burasıdır.
   `docs/*.md`'nin geri kalanı (renkler, sidebar, bileşenler, tablolar, grafikler, vb. ~18
   dosya) bilinçli olarak dokunulmadı — bunlar kopyala-yapıştır içerik kütüphanesi, prosedür
   değil, skill'e çevrilmeleri yanlış soyutlama olurdu.
+- **2026-09-22: repo GitHub'a düz dosya listesi olarak yüklenmişti — klasör yapısı düzeltildi,
+  ExpertAI'ın ilk-tur denetimi uygulandı.** `eng-furkany/ExpertAI`'ın 2026-09-22 tarihli denetimi
+  (`reports/monthly-report-portal/2026-09-22-denetim-raporu.html`, OVERALL 46/100) tek bir
+  CRITICAL kök neden buldu: `git log` bir `Monthly-Report-Portal-main.zip`'in yüklenip
+  silindiğini, ZIP'in içindeki `.claude/hooks/`, `.claude/skills/<isim>/`, `tokens/`, `docs/`,
+  `assets/` klasör yapısının hiç commit edilmediğini gösteriyordu — 43 dosyanın hepsi repo
+  kökünde düzdü. Sonuç: 3 skill Claude Code tarafından keşfedilemiyordu, 4 güvenlik hook'u hiç
+  çalışmıyordu, hemen her göreli link kırıktı. **Düzeltme (bu karar):** dosyalar `git mv` ile
+  belgelenen yapıya taşındı — içerik/yol referansları **değiştirilmedi**, zaten doğru yazılmıştı
+  (bkz. yukarıdaki fazlarda kurulan yapı), yalnız fiziksel konumları düzeldi. Taşıma sonrası
+  4 guard hook + `notify-baslarken-sync.sh` pozitif/negatif senaryolarla elle test edildi (deny/
+  allow davranışı doğrulandı) ve 3 skill'in Claude Code'un skill listesinde göründüğü teyit
+  edildi. Ayrıca: `report-template.html`'e eksik `<!doctype html><html lang="tr">` +
+  `<meta name="viewport">` iskeleti ve font `preconnect` eklendi; `guard-source-repos.sh`
+  symlink-üzerinden-kaçış senaryosuna karşı sertleştirildi (`readlink -f` ile çözümlenmiş hedef
+  de kontrol ediliyor); `.claude/hooks/selfcheck.sh` eklendi (yeni bir `SessionStart` hook'u —
+  her oturum başında `settings.json`'daki hook yollarının fiilen var olduğunu doğrular, eksikse
+  sessiz kalmak yerine görünür bir uyarı basar); `scripts/verify-repo.sh` + `.github/workflows/verify.yml`
+  eklendi (hook/skill yol bütünlüğü, `tokens/colors.css` ↔ `tokens/colors-valeo-dashboard.css`
+  değer eşitliği, `docs/*.md` göreli referans çözünürlüğü, `baslarken.md`↔`checklist.json` adım/
+  kategori sayısı sapması — her push/PR'da otomatik); `tokens/colors.css`'e ve
+  `docs/renkler.md`'ye gerçek ölçülmüş WCAG kontrast oranları eklendi (`--neutral-300`'ün metin
+  rengi olarak YETERSİZ, 2.38:1, olduğu bu turda ortaya çıktı); `docs/ikonlar.md`'ye ikon-only
+  buton `aria-label` kuralı eklendi; `tokens/gallery.html` (token önizleme sayfası) ve
+  README'ye "Repo Ağacı" + boş "Kullanım Takibi" tablosu eklendi. **Ayrı, kod DIŞI bir gözlem
+  (bu turda düzeltilmedi, insan kararı gerektirir):** birden fazla dosyada (`checklist.json`
+  `_kaynak`, 3 `SKILL.md`) bu depo kendini `eng-furkany/Standartlar` olarak adlandırıyor, ama
+  gerçek GitHub konumu `rslakbulut/monthly-report-portal` — bu bir isim/sahiplik tutarsızlığı,
+  hangisinin doğru olduğu (repo yeniden mi adlandırıldı, yoksa metin mi güncellenmemiş) bu
+  turda araştırılmadı. Kaynak: ExpertAI raporunun "Puan → 80+ Farkı" bölümü, "yalnızca bu tek
+  işlemi yapmak ... OVERALL'ı tahminen ~65-70 bandına taşır" tahmini — bir sonraki turda
+  (`prompts/05`'in 12. fazı, Final Re-Audit) gerçek delta ölçülecek.
 
 ## Yeni İçerik Eklerken
 

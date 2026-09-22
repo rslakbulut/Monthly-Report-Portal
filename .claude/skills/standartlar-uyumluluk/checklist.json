@@ -1,5 +1,5 @@
 {
-  "_kaynak": "eng-furkany/Standartlar, docs/baslarken.md ile senkron tutulur. baslarken.md değişirse buraya da yansıt.",
+  "_kaynak": "eng-furkany/Standartlar, docs/baslarken.md ile senkron tutulur. baslarken.md değişirse buraya da yansıt. Senkron sapması artık scripts/verify-repo.sh (adım 5) tarafından da otomatik kontrol ediliyor (2026-09-22 eklendi) — bu alan elle güncellenmeye devam eder, script yalnız büyük bir sapmayı erken fark ettirir.",
   "_senkron_tarihi": "2026-09-01",
   "categories": [
     {

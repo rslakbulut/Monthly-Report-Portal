@@ -46,7 +46,20 @@
    --neutral-*   → metin hiyerarşisi, kenarlıklar, ayırıcılar
    --blue-*      → ikon rengi, badge, subtle vurgu
 
-   Dark-mode varyantı yok, WCAG kontrastı belgeli değil — yeni kullanımda
-   elle doğrula. Durum rozeti üretirken tokens/colors-bursa-cv-projects.css
+   Dark-mode varyantı yok. Durum rozeti üretirken tokens/colors-bursa-cv-projects.css
    içindeki "soluk zemin + doygun yazı" desenini bu renklerle yeniden
    doğrulayarak uygula (bkz. ../docs/renkler.md). */
+
+/* WCAG 2.1 kontrast oranları (2026-09-22'de ölçüldü, standart relative-luminance
+   formülüyle — hesap: ../docs/renkler.md "Kontrast Ölçümleri"). Metin olarak
+   kullanmadan önce buraya bak:
+   --valeo-blue metin  / beyaz zemin   → 17.11:1 (AAA)
+   --valeo-green metin / --valeo-blue zemin (CTA) → 13.10:1 (AAA)
+   --valeo-dark metin  / beyaz zemin   → 9.81:1  (AAA)
+   --blue-800 metin    / beyaz zemin   → 11.00:1 (AAA)
+   --neutral-600 metin / beyaz zemin   → 6.57:1  (AA, AAA değil — küçük metinde AAA hedefleme)
+   --valeo-mid metin   / beyaz zemin   → 4.89:1  (AA — büyük/kalın metinde güvenli, ince gövde
+                                                    metninde alt sınıra yakın, dikkatli kullan)
+   --neutral-300 metin / beyaz zemin   → 2.38:1  (YETERSİZ — AA'nın altında. Bu token yalnız
+                                                    kenarlık/ayırıcı için tasarlandı, METİN
+                                                    RENGİ OLARAK KULLANMA.) */

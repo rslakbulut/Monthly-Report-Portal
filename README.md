@@ -39,7 +39,16 @@ gösterirken de doğrudan ilgili dosyayı işaret et.
   hepsi CLAUDE.md'deki "Değişmez Kurallar"ın mekanik karşılığı. İlgili skill'le birlikte
   kopyalanmalı, ayrı bırakılırsa koruma atlanır
 - `tokens/` — `colors.css` (resmi palet) + her kaynak projenin renk CSS değişkenleri, aynen
-  kopyalanmış
+  kopyalanmış. `tokens/gallery.html` (2026-09-22) bu paletin canlı önizlemesi — yalnız
+  önizleme amaçlı, başka bir projeye kopyalanmaz, kontrast oranları için `docs/renkler.md`'ye
+  bakın.
+- `scripts/verify-repo.sh` (2026-09-22) — bu reponun kendi bütünlüğünü kontrol eder: hook/skill
+  yollarının var olduğunu, `tokens/colors.css` ile `tokens/colors-valeo-dashboard.css`'in
+  senkron kaldığını, dokümanlardaki repo-göreli referansların çözüldüğünü, `docs/baslarken.md`
+  ile `checklist.json`'un büyük ölçüde sapmadığını doğrular. `.github/workflows/verify.yml` ile
+  her push/PR'da otomatik çalışır — bu repo bir kez düz dosya listesi olarak yüklenip bu
+  bütünlüğün aylarca fark edilmeden bozuk kaldığı (bkz. `docs/karar-gecmisi.md`, 2026-09-22)
+  bir daha sessizce tekrarlanmasın diye eklendi.
 - `docs/` — kullanım kuralları ve iki kaynağın karşılaştırması
   - `docs/mvp-akisi.md` — **sıfırdan MVP** giriş noktası: kapsam konuşması, boşluk-doldurma
     soruları, standart-dışı istek akışı, `ExpertAI` denetimine yönlendirme
@@ -115,3 +124,42 @@ kullanılmıyor, yalnız durum-rozeti/tema-duyarlı-metin deseni için referans 
 - `eng-furkany/ValeoDashboard` — `ValeoDashboard/Index.html`, `ValeoDashboard/CLAUDE.md`,
   `ValeoDashboard/Valeo_Logo.svg.png`
 - `CKapitan/Bursa-CV-Projects` — `src/Stylesheet.html`, `src/Index.html`
+
+## Repo Ağacı
+
+Yukarıdaki "İçindekiler" listesi elle yazılıyor — bu depo bir kez GitHub'a düz dosya listesi
+olarak yüklenip bu listenin gerçek dosya ağacıyla ay(lar)ca uyuşmadığı fark edilmemişti (bkz.
+`docs/karar-gecmisi.md`, 2026-09-22). Aşağıdaki blok gerçek ağacın bir anlık görüntüsü — bu iki
+liste (İçindekiler ve buradaki ağaç) birbirinden saparsa biri güncel değildir; `scripts/verify-repo.sh`
+en azından hook/skill yollarının var olduğunu otomatik doğrular, ama bu ağacı otomatik
+güncellemez, elle taze tutulmalı.
+
+```
+.
+├── CLAUDE.md
+├── README.md
+├── .claude/
+│   ├── settings.json
+│   ├── hooks/                          (5 PreToolUse guard + 1 SessionStart selfcheck)
+│   └── skills/
+│       ├── apps-script-push/SKILL.md + reference/*.png
+│       ├── mvp-akisi/SKILL.md
+│       └── standartlar-uyumluluk/SKILL.md + checklist.json + report-template.html
+├── assets/                             (Valeo_Logo.png, Valeo_Logo_AIClubPortal.png)
+├── tokens/                             (colors.css, colors-valeo-dashboard.css,
+│                                         colors-bursa-cv-projects.css, gallery.html)
+├── docs/                               (25 dosya — bkz. yukarıdaki İçindekiler)
+├── scripts/verify-repo.sh
+└── .github/workflows/verify.yml
+```
+
+## Kullanım Takibi
+
+Bu bölüm bilinçli olarak boş bırakıldı — repodan fiilen token/skill çeken proje sayısı hiç
+ölçülmedi (`ExpertAI`'ın 2026-09-22 denetimi, Product Fit/ROI bölümleri, `DATA REQUIRED`).
+Uydurma bir sayı yazmak yerine, bu tabloyu gerçek bir proje bu depodan bir şey çektiğinde
+doldurun (satır ekleyin) — zamanla Product Fit/ROI puanlarının gerçek veriye dayanmasını sağlar.
+
+| Proje | Neyi çekti | Tarih | Not |
+|---|---|---|---|
+| | | | |

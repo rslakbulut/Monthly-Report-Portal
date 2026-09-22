@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Valeo Token Galerisi</title>
+<meta name="description" content="tokens/colors.css içindeki resmi Valeo renk paletinin ve köşe yarıçapı ölçeğinin canlı önizlemesi.">
+<link rel="stylesheet" href="colors.css">
+<style>
+  body{ margin:0; padding:32px clamp(16px,4vw,40px) 64px; background:var(--surface-dim); color:var(--valeo-blue);
+        font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
+  h1{ font-size:1.5rem; margin:0 0 4px; }
+  p.lede{ color:var(--neutral-600); max-width:60ch; margin:0 0 28px; }
+  h2{ font-size:1.05rem; margin:36px 0 12px; padding-bottom:6px; border-bottom:1px solid var(--neutral-100); }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:14px; }
+  .swatch{ border:1px solid var(--neutral-100); border-radius:var(--radius-md); overflow:hidden; background:var(--surface); }
+  .fill{ height:64px; }
+  .label{ padding:8px 10px; font-size:.78rem; }
+  .label b{ display:block; font-size:.82rem; }
+  .label code{ color:var(--neutral-600); }
+  .radius-row{ display:flex; gap:16px; flex-wrap:wrap; }
+  .radius-box{ width:80px; height:80px; background:var(--valeo-mid); display:flex; align-items:flex-end; justify-content:center; color:#fff; font-size:.72rem; padding-bottom:6px; }
+  .note{ margin-top:40px; padding:14px 16px; background:var(--surface); border:1px solid var(--neutral-100); border-radius:var(--radius-md); font-size:.85rem; color:var(--neutral-600); max-width:70ch; }
+  .note code{ background:var(--surface-dim); padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+  <h1>Valeo Token Galerisi</h1>
+  <p class="lede">Bu sayfa <code>tokens/colors.css</code>'i doğrudan <code>&lt;link&gt;</code> ile
+  yükler (repo canlı kod içermez kararına rağmen — bu sayfa istisna, yalnız <b>önizleme</b>
+  amaçlı, başka bir projeye kopyalanmaz). Kontrast oranları için <code>docs/renkler.md</code>
+  "Kontrast Ölçümleri" bölümüne bakın. 2026-09-22'de eklendi (ExpertAI denetimi, Visual/UI
+  bölümü, "80+'e çıkmak için" madde 3).</p>
+
+  <h2>Birincil Palet</h2>
+  <div class="grid">
+    <div class="swatch"><div class="fill" style="background:var(--valeo-blue)"></div><div class="label"><b>Blue</b><code>--valeo-blue #041b3c</code></div></div>
+    <div class="swatch"><div class="fill" style="background:var(--valeo-green)"></div><div class="label"><b>Green</b><code>--valeo-green #76ff03</code></div></div>
+    <div class="swatch"><div class="fill" style="background:var(--valeo-mid)"></div><div class="label"><b>Mid</b><code>--valeo-mid #0072ce</code></div></div>
+    <div class="swatch"><div class="fill" style="background:var(--valeo-dark)"></div><div class="label"><b>Dark</b><code>--valeo-dark #003d9b</code></div></div>
+  </div>
+
+  <h2>Nötr / Yüzey</h2>
+  <div class="grid">
+    <div class="swatch"><div class="fill" style="background:var(--surface);border-bottom:1px solid var(--neutral-100)"></div><div class="label"><b>Surface</b><code>--surface #ffffff</code></div></div>
+    <div class="swatch"><div class="fill" style="background:var(--surface-dim)"></div><div class="label"><b>Surface dim</b><code>--surface-dim #f1f5f9</code></div></div>
+    <div class="swatch"><div class="fill" style="background:var(--neutral-100)"></div><div class="label"><b>Neutral 100</b><code>--neutral-100 #e4eaf0</code></div></div>
+    <div class="swatch"><div class="fill" style="background:var(--neutral-300)"></div><div class="label"><b>Neutral 300</b><code>--neutral-300 #9aaab8</code><br><small>Yalnız kenarlık — metin rengi olarak kullanma (kontrast 2.38:1)</small></div></div>
+    <div class="swatch"><div class="fill" style="background:var(--neutral-600)"></div><div class="label"><b>Neutral 600</b><code>--neutral-600 #4a6070</code></div></div>
+    <div class="swatch"><div class="fill" style="background:var(--neutral-900)"></div><div class="label"><b>Neutral 900</b><code>--neutral-900 #1a2f3f</code></div></div>
+  </div>
+
+  <h2>Mavi Ton Skalası</h2>
+  <div class="grid">
+    <div class="swatch"><div class="fill" style="background:var(--blue-50)"></div><div class="label"><b>Blue 50</b><code>--blue-50 #ddeef9</code></div></div>
+    <div class="swatch"><div class="fill" style="background:var(--blue-200)"></div><div class="label"><b>Blue 200</b><code>--blue-200 #7ab8e0</code></div></div>
+    <div class="swatch"><div class="fill" style="background:var(--blue-500)"></div><div class="label"><b>Blue 500</b><code>--blue-500 #2e7fc0</code></div></div>
+    <div class="swatch"><div class="fill" style="background:var(--blue-800)"></div><div class="label"><b>Blue 800</b><code>--blue-800 #0d3d6e</code></div></div>
+  </div>
+
+  <h2>Durum</h2>
+  <div class="grid">
+    <div class="swatch"><div class="fill" style="background:var(--success)"></div><div class="label"><b>Success</b><code>--success #22c55e</code></div></div>
+    <div class="swatch"><div class="fill" style="background:var(--danger)"></div><div class="label"><b>Danger</b><code>--danger #ef4444</code></div></div>
+    <div class="swatch"><div class="fill" style="background:var(--warning)"></div><div class="label"><b>Warning</b><code>--warning #f59e0b</code></div></div>
+  </div>
+
+  <h2>Köşe Yarıçapı Ölçeği</h2>
+  <div class="radius-row">
+    <div class="radius-box" style="border-radius:var(--radius-sm)">sm · 6px</div>
+    <div class="radius-box" style="border-radius:var(--radius-md)">md · 8px</div>
+    <div class="radius-box" style="border-radius:var(--radius-lg)">lg · 12px</div>
+  </div>
+
+  <div class="note">
+    Bu galeri yalnız <code>tokens/colors.css</code>'i gösterir; durum-rozeti "soluk zemin +
+    doygun yazı" deseni için <code>tokens/colors-bursa-cv-projects.css</code> ve
+    <code>docs/bilesenler.md</code>'ye bakın — o desen bu paletin renkleriyle ayrıca
+    doğrulanmalı, buraya kopyalanmadı.
+  </div>
+</body>
+</html>
