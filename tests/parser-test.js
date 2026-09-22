@@ -239,6 +239,19 @@ eq(!!byKey['CZECHOWICE'] && byKey['CZECHOWICE'].ro, 'PDE', 'CZECHOWICE kayitta P
 eq(!!byKey['JINGZHOU'], false, 'JINGZHOU kapsam disi');
 eq(!!byKey['SVESSHANGHAI'], false, 'SVES (Shanghai) kapsam disi');
 eq(SITE_REGISTRY.length, 48, 'kayit defterinde 48 site');
+/* BIRLESIK AY EKI: iki ay tek raporda toplaninca sayfa "BEKASI_07+08"
+   oluyor (canlida 2026-08 dosyasinda goruldu). Eski kural bunu hic
+   eslestiremiyor, sayfa "taninmayan"a dusuyor ve donem BOS goruluyordu. */
+eq(parseSheetName_('BEKASI_07+08'), {key:'BEKASI', month:8, raw:'BEKASI_07+08'},
+   'BEKASI_07+08 -> BEKASI, en guncel ay 8');
+eq(parseSheetName_('SHASHI 01_07+08').key, 'SHASHI01',
+   'SHASHI 01_07+08 -> SHASHI01 (site adindaki 01 yenmedi)');
+eq(parseSheetName_('SHASHI 01_07+08').month, 8, 'SHASHI 01_07+08 -> ay 8');
+eq(parseSheetName_('FUEN_07 + 08').month, 8, 'bosluklu birlesik ek');
+eq(parseSheetName_('FUEN_07&08').month, 8, '& ile birlesik ek');
+eq(parseSheetName_('DAEGU VPH_07+08').key, 'DAEGUVPH', 'bosluklu site adi + birlesik ek');
+eq(parseSheetName_('SHASHI 01_06').key, 'SHASHI01', 'tek ay kurali bozulmadi');
+eq(parseSheetName_('Monthly budget').month, null, 'ay eki olmayan ozet sayfasi');
 
 /* ---------- 7) Hatali hucreler ---------- */
 console.log('\n7) Dayaniklilik');

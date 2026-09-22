@@ -102,17 +102,41 @@ function normalizeKey_(text) {
  * Sayfa adini {key, month} olarak ayristirir.
  * "FUEN_06" -> {key:'FUEN', month:6}   "SHASHI 01_06" -> {key:'SHASHI01', month:6}
  * Ay eki yoksa month = null (sayfa yine de eslestirilebilir).
+ *
+ * BIRLESIK AY EKI (canlida goruldu, 2026-08): iki ay tek raporda
+ * toplaniyorsa sayfa "BEKASI_07+08" diye adlandiriliyor. Eski tek-ay kurali
+ * bunu hic eslestiremiyordu (son ek "07+08", 1-2 haneli sayi degil), sayfa
+ * "taninmayan" listesine dusuyor ve o donem BOS goruluyordu. Artik once
+ * birlesik ek deneniyor ve EN GUNCEL ay aliniyor -- rapor o aya kadar
+ * kumulatif, dolayisiyla donem o aydir.
+ *
+ * Birlestirici olarak yalniz + & / kabul ediliyor. "-", "_" ve bosluk
+ * BILEREK disarida: onlar ayni zamanda site adinin parcasi olabiliyor
+ * ("SHASHI 01_06" -> site SHASHI 01, ay 6). Onlari da birlestirici saymak
+ * bu site'i "SHASHI" yapip kaydin disina atardi.
  */
+var SHEET_MONTH_JOIN_ = /^(.*)[_\s-](\d{1,2}(?:\s*[+&\/]\s*\d{1,2})+)\s*$/;
+var SHEET_MONTH_ONE_  = /^(.*)[_\s-](\d{1,2})\s*$/;
+
 function parseSheetName_(sheetName) {
   var raw = String(sheetName || '').trim();
   var month = null;
   var base = raw;
-  var m = raw.match(/^(.*)[_\s-](\d{1,2})\s*$/);
-  if (m) {
-    var num = parseInt(m[2], 10);
-    if (num >= 1 && num <= 12) {
-      base = m[1];
-      month = num;
+
+  var mj = raw.match(SHEET_MONTH_JOIN_);
+  if (mj) {
+    var nums = mj[2].split(/[+&\/]/), best = null;
+    for (var i = 0; i < nums.length; i++) {
+      var n = parseInt(nums[i], 10);
+      if (n >= 1 && n <= 12 && (best === null || n > best)) best = n;
+    }
+    if (best !== null) { base = mj[1]; month = best; }
+  }
+  if (month === null) {
+    var m = raw.match(SHEET_MONTH_ONE_);
+    if (m) {
+      var num = parseInt(m[2], 10);
+      if (num >= 1 && num <= 12) { base = m[1]; month = num; }
     }
   }
   return { key: normalizeKey_(base), month: month, raw: raw };
