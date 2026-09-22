@@ -336,6 +336,24 @@ function pickCol_(map, names) {
   return -1;
 }
 
+/**
+ * Aranan sutun yoksa baslik satirinin SONUNA ekler ve indeksini dondurur.
+ *
+ * Neden: canli sayfada "Screenshot" (ve bazi kopyalarda "FeedbackID") sutunu
+ * yoktu; kod da olmayan sutuna yazamayip degeri sessizce dusuruyordu -- geri
+ * bildirim "geldi ama sayfada yok" gorunuyordu. Sutunu elle actirmak yerine
+ * bir kez kendisi aciyor. Var olan sutunlara DOKUNMAZ, yalnizca sona ekler.
+ */
+function ensureColumn_(sheet, head, names, title) {
+  var idx = pickCol_(head.map, names);
+  if (idx >= 0) return idx;
+  var col = Math.max(1, head.lastCol) + 1;
+  sheet.getRange(1, col, 1, 1).setValues([[title]]);
+  head.lastCol = col;
+  head.map[normText_(title).replace(/[^A-Z0-9]/g, '')] = col - 1;
+  return col - 1;
+}
+
 /** Ekran goruntusunu Drive'a yazar, paylasilabilir baglantisini dondurur. */
 function saveFeedbackImage_(dataUrl, name) {
   var m = /^data:([^;]+);base64,(.+)$/.exec(String(dataUrl || ''));
@@ -371,7 +389,39 @@ function saveFeedbackImage_(dataUrl, name) {
     payload: Utilities.newBlob(head.concat(bytes).concat(tail))
   });
   var file = JSON.parse(res.getContentText());
-  return file.webViewLink || ('https://drive.google.com/file/d/' + file.id + '/view');
+  /* Blob da doniyor: ayni goruntu hem SAYFAYA hucre icine hem de E-POSTAYA
+     gomulu olarak konuyor. Drive'a yazilan kopya "asil" olarak kaliyor. */
+  return {
+    link: file.webViewLink || ('https://drive.google.com/file/d/' + file.id + '/view'),
+    blob: Utilities.newBlob(bytes, mime, safe),
+    name: safe
+  };
+}
+
+/**
+ * Ekran goruntusunu satirin Screenshot hucresine yerlestirir.
+ *
+ * Neden "hucre icine resim" degil de hucreye SABITLENMIS resim: hucre-ici
+ * resim (CellImage) kaynagin HERKESE ACIK bir URL olmasini istiyor; ic
+ * ekran goruntulerini link-herkese-acik yapmak dogru olmaz. Blob ile
+ * eklenen resim hicbir paylasim gerektirmiyor ve gorsel olarak ayni yere
+ * oturuyor: sutun genisligine gore olceklenip satir yuksekligi ona gore
+ * ayarlaniyor. Drive baglantisi da hucrenin notunda duruyor.
+ */
+function attachShotToRow_(sheet, rowNo, colIndex, blob, link) {
+  var col = colIndex + 1;                       // 0-tabanli -> 1-tabanli
+  var img = sheet.insertImage(blob, col, rowNo);
+  var W = Math.max(160, Math.min(320, sheet.getColumnWidth(col) - 8));
+  var iw = 0, ih = 0;
+  try { iw = img.getInherentWidth(); ih = img.getInherentHeight(); } catch (e) {}
+  var h = (iw > 0 && ih > 0) ? Math.round(ih * (W / iw)) : 120;
+  h = Math.max(40, Math.min(400, h));
+  img.setWidth(W).setHeight(h);
+  if (sheet.getColumnWidth(col) < W + 10) sheet.setColumnWidth(col, W + 10);
+  if (sheet.getRowHeight(rowNo) < h + 10) sheet.setRowHeight(rowNo, h + 10);
+  if (link) {
+    try { sheet.getRange(rowNo, col).setNote('Screenshot: ' + link); } catch (e) {}
+  }
 }
 
 function feedbackFolderId_() {
@@ -415,6 +465,14 @@ function feedbackRecipients_() {
   return me ? [me] : [];
 }
 
+/* Kullanici metni HTML govdesine girdigi icin kacisi ZORUNLU: aksi halde
+   geri bildirim metnindeki bir '<' posta govdesini bozar. */
+function htmlEscape_(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function notifyFeedback_(info) {
   var to = feedbackRecipients_();
   if (!to.length) return { sent: false, reason: 'no recipient' };
@@ -443,10 +501,34 @@ function notifyFeedback_(info) {
     lines.push('!! The sheet write FAILED, so this message exists only in this e-mail:');
     lines.push('   ' + info.error);
   }
+  var body = lines.join('\n');
+  /* Ekran goruntusu POSTANIN ICINDE gorunsun: duz metin govdesi ek olarak
+     kalir (metin okuyan istemciler icin), HTML govdesi ayni metni + gomulu
+     resmi tasir. Resim cid: ile gomulur -- Drive linki tiklanmadan gorunur,
+     ustelik alicinin Drive erisimi olmasa da. */
+  var html = '<div style="font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;' +
+             'white-space:pre-wrap">' + htmlEscape_(body) + '</div>';
+  var opts = { to: to.join(','), subject: subject, body: body };
+  if (info.blob) {
+    html += '<div style="margin-top:14px">' +
+            '<img src="cid:shot" style="max-width:640px;border:1px solid #ccc;' +
+            'border-radius:6px" alt="screenshot"></div>';
+    opts.inlineImages = { shot: info.blob };
+  }
+  opts.htmlBody = html;
   try {
-    MailApp.sendEmail({ to: to.join(','), subject: subject, body: lines.join('\n') });
+    MailApp.sendEmail(opts);
     return { sent: true, to: to };
   } catch (e) {
+    /* Gomulu resim bazi durumlarda (cok buyuk ek, kota) postayi tumden
+       dusurebilir. Bildirimin KENDISI resimden daha onemli: resimsiz,
+       duz metin olarak bir kez daha dene. */
+    if (info.blob) {
+      try {
+        MailApp.sendEmail({ to: to.join(','), subject: subject, body: body });
+        return { sent: true, to: to, withoutImage: true };
+      } catch (e2) { return { sent: false, reason: e2.message }; }
+    }
     return { sent: false, reason: e.message };
   }
 }
@@ -465,9 +547,12 @@ function submitFeedback(payload) {
   }
 
   var user = currentUser_();
-  var link = null;
+  var link = null, shotBlob = null;
   if (p.image) {
-    try { link = saveFeedbackImage_(p.image, p.imageName); }
+    try {
+      var saved = saveFeedbackImage_(p.image, p.imageName);
+      if (saved) { link = saved.link; shotBlob = saved.blob; }
+    }
     catch (e) { return { error: 'Screenshot could not be saved: ' + e.message }; }
   }
 
@@ -480,13 +565,17 @@ function submitFeedback(payload) {
     var target = feedbackSheet_();
     var sheet = target.sheet, map = target.head.map;
 
-    var cId    = pickCol_(map, ['FEEDBACKID', 'ID']);
+    var cId    = ensureColumn_(sheet, target.head, ['FEEDBACKID', 'ID'], 'FeedbackID');
     var cEmail = pickCol_(map, ['EMAIL', 'USER', 'KULLANICI']);
     var cType  = pickCol_(map, ['FEEDBACKTYPE', 'TYPE', 'TUR']);
     var cPrio  = pickCol_(map, ['PRIORITY', 'ONCELIK']);
     var cMsg   = pickCol_(map, ['MESSAGE', 'MESAJ', 'FEEDBACK']);
     var cDate  = pickCol_(map, ['CREATEDAT', 'DATE', 'TARIH']);
-    var cShot  = pickCol_(map, ['SCREENSHOT', 'IMAGE', 'EKRANGORUNTUSU', 'GORSEL']);
+    var shotNames = ['SCREENSHOT', 'IMAGE', 'EKRANGORUNTUSU', 'GORSEL'];
+    /* Sutun yalnizca GERCEKTEN ekran goruntusu geldiyse acilir: goruntusuz
+       kullanan bir sayfaya bos bir sutun eklemek dogru olmaz. */
+    var cShot  = (link || shotBlob) ? ensureColumn_(sheet, target.head, shotNames, 'Screenshot')
+                                    : pickCol_(map, shotNames);
 
     if (cMsg === -1) {
       return { error: 'The feedback sheet has no "Message" column — nothing was written.' };
@@ -509,8 +598,14 @@ function submitFeedback(payload) {
 
     sheet.appendRow(row);
     var rowNo = sheet.getLastRow();
+    /* Goruntuyu hucreye yerlestirmek KAYDI bozmamali: basarisiz olursa
+       Drive baglantisi zaten satirda duruyor. */
+    if (shotBlob && cShot >= 0) {
+      try { attachShotToRow_(sheet, rowNo, cShot, shotBlob, link); } catch (e) {}
+    }
     var mail = notifyFeedback_({ type: type, priority: priority, message: message,
-                                 user: user, link: link, row: rowNo, id: fid });
+                                 user: user, link: link, row: rowNo, id: fid,
+                                 blob: shotBlob });
     return {
       ok: true,
       row: rowNo,
@@ -526,7 +621,8 @@ function submitFeedback(payload) {
     /* Sayfaya yazilamadiysa geri bildirim KAYBOLMASIN: icerik e-postayla
        yine de gider ve konu satirinda "NOT SAVED" yazar. */
     var rescue = notifyFeedback_({ type: type, priority: priority, message: message,
-                                   user: user, link: link, error: e.message });
+                                   user: user, link: link, error: e.message,
+                                   blob: shotBlob });
     return { error: 'Could not save: ' + e.message +
                     (rescue.sent ? ' — the content was e-mailed to the dashboard owner instead.'
                                  : '') };

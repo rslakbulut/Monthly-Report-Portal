@@ -28,15 +28,33 @@ function makeEnv(opts){
   opts = opts || {};
   const rows = [HEAD.slice()];
   const mails = [];
+  const images = [];
+  const notes = [];
+  let colW = 120, rowH = 21;
   const sheet = {
     getName: () => 'RO Monthly Report',
     getParent: () => ({ getName: () => 'RO Dashboard Feedback' }),
-    getLastColumn: () => HEAD.length,
+    getLastColumn: () => rows[0].length,
     getLastRow: () => rows.length,
-    getRange: (r,c,nr,nc) => ({ getValues: () => [rows[r-1].slice(c-1, c-1+nc)],
-                                setValues: () => {} }),
+    getRange: (r,c,nr,nc) => ({
+      getValues: () => [rows[r-1].slice(c-1, c-1+(nc||1))],
+      setValues: (v) => { v[0].forEach((x,i) => { rows[r-1][c-1+i] = x; }); },
+      setNote: (t) => { notes.push({ r, c, t }); } }),
     setFrozenRows: () => {},
-    appendRow: (r) => { if (opts.writeFails) throw new Error('No permission'); rows.push(r); }
+    appendRow: (r) => { if (opts.writeFails) throw new Error('No permission'); rows.push(r); },
+    /* Hucre icine gomulen ekran goruntusu icin gereken en az yuzey. */
+    insertImage: (blob, col, row) => {
+      const img = { blob, col, row, w: null, h: null,
+        getInherentWidth: () => 800, getInherentHeight: () => 450,
+        setWidth(x){ this.w = x; return this; },
+        setHeight(x){ this.h = x; return this; } };
+      images.push(img);
+      return img;
+    },
+    getColumnWidth: () => colW,
+    setColumnWidth: (c,w) => { colW = w; },
+    getRowHeight: () => rowH,
+    setRowHeight: (r,h) => { rowH = h; }
   };
   global.SpreadsheetApp = { openById: () => ({ getSheets: () => [sheet],
     insertSheet: () => { throw new Error('sekme VAR, olusturulmamali'); } }) };
@@ -44,16 +62,33 @@ function makeEnv(opts){
   global.Session = { getActiveUser: () => ({ getEmail: () => 'ahmet.dundar@valeo.com' }),
                      getEffectiveUser: () => ({ getEmail: () => 'owner@valeo.com' }),
                      getScriptTimeZone: () => 'Europe/Istanbul' };
-  global.PropertiesService = { getScriptProperties: () => ({ getProperty: () => null }) };
+  const props = {};
+  global.PropertiesService = { getScriptProperties: () => ({
+    getProperty: (k) => (k in props ? props[k] : null),
+    setProperty: (k,v) => { props[k] = v; } }) };
   global.CacheService = { getScriptCache: () => ({ get(){return null;}, put(){}, remove(){} }) };
   global.UrlFetchApp = { fetch: () => { throw new Error('dizin yok'); } };
   global.ScriptApp = { getOAuthToken: () => 'x' };
   global.MailApp = { sendEmail: (o) => mails.push(o) };
   global.Utilities = { formatDate: () => '2026-09-22 10:00',
     base64EncodeWebSafe: (x) => Buffer.from(String(x)).toString('base64').replace(/[+/=]/g,''),
+    base64Decode: (x) => Array.from(Buffer.from(String(x), 'base64')),
+    newBlob: (data, mime, name) => ({
+      getBytes: () => (Array.isArray(data) ? data
+                                           : Array.from(Buffer.from(String(data), 'utf8'))),
+      getName: () => name || null,
+      getContentType: () => mime || null }),
     getUuid: () => '3c969170-aaaa-bbbb-cccc-ddddeeeeffff' };
+  /* Drive katmani Snapshot.gs'te; bu test onu yuklemiyor, yerine sahtesi. */
+  global.driveGetMeta_ = () => ({ id: 'FOLDER', trashed: false });
+  global.driveCreateFolder_ = () => ({ id: 'FOLDER' });
+  global.driveApiCode_ = () => 0;
+  global.driveApi_ = () => ({
+    getContentText: () => JSON.stringify({ id: 'FILE1',
+      webViewLink: 'https://drive.google.com/file/d/FILE1/view' }) });
   eval(SRC);
-  return { rows, mails, api: { submitFeedback, displayNameFromEmail_, newFeedbackId_ } };
+  return { rows, mails, images, notes, api: { submitFeedback, displayNameFromEmail_,
+                                              newFeedbackId_ } };
 }
 
 console.log('\n1) E-postadan ad — dizin bulunamadiginda kullanilan YEDEK');
@@ -99,6 +134,49 @@ console.log('\n3) Sayfaya yazilamazsa geri bildirim KAYBOLMUYOR');
   eq(mails.length, 1, 'icerik yine de e-postayla gidiyor');
   eq(mails[0].subject.indexOf('NOT SAVED') > -1, true, 'konu satiri kaydedilmedigini soyluyor');
   eq(mails[0].body.indexOf('Ekran bos') > -1, true, 'mesaj govdede duruyor');
+}
+
+console.log('\n4) Ekran goruntusu: HUCRENIN ICINDE ve E-POSTANIN ICINDE');
+{
+  /* 1x1 saydam PNG -- gercek bir goruntu, gercek bir data URL. */
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ' +
+              'AAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const { rows, mails, images, notes, api } = makeEnv();
+  const res = api.submitFeedback({ type:'Bug', priority:'Urgent',
+                                   message:'Grafik <b> ile bozuluyor',
+                                   image: PNG, imageName: 'ekran.png' });
+  eq(res.ok, true, 'kayit basarili');
+
+  /* Sayfa tarafi: goruntu satirin Screenshot hucresine gomuluyor. */
+  eq(images.length, 1, 'goruntu sayfaya eklendi');
+  /* Canli sayfada Screenshot sutunu YOKTU: kod onu basligin sonuna aciyor. */
+  eq(rows[0][HEAD.length], 'Screenshot', 'eksik Screenshot sutunu acildi');
+  eq(rows[rows.length-1][HEAD.length].indexOf('drive.google.com') > -1, true,
+     'Drive linki o sutuna yazildi');
+  eq([images[0].col, images[0].row], [HEAD.length + 1, rows.length],
+     'goruntu Screenshot sutununa ve yeni satira demirlendi');
+  eq(images[0].w > 0 && images[0].h > 0, true, 'hucreye sigacak sekilde olculendirildi');
+  eq(images[0].h, Math.round(450 * (images[0].w / 800)), 'en-boy orani korundu');
+  eq(notes.length === 1 && notes[0].t.indexOf('drive.google.com') > -1, true,
+     'Drive linki hucre notunda duruyor');
+
+  /* E-posta tarafi: ayni goruntu gomulu resim olarak. */
+  eq(mails.length, 1, 'bildirim gonderildi');
+  eq(!!(mails[0].inlineImages && mails[0].inlineImages.shot), true,
+     'goruntu e-postaya gomuldu');
+  eq(mails[0].htmlBody.indexOf('cid:shot') > -1, true, 'HTML govde resmi gosteriyor');
+  eq(mails[0].htmlBody.indexOf('&lt;b&gt;') > -1, true,
+     'kullanici metni HTML govdede kaciriliyor');
+  eq(mails[0].body.indexOf('Grafik <b> ile bozuluyor') > -1, true,
+     'duz metin govde aynen korunuyor');
+}
+
+console.log('\n5) Goruntusuz geri bildirimde gomulu resim YOK');
+{
+  const { mails, images, api } = makeEnv();
+  api.submitFeedback({ type:'Improvement', priority:'Low', message:'Kucuk oneri' });
+  eq(images.length, 0, 'sayfaya goruntu eklenmiyor');
+  eq(mails[0].inlineImages, undefined, 'e-postada gomulu resim alani yok');
 }
 
 console.log('\n' + (fail ? 'FAIL' : 'PASS') + ' — ' + pass + ' gecti, ' + fail + ' kaldi');
