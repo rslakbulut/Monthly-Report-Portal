@@ -77,6 +77,8 @@ gösterirken de doğrudan ilgili dosyayı işaret et.
     (boş canvas yer tutucusu) — tek kaynak Bursa CV Projects.
   - `docs/yetki-gorunumu.md` — salt-okuma/yetki UI deseni (`data-w` + `body.no-*`) — gerçek
     yetki kontrolü sunucuda, bu yalnız görünürlük
+  - `docs/kullanici-cipi.md` — üst bardaki kimlik çipi: ad / rol / RO-site üç satır,
+    People dizininden unvan + konum → site eşlemesi, dizin yokken e-postadan yedek ad
   - `docs/yazdirma.md` — `@media print` standardı: chrome gizleme, tablo sayfa kırılımı,
     zorlanmış başlık rengi
   - `docs/dil-yerellestirme.md` — dürüst durum: TR/EN dil değişimi YOK, var olan yalnız
