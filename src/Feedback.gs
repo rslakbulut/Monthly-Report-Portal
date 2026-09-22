@@ -42,13 +42,44 @@ var DIR_CACHE_REV = 2;   // directoryPerson_ donus SEKLI degisirse artir
  *  O bolum ileride isim degil yalniz calisan SAYISI tutacak, yani bu yedek
  *  zamanla kendiliginden devre disi kalacak — kod o gun kirilmiyor.)
  */
+/**
+ * E-postadan okunabilir ad. Dizin (People API) bir sonuc dondurmediginde
+ * kullanilan yedek.
+ *
+ * !! Bu fonksiyon commit 97d5c3d'de currentUser_ dizin aramasiyla yeniden
+ * yazilirken KAYBOLMUSTU, ama cagrisi kodda kaldi. Sonuc: dizinde bulunamayan
+ * HER kullanici icin currentUser_() ReferenceError ile patliyordu --
+ * submitFeedback ilk satirinda bu fonksiyonu cagirdigi icin o kullanicinin
+ * geri bildirimi ne sayfaya yaziliyor ne e-posta gonderiliyordu; kullanici
+ * yalnizca "Server error" goruyordu. Canlida gorulen sorun buydu.
+ *
+ * Bicim dizindekiyle ayni okunuyor: "ahmet.dundar@valeo.com" -> "Ahmet DUNDAR"
+ * (ad buyuk harfle baslar, soyad tamamen buyuk). ".ext" gibi ekler atilir.
+ */
+function displayNameFromEmail_(email) {
+  var local = String(email || '').split('@')[0];
+  if (!local) return '';
+  var parts = local.split(/[._\-]+/).filter(function (x) {
+    return x && x.toLowerCase() !== 'ext' && !/^\d+$/.test(x);
+  });
+  if (!parts.length) return local;
+  return parts.map(function (w, i) {
+    return i === 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+                   : w.toUpperCase();
+  }).join(' ');
+}
+
 function currentUser_() {
   var email = '';
   try { email = Session.getActiveUser().getEmail() || ''; } catch (e) { email = ''; }
   if (!email) return { email: '', name: '', title: '', source: 'none' };
 
-  var dir = directoryPerson_(email);
-  var guess = dir ? siteFromLocation_(dir.locs) : null;
+  /* Dizin araması bir NEDENLE patlarsa (API kapali, kota, yetki) ekran
+     acilmaya devam etmeli: yedek ada dusuluyor. */
+  var dir = null;
+  try { dir = directoryPerson_(email); } catch (e) { dir = null; }
+  var guess = null;
+  try { guess = dir ? siteFromLocation_(dir.locs) : null; } catch (e) { guess = null; }
   if (dir && dir.name) {
     return { email: email, name: dir.name, title: dir.title || '',
              department: dir.department || '', location: (dir.locs || []).join(' | '),
@@ -251,8 +282,15 @@ function checkDirectory() {
 /* Geri bildirimler bu dosyadaki BU SEKMEYE yaziliyor (kullanici talimati).
    Baska sekmelere dokunulmuyor. */
 var FEEDBACK_TAB_NAME = 'RO Monthly Report';
-var FEEDBACK_HEADERS = ['Email', 'Feedback_Type', 'Priority', 'Message', 'CreatedAt',
-                        'Screenshot', 'Comments', 'Status', 'Standardization Y/N'];
+var FEEDBACK_HEADERS = ['FeedbackID', 'Email', 'Feedback_Type', 'Priority', 'Message',
+                        'CreatedAt', 'Comments', 'Status', 'Standardization Y/N'];
+
+/* Sayfadaki mevcut kayitlarla ayni bicim: 8 haneli BUYUK harf onaltilik
+   (ornek: CC0B73C0). Satiri e-postadan takip edebilmek icin gerekiyor --
+   kod bu sutunu hic doldurmuyordu, yeni satirlarda A sutunu bos kaliyordu. */
+function newFeedbackId_() {
+  return Utilities.getUuid().replace(/-/g, '').slice(0, 8).toUpperCase();
+}
 
 /**
  * Hedef sekmeyi bulur. Adi normalize edilerek aranir (bosluk/buyuk-kucuk harf
@@ -362,8 +400,12 @@ function feedbackFolderId_() {
  * alanda donuyor, kullaniciya "kaydedildi ama e-posta gitmedi" diyebilelim.
  */
 function feedbackRecipients_() {
-  var list = adminEmails_();
-  if (list && list.length) return list;
+  /* adminEmails_ baska bir dosyada (PeriodRegistry.gs). Ayni hata sinifini
+     tekrarlamamak icin savunmali: bir bagimlilik kaybolursa bildirim
+     susmali, geri bildirim KAYDI bozulmamali. */
+  var list = [];
+  try { list = adminEmails_() || []; } catch (e) { list = []; }
+  if (list.length) return list;
   var me = '';
   try { me = Session.getEffectiveUser().getEmail() || ''; } catch (e) {}
   return me ? [me] : [];
@@ -376,8 +418,10 @@ function notifyFeedback_(info) {
                                          : (info.user && info.user.email) || 'unknown');
   var ok = !info.error;
   var subject = (ok ? '[RO Dashboard] ' : '[RO Dashboard — NOT SAVED] ') +
-                info.type + ' · ' + info.priority + ' — ' + who;
+                info.type + ' · ' + info.priority + ' — ' + who +
+                (info.id ? '  (' + info.id + ')' : '');
   var lines = [
+    (info.id ? 'ID        : ' + info.id : ''),
     'Type      : ' + info.type,
     'Priority  : ' + info.priority,
     'From      : ' + who,
@@ -432,6 +476,7 @@ function submitFeedback(payload) {
     var target = feedbackSheet_();
     var sheet = target.sheet, map = target.head.map;
 
+    var cId    = pickCol_(map, ['FEEDBACKID', 'ID']);
     var cEmail = pickCol_(map, ['EMAIL', 'USER', 'KULLANICI']);
     var cType  = pickCol_(map, ['FEEDBACKTYPE', 'TYPE', 'TUR']);
     var cPrio  = pickCol_(map, ['PRIORITY', 'ONCELIK']);
@@ -443,10 +488,12 @@ function submitFeedback(payload) {
       return { error: 'The feedback sheet has no "Message" column — nothing was written.' };
     }
 
-    var width = Math.max(target.head.lastCol, cShot + 1, cDate + 1, cMsg + 1);
+    var width = Math.max(target.head.lastCol, cShot + 1, cDate + 1, cMsg + 1, cId + 1);
     var row = new Array(width);
     for (var i = 0; i < width; i++) row[i] = '';
 
+    var fid = newFeedbackId_();
+    if (cId >= 0)    row[cId] = fid;
     if (cEmail >= 0) row[cEmail] = user.email;
     if (cType >= 0)  row[cType] = type;
     if (cPrio >= 0)  row[cPrio] = priority;
@@ -459,10 +506,11 @@ function submitFeedback(payload) {
     sheet.appendRow(row);
     var rowNo = sheet.getLastRow();
     var mail = notifyFeedback_({ type: type, priority: priority, message: message,
-                                 user: user, link: link, row: rowNo });
+                                 user: user, link: link, row: rowNo, id: fid });
     return {
       ok: true,
       row: rowNo,
+      id: fid,
       link: link,
       mailed: mail.sent,
       warning: target.createdTab
