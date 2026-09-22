@@ -112,8 +112,10 @@ function getBootstrap() {
   try {
     return {
       periods: listPeriods_().map(function (p) {
+        var ms = (p.months && p.months.length) ? p.months : [p.month];
         return { key: periodKey_(p.year, p.month), year: p.year, month: p.month,
-                 label: MONTH_LABELS[p.month] + ' ' + p.year, name: p.name };
+                 months: ms,
+                 label: monthSpanLabel_(ms) + ' ' + p.year, name: p.name };
       }),
       roLabels: RO_LABELS,
       roOrder: RO_ORDER,

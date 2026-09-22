@@ -154,7 +154,8 @@ function buildSnapshot_(key) {
   for (var i = 0; i < sheets.length; i++) {
     var parsed = parseSheetName_(sheets[i].getName());
     if (!byKey[parsed.key]) { unknownSheets.push(sheets[i].getName()); continue; }
-    known.push({ sheet: sheets[i], key: parsed.key, month: parsed.month });
+    known.push({ sheet: sheets[i], key: parsed.key, month: parsed.month,
+                 months: parsed.months || [] });
     seenKeys[parsed.key] = true;
   }
 
@@ -192,12 +193,27 @@ function buildSnapshot_(key) {
     }
   }
 
+  /* Donemin KAPSADIGI aylar: raporlama ayini tasiyan sayfalarin ay kumesi.
+     Iki ay tek raporda toplanmis olabiliyor ("BEKASI_07+08") -- etiket o
+     zaman "July & August". Geride kalmis tek tuk bir site ("_05") etikete
+     girmesin diye yalniz maxMonth'u tasiyan sayfalar sayilir. */
+  var cover = {};
+  for (var c = 0; c < known.length; c++) {
+    if (known[c].month !== maxMonth) continue;
+    var ms = known[c].months || [];
+    for (var mi = 0; mi < ms.length; mi++) cover[ms[mi]] = true;
+  }
+  var coverMonths = monthListOf_(cover);
+  if (!coverMonths.length) coverMonths = period.months || [period.month];
+  /* Kayitta eskimis olabilir (donem eski kuralla eklenmisse): tazele. */
+  try { setPeriodMonths_(key, coverMonths); } catch (e) {}
+
   return {
     v: SNAP_VERSION,
     rev: DATA_REV,
     builtAt: new Date().toISOString(),
-    period: { key: key, year: period.year, month: period.month,
-              label: MONTH_LABELS[period.month] + ' ' + period.year, name: period.name },
+    period: { key: key, year: period.year, month: period.month, months: coverMonths,
+              label: monthSpanLabel_(coverMonths) + ' ' + period.year, name: period.name },
     reportMonth: maxMonth,
     sites: overview,
     details: details,

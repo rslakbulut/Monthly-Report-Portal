@@ -953,7 +953,7 @@ body.dark-mode .filters-inner{
    (kullanici talebi: Customer alt satira kayiyordu). Icerige gore buyumeyi
    birakmak gerekti: RO secicisi en uzun RO adi kadar aciliyordu ve tek
    basina ~265px yiyordu. Dar ekranda flex-wrap yine sariyor. */
-#selYear{width:94px} #selMonth{width:122px} #selRo{width:150px} #selSite{width:168px}
+#selYear{width:94px} #selMonth{width:172px}   /* "July & August": birlesik donem etiketi 122px'e sigmiyordu */ #selRo{width:150px} #selSite{width:168px}
 .fgroup{display:flex; flex-direction:column; gap:7px}
 .fgroup .flabel{
   font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.13em;
@@ -1463,6 +1463,28 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
 .btn.ghost{background:transparent; color:var(--valeo-mid); border:1px solid var(--border-strong); box-shadow:none}
 .btn.ghost:hover{background:var(--sunken); filter:none}
 .btn-row{display:flex; gap:8px; flex-wrap:wrap}
+/* ---------- eslesme coktu uyarisi ----------
+   Ekranin en ustunde, gorulmezlik edilemeyecek kadar buyuk: eski halinde
+   ayni bilgi sayfanin en altinda kucuk gri bir nottu ve kimse gormedi. */
+.bigwarn{
+  display:flex; gap:14px; align-items:flex-start;
+  background:var(--warn-bg); border:1px solid var(--warn-line);
+  border-left:4px solid var(--warn); border-radius:var(--r-lg);
+  padding:16px 18px; margin:0 0 20px; box-shadow:var(--sh-1);
+}
+.bw-ico{flex:none; color:var(--warn); display:flex; align-items:center; justify-content:center;
+  width:30px; height:30px; border-radius:9px; background:color-mix(in srgb,var(--warn) 18%,transparent)}
+.bw-ico svg{width:17px; height:17px}
+.bw-body{min-width:0}
+.bw-body b{display:block; font-size:14.5px; font-weight:800; color:var(--text); margin-bottom:5px}
+.bw-body p{margin:0 0 6px; font-size:13px; line-height:1.55; color:var(--text-dim)}
+.bw-body p:last-child{margin-bottom:0}
+.bw-ex code{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px;
+  background:var(--sunken); border:1px solid var(--border); border-radius:5px; padding:1px 5px;
+}
+.bw-fix{color:var(--text)!important; font-weight:600}
+
 /* ---------- Ayarlar: kayitli donem listesi ----------
    Tanınan site sayisi burada: 48 yerine 1 goruyorsan yanlis dosya eklenmis. */
 .plist{display:flex; flex-direction:column; gap:6px}

@@ -241,6 +241,10 @@ var T={
   scopeNow:'Showing',scopeSwitchTo:'switch to',
   show:'Show',hide:'Hide',roListHidden:'Hidden — open to compare ROs side by side',
   registeredPeriods:'Registered periods',remove:'Remove',noPeriods:'No period registered yet.',
+  matchFailTitle:'Site sheet names could not be matched',
+  matchFailBody:'Only {n} of {t} site sheets were recognised in this period’s spreadsheet; {u} sheets were left out. The numbers on screen are therefore empty — this is a naming problem, not missing data.',
+  matchFailSheets:'Sheets not matched:',
+  matchFailFix:'Sheet names must be <SITE>_<MONTH> — e.g. FUEN_08, SHASHI 01_08, or BEKASI_07+08 when two months are reported together. Fix the names in the spreadsheet and press Refresh data, or check in Settings that the right file is registered.',
   removeConfirm:'Remove period {k} from the dashboard? The source spreadsheet is not touched.',
   fewSites:'Only {n} site sheet(s) recognised — this is probably not the monthly report file.',
   viewAs:'View as',viewChart:'Chart',viewGap:'Gap',viewTable:'Table',
@@ -275,6 +279,10 @@ var T={
   scopeNow:'Gösterilen',scopeSwitchTo:'geçmek için tıklayın:',
   show:'Göster',hide:'Gizle',roListHidden:'Gizli — RO’ları yan yana görmek için açın',
   registeredPeriods:'Kayıtlı dönemler',remove:'Kaldır',noPeriods:'Henüz kayıtlı dönem yok.',
+  matchFailTitle:'Site sayfa adları eşleştirilemedi',
+  matchFailBody:'Bu dönemin spreadsheet’inde {t} site sayfasının yalnız {n} tanesi tanındı; {u} sayfa dışarıda kaldı. Ekrandaki sayıların boş olmasının sebebi bu — veri eksik değil, sayfa adı eşleşmiyor.',
+  matchFailSheets:'Eşleşmeyen sayfalar:',
+  matchFailFix:'Sayfa adları <SİTE>_<AY> biçiminde olmalı — örnek: FUEN_08, SHASHI 01_08, iki ay birlikte raporlanıyorsa BEKASI_07+08. Spreadsheet’te adları düzeltip “Refresh data”ya basın ya da Ayarlar’dan doğru dosyanın kayıtlı olduğunu kontrol edin.',
   removeConfirm:'{k} dönemi dashboard’dan kaldırılsın mı? Kaynak spreadsheet’e dokunulmaz.',
   fewSites:'Yalnız {n} site sayfası tanındı — bu büyük ihtimalle aylık rapor dosyası değil.',
   viewAs:'Görünüm',viewChart:'Grafik',viewGap:'Sapma',viewTable:'Tablo',
@@ -1379,7 +1387,7 @@ function renderRoLevel(){
   /* Tek RO secildiyse listesi kapali kalmasin */
   if(F.ro!=='ALL'&&!NAV.expandedRo) NAV.expandedRo=F.ro;
 
-  var html=kpiRow(sumMetrics(scope));
+  var html=matchWarnBlock()+kpiRow(sumMetrics(scope));
   if(q){ html+=searchResultsHtml(searchHits(q))+noticeBlock(); }
   else {
     /* Panel artik kirilim filtresini KENDI tasiyor (halkalar F.status ve
@@ -2203,6 +2211,31 @@ function fnRow(label,val,max,cls){
     esc(label)+'</div><div class="fn-bar '+cls+'" style="width:'+
     (clamp01(val/max)*100).toFixed(1)+'%;min-width:4px"></div></div>'+
     '<span class="num" style="font-weight:700">'+money(val)+'</span></div>';
+}
+
+/* ---------- sayfa adi eslesmedi uyarisi ----------
+   Canli olay (2026-08): sayfalar "BEKASI_07+08" diye adlandirilmisti, eski
+   kural bunu cozemiyordu; 48 site sayfasinin neredeyse tamami "taninmayan"
+   listesine dustu ve ekran SIFIRLARLA acildi. Tek ipucu sayfanin EN ALTINDA
+   kucuk bir nottu -- kimse okumadi. Bu blok, eslesme coktugunde ekranin EN
+   USTUNDE, ne yapilacagini soyleyerek durur. */
+var SITE_MATCH_MIN=10;   // bu sayidan az site tanindiysa eslesme cokmus demektir
+function matchWarnBlock(){
+  if(!DATA) return '';
+  var got=(DATA.sites||[]).length, unk=(DATA.unknownSheets||[]);
+  if(got>=SITE_MATCH_MIN||!unk.length) return '';
+  var ex=unk.slice(0,6).map(function(x){ return '<code>'+esc(x)+'</code>'; }).join(', ');
+  return '<div class="bigwarn" role="alert">'+
+    '<span class="bw-ico" aria-hidden="true">'+ICON_ALERT+'</span>'+
+    '<div class="bw-body">'+
+      '<b>'+esc(t('matchFailTitle'))+'</b>'+
+      '<p>'+esc(t('matchFailBody')
+                 .replace('{n}',nf(got))
+                 .replace('{t}',nf(BOOT.siteCount||48))
+                 .replace('{u}',nf(unk.length)))+'</p>'+
+      '<p class="bw-ex">'+esc(t('matchFailSheets'))+' '+ex+(unk.length>6?' …':'')+'</p>'+
+      '<p class="bw-fix">'+esc(t('matchFailFix'))+'</p>'+
+    '</div></div>';
 }
 
 function noticeBlock(){
@@ -3090,10 +3123,18 @@ function finishLoad(key,meta,sites){
   buildFilters(); render(); splashHide();
 }
 /* Ay adi secili dile gore yerellestirilir; sunucu etiketi yalniz yedek. */
+function monthName(m){
+  try{ return cap(new Date(2000,(m||1)-1,1).toLocaleDateString(LOCALE,{month:'long'})); }
+  catch(e){ return String(m); }
+}
+/* Donem etiketi kapsadigi AYLARI soyler: iki ay tek raporda toplandiysa
+   ("BEKASI_07+08") secicide "August" yazmak Temmuz'u kayip gosteriyordu. */
 function monthNameOf(p){
-  try{
-    return cap(new Date(2000,(p.month||1)-1,1).toLocaleDateString(LOCALE,{month:'long'}));
-  }catch(e){ return p.label.split(' ')[0]; }
+  var ms=(p&&p.months&&p.months.length)?p.months.slice().sort(function(a,b){return a-b;}):null;
+  if(!ms) return monthName(p&&p.month);
+  if(ms.length===1) return monthName(ms[0]);
+  if(ms.length===2) return monthName(ms[0])+' & '+monthName(ms[1]);
+  return monthName(ms[0])+' — '+monthName(ms[ms.length-1]);
 }
 function buildPeriodSelects(defaultKey){
   var byYear={};

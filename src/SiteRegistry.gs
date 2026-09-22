@@ -121,25 +121,29 @@ var SHEET_MONTH_ONE_  = /^(.*)[_\s-](\d{1,2})\s*$/;
 function parseSheetName_(sheetName) {
   var raw = String(sheetName || '').trim();
   var month = null;
+  var months = [];
   var base = raw;
 
   var mj = raw.match(SHEET_MONTH_JOIN_);
   if (mj) {
-    var nums = mj[2].split(/[+&\/]/), best = null;
+    var nums = mj[2].split(/[+&\/]/), list = [];
     for (var i = 0; i < nums.length; i++) {
       var n = parseInt(nums[i], 10);
-      if (n >= 1 && n <= 12 && (best === null || n > best)) best = n;
+      if (n >= 1 && n <= 12) list.push(n);
     }
-    if (best !== null) { base = mj[1]; month = best; }
+    if (list.length) {
+      list.sort(function (a, b) { return a - b; });
+      base = mj[1]; months = list; month = list[list.length - 1];
+    }
   }
   if (month === null) {
     var m = raw.match(SHEET_MONTH_ONE_);
     if (m) {
       var num = parseInt(m[2], 10);
-      if (num >= 1 && num <= 12) { base = m[1]; month = num; }
+      if (num >= 1 && num <= 12) { base = m[1]; month = num; months = [num]; }
     }
   }
-  return { key: normalizeKey_(base), month: month, raw: raw };
+  return { key: normalizeKey_(base), month: month, months: months, raw: raw };
 }
 
 /** key -> registry satiri (ilk eslesme). */

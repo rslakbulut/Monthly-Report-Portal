@@ -100,31 +100,61 @@ function registerSpreadsheetId_(id, source) {
   var p = parsePeriodFromTitle_(name);
   if (!p.year) return { ok: false, reason: 'No year in file name: ' + name };
 
-  var month = p.month;
-  if (!month) month = dominantSheetMonth_(ss);
+  var info = sheetMonthInfo_(ss);
+  var month = p.month || info.month;
   if (!month) return { ok: false, reason: 'No month in file name or sheet names: ' + name };
+  /* Dosya adindaki ay ile sayfa eklerindeki ay ayni degilse sayfalarinki
+     esas alinmaz (dosya adi kaynak), ama KAPSANAN aylar yine sayfalardan
+     gelir -- birlesik rapor bilgisi orada. */
+  var months = (info.months && info.months.length) ? info.months : [month];
+  if (months.indexOf(month) === -1) months = [month];
 
   var key = periodKey_(p.year, month);
   var periods = readPeriods_();
   var isNew = !periods[key];
   periods[key] = {
-    id: id, name: name, year: p.year, month: month,
+    id: id, name: name, year: p.year, month: month, months: months,
     addedAt: new Date().toISOString(), source: source || 'manual'
   };
   writePeriods_(periods);
   return { ok: true, key: key, name: name, isNew: isNew };
 }
 
-/** Sayfa adlarindaki _MM eklerinin en sik goruleni (dosya adinda ay yoksa). */
-function dominantSheetMonth_(ss) {
-  var counts = {}, sheets = ss.getSheets(), best = null, bestN = 0;
+/**
+ * Sayfa adlarindaki ay eklerinin en sik goruleni (dosya adinda ay yoksa)
+ * ve o ayi tasiyan sayfalarin KAPSADIGI aylar.
+ *
+ * Kapsanan aylar gerekiyor cunku iki ay tek raporda toplanabiliyor
+ * ("BEKASI_07+08"); donem etiketi "August" degil "July & August" olmali.
+ * Yalniz raporlama ayini tasiyan sayfalar sayilir -- geride kalmis tek tuk
+ * bir site ("_05") etikete girip "May & July & August" uretmesin.
+ */
+function sheetMonthInfo_(ss) {
+  var counts = {}, sheets = ss.getSheets(), best = null, bestN = 0, parsedAll = [];
   for (var i = 0; i < sheets.length; i++) {
     var parsed = parseSheetName_(sheets[i].getName());
+    parsedAll.push(parsed);
     if (!parsed.month) continue;
     counts[parsed.month] = (counts[parsed.month] || 0) + 1;
     if (counts[parsed.month] > bestN) { bestN = counts[parsed.month]; best = parsed.month; }
   }
-  return best;
+  var cover = {};
+  for (var j = 0; j < parsedAll.length; j++) {
+    if (parsedAll[j].month !== best) continue;
+    var ms = parsedAll[j].months || [];
+    for (var k = 0; k < ms.length; k++) cover[ms[k]] = true;
+  }
+  return { month: best, months: monthListOf_(cover) };
+}
+function monthListOf_(map) {
+  var out = [];
+  for (var m in map) if (map.hasOwnProperty(m)) out.push(parseInt(m, 10));
+  out.sort(function (a, b) { return a - b; });
+  return out;
+}
+/** Geriye donuk uyum: yalniz ayi isteyen cagiranlar icin. */
+function dominantSheetMonth_(ss) {
+  return sheetMonthInfo_(ss).month;
 }
 
 /**
@@ -215,6 +245,21 @@ function removePeriod(key) {
   try { dropSnapshot_(key); } catch (e) { /* kayit yine de dusmeli */ }
   return { ok: true, key: key, name: name,
            message: key + ' removed' + (name ? ' (' + name + ')' : '') };
+}
+
+/**
+ * Snapshot kurulurken bulunan kapsanan aylari kayda yazar (kendini onarma).
+ * Boylece "Refresh data" demek, eski kayitlarin etiketini de duzeltiyor --
+ * donemi silip yeniden eklemek gerekmiyor.
+ */
+function setPeriodMonths_(key, months) {
+  if (!months || !months.length) return;
+  var periods = readPeriods_();
+  if (!periods[key]) return;
+  var old = (periods[key].months || []).join(',');
+  if (old === months.join(',')) return;
+  periods[key].months = months;
+  writePeriods_(periods);
 }
 
 /**

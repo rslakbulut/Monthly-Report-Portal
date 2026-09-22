@@ -228,9 +228,9 @@ eq(Math.round(rm.total.ytdTurnover*100)/100, 29.2, 'REMAN YTD ciro = 10.70+7.60+
 
 /* ---------- 6) Sayfa adi cozumleme ---------- */
 console.log('\n6) Sayfa adi -> site anahtari');
-eq(parseSheetName_('FUEN_06'),        {key:'FUEN',month:6,raw:'FUEN_06'},           'FUEN_06');
-eq(parseSheetName_('SHASHI 01_06'),   {key:'SHASHI01',month:6,raw:'SHASHI 01_06'},  'SHASHI 01_06');
-eq(parseSheetName_('VALLAM_India_06'),{key:'VALLAMINDIA',month:6,raw:'VALLAM_India_06'},'VALLAM_India_06');
+eq(parseSheetName_('FUEN_06'),        {key:'FUEN',month:6,months:[6],raw:'FUEN_06'},           'FUEN_06');
+eq(parseSheetName_('SHASHI 01_06'),   {key:'SHASHI01',month:6,months:[6],raw:'SHASHI 01_06'},  'SHASHI 01_06');
+eq(parseSheetName_('VALLAM_India_06'),{key:'VALLAMINDIA',month:6,months:[6],raw:'VALLAM_India_06'},'VALLAM_India_06');
 eq(parseSheetName_('SLP3_T92_05').month, 5, 'SLP3_T92_05 -> ay 5 (geride kalmis site)');
 eq(parseSheetName_('THS_CZE_06').key, 'THSCZE', 'THS_CZE_06 -> PTE Czechowice');
 const byKey=registryByKey_();
@@ -242,7 +242,7 @@ eq(SITE_REGISTRY.length, 48, 'kayit defterinde 48 site');
 /* BIRLESIK AY EKI: iki ay tek raporda toplaninca sayfa "BEKASI_07+08"
    oluyor (canlida 2026-08 dosyasinda goruldu). Eski kural bunu hic
    eslestiremiyor, sayfa "taninmayan"a dusuyor ve donem BOS goruluyordu. */
-eq(parseSheetName_('BEKASI_07+08'), {key:'BEKASI', month:8, raw:'BEKASI_07+08'},
+eq(parseSheetName_('BEKASI_07+08'), {key:'BEKASI', month:8, months:[7,8], raw:'BEKASI_07+08'},
    'BEKASI_07+08 -> BEKASI, en guncel ay 8');
 eq(parseSheetName_('SHASHI 01_07+08').key, 'SHASHI01',
    'SHASHI 01_07+08 -> SHASHI01 (site adindaki 01 yenmedi)');
@@ -252,6 +252,11 @@ eq(parseSheetName_('FUEN_07&08').month, 8, '& ile birlesik ek');
 eq(parseSheetName_('DAEGU VPH_07+08').key, 'DAEGUVPH', 'bosluklu site adi + birlesik ek');
 eq(parseSheetName_('SHASHI 01_06').key, 'SHASHI01', 'tek ay kurali bozulmadi');
 eq(parseSheetName_('Monthly budget').month, null, 'ay eki olmayan ozet sayfasi');
+/* Donem etiketi kapsadigi aylari soyler; yoksa Temmuz kayip saniliyor. */
+eq(monthSpanLabel_([8]), 'August', 'tek ay etiketi');
+eq(monthSpanLabel_([7,8]), 'July & August', 'iki ay birlikte raporlandi');
+eq(monthSpanLabel_([6,7,8]), 'June — August', 'ucten fazla ay: aralik');
+eq(monthSpanLabel_([]), '', 'ay yoksa etiket bos');
 
 /* ---------- 7) Hatali hucreler ---------- */
 console.log('\n7) Dayaniklilik');

@@ -28,6 +28,21 @@ var MONTH_LABELS = ['', 'January', 'February', 'March', 'April', 'May', 'June',
                     'July', 'August', 'September', 'October', 'November', 'December'];
 
 /**
+ * Bir donemin kapsadigi aylarin etiketi.
+ * [8] -> "August"   [7,8] -> "July & August"   [6,7,8] -> "June — August"
+ * Iki ay tek raporda toplanabiliyor ("BEKASI_07+08"); donem etiketi bunu
+ * soylemezse kullanici Temmuz'u kayip saniyor.
+ */
+function monthSpanLabel_(months) {
+  var list = (months || []).filter(function (m) { return m >= 1 && m <= 12; })
+                           .sort(function (a, b) { return a - b; });
+  if (!list.length) return '';
+  if (list.length === 1) return MONTH_LABELS[list[0]];
+  if (list.length === 2) return MONTH_LABELS[list[0]] + ' & ' + MONTH_LABELS[list[1]];
+  return MONTH_LABELS[list[0]] + ' — ' + MONTH_LABELS[list[list.length - 1]];
+}
+
+/**
  * ISO hafta -> ay. Haftanin PERSEMBE'si hangi aya dusuyorsa o ay kabul edilir
  * (ISO 8601 kurali). Ay sinirina oturan haftalarda keyfilik birakmaz:
  * 2026 W14 = 30 Mart - 5 Nisan, Persembe 2 Nisan -> NISAN.
