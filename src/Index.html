@@ -53,6 +53,18 @@
       <div class="langmenu" id="langMenu" role="listbox" aria-label="Language" hidden></div>
     </div>
 
+    <!-- Bildirim zili: YALNIZ yonetici gorur (BOOT.isAdmin). Rozet, karari
+         verilmemis geri bildirim sayisi; tiklayinca gelen kutusu acilir. -->
+    <button class="tbtn icon bellbtn" id="btnBell" type="button" hidden
+            title="Feedback" aria-label="Feedback">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M10.268 21a2 2 0 0 0 3.464 0"/>
+        <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>
+      </svg>
+      <span class="bell-n" id="bellCount" hidden></span>
+    </button>
+
     <button class="tbtn icon" id="btnTheme" type="button" aria-pressed="false"
             title="Dark mode" aria-label="Toggle dark mode"><span id="btnThemeIcon" aria-hidden="true"></span></button>
 
@@ -270,6 +282,13 @@
     <div class="ib-bar">
       <div class="ib-filters" id="ibFilters"></div>
       <button class="btn ghost" id="btnIbCopy" type="button">Copy all as text</button>
+    </div>
+    <!-- Secim cubugu: yalniz secim varken gorunur. "Send" secilenleri
+         Planned yapar ve uygulanabilir brifi panoya kopyalar. -->
+    <div class="ib-selbar" id="ibBar" hidden>
+      <span class="ib-seln" id="ibSelN"></span>
+      <button class="btn ghost" id="btnIbNone" type="button">Clear</button>
+      <button class="btn" id="btnIbSend" type="button">Send</button>
     </div>
     <div class="ib-list" id="ibList"></div>
     <div class="log" id="inboxLog" aria-live="polite" hidden></div>

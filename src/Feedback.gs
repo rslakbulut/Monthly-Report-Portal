@@ -603,6 +603,7 @@ function submitFeedback(payload) {
     if (shotBlob && cShot >= 0) {
       try { attachShotToRow_(sheet, rowNo, cShot, shotBlob, link); } catch (e) {}
     }
+    dropFeedbackBadge_();          /* zil rozeti hemen artsin */
     var mail = notifyFeedback_({ type: type, priority: priority, message: message,
                                  user: user, link: link, row: rowNo, id: fid,
                                  blob: shotBlob });
@@ -848,7 +849,70 @@ function setFeedbackStatus(row, status) {
     }
     if (r > t.sheet.getLastRow()) return { error: 'That row no longer exists.' };
     t.sheet.getRange(r, cStat + 1).setValue(st);
+    dropFeedbackBadge_();
     return { ok: true, row: r, status: st };
+  } catch (e) {
+    return { error: 'Could not write: ' + e.message };
+  }
+}
+
+/**
+ * Ust cubuktaki zil rozeti: KARARI VERILMEMIS geri bildirim sayisi.
+ * Sayfayi her acilista okumamak icin kisa sureli onbellek; karar yazilinca
+ * onbellek dusuruluyor, rozet aninda guncelleniyor.
+ */
+var FEEDBACK_BADGE_CACHE = 'ro_fb_badge_v1';
+
+function feedbackBadge() {
+  if (!isAuthorizedAdmin_()) return { ok: true, count: 0, admin: false };
+  var cache = CacheService.getScriptCache();
+  var hit = cache.get(FEEDBACK_BADGE_CACHE);
+  if (hit != null) return { ok: true, count: parseInt(hit, 10) || 0, admin: true };
+  var n = 0;
+  try {
+    var t = feedbackSheet_();
+    var cMsg = pickCol_(t.head.map, ['MESSAGE', 'MESAJ', 'FEEDBACK']);
+    var cStat = pickCol_(t.head.map, ['STATUS', 'DURUM']);
+    var last = t.sheet.getLastRow();
+    if (last > 1 && cMsg >= 0) {
+      var vals = t.sheet.getRange(2, 1, last - 1, Math.max(1, t.head.lastCol)).getValues();
+      for (var i = 0; i < vals.length; i++) {
+        if (!String(vals[i][cMsg] || '').trim()) continue;
+        if (cStat < 0 || !String(vals[i][cStat] || '').trim()) n++;
+      }
+    }
+  } catch (e) { return { ok: true, count: 0, admin: true, error: e.message }; }
+  cache.put(FEEDBACK_BADGE_CACHE, String(n), 120);
+  return { ok: true, count: n, admin: true };
+}
+
+function dropFeedbackBadge_() {
+  try { CacheService.getScriptCache().remove(FEEDBACK_BADGE_CACHE); } catch (e) {}
+}
+
+/**
+ * Secilen satirlari tek seferde "Planned" yapar (gelistirme kuyruguna alir).
+ * Tek tek setFeedbackStatus cagirmak yerine tek tur: her cagri sayfayi
+ * yeniden aciyordu.
+ */
+function queueFeedback(rows) {
+  var deny = requireAdmin_(); if (deny) return deny;
+  var list = (rows || []).map(function (r) { return parseInt(r, 10); })
+                         .filter(function (r) { return r > 1; });
+  if (!list.length) return { error: 'Nothing selected.' };
+  try {
+    var t = feedbackSheet_();
+    var cStat = pickCol_(t.head.map, ['STATUS', 'DURUM']);
+    if (cStat < 0) cStat = ensureColumn_(t.sheet, t.head, ['STATUS', 'DURUM'], 'Status');
+    var last = t.sheet.getLastRow();
+    var done = [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] > last) continue;
+      t.sheet.getRange(list[i], cStat + 1).setValue('Planned');
+      done.push(list[i]);
+    }
+    dropFeedbackBadge_();
+    return { ok: true, rows: done, status: 'Planned' };
   } catch (e) {
     return { error: 'Could not write: ' + e.message };
   }

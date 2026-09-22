@@ -1691,4 +1691,35 @@ body.dark-mode .ib-badge.urgent{color:#3a0d10}
   display:flex; align-items:center; justify-content:center; padding:24px; cursor:zoom-out;
 }
 .ib-zoom img{max-width:100%; max-height:100%; border-radius:var(--r-sm); box-shadow:var(--sh-3)}
+
+/* ---------- bildirim zili ---------- */
+.bellbtn{position:relative}
+.bell-n{
+  position:absolute; top:2px; right:2px; min-width:17px; height:17px; padding:0 4px;
+  border-radius:999px; background:var(--bad); color:#fff;
+  font-size:10.5px; font-weight:800; line-height:17px; text-align:center;
+  /* Ust bar her iki temada da koyu lacivert degradedir; halka sabit bir
+     token degil, o degradenin uzerinde calisan yari saydam bir koyu ton. */
+  box-shadow:0 0 0 2px rgba(4,27,60,.55);
+}
+body.dark-mode .bell-n{color:#3a0d10}
+/* Yeni bir sey varken zil sessizce bir kez sallanir: rozet kucuk, gozden
+   kacmasin. Hareket tercihini kapatanlarda sabit kalir. */
+@keyframes bell-ring{
+  0%,70%{transform:rotate(0)} 76%{transform:rotate(11deg)} 82%{transform:rotate(-9deg)}
+  88%{transform:rotate(6deg)} 94%{transform:rotate(-4deg)} 100%{transform:rotate(0)}
+}
+.bellbtn.has-new svg{animation:bell-ring 2.4s ease-in-out 1}
+@media (prefers-reduced-motion:reduce){ .bellbtn.has-new svg{animation:none} }
+
+.ib-selbar{
+  position:sticky; top:0; z-index:2; display:flex; gap:10px; align-items:center;
+  padding:10px 12px; border-radius:var(--r-sm);
+  background:var(--sunken); border:1px solid var(--border-strong);
+}
+.ib-seln{flex:1; font-size:13px; font-weight:700}
+.ib-selbar .btn{min-height:38px}
+.ib-pick{display:flex; gap:6px; align-items:center; font-size:12px; color:var(--text-dim); cursor:pointer}
+.ib-pick input{width:17px; height:17px; accent-color:var(--valeo-mid); cursor:pointer}
+.ib-item.picked{border-color:var(--valeo-mid); box-shadow:0 0 0 1px var(--valeo-mid) inset}
 </style>

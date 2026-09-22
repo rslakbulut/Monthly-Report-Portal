@@ -3234,6 +3234,7 @@ function applyBootstrap(res){
   /* Settings sadece yetkili hesaplarda gorunur — asil kontrol Code.gs'te
      (requireAdmin_), bu yalniz gereksiz bir butonu gizleyen UX katmani. */
   $('btnSettings').hidden=!res.isAdmin;
+  bellRefresh();
   renderUserChip();
 }
 function noPeriodYet(){
@@ -3378,7 +3379,27 @@ function buildSnapshotFor(key, done){
  * gormek icin de her satirin Drive baglantisini ayri sekmede aramak
  * gerekiyordu. Burada ikisi yan yana: mesaj + goruntu + karar.
  */
-var IB={items:[],filter:'ALL',shots:{}};
+var IB={items:[],filter:'ALL',shots:{},sel:{}};
+
+/* ---- ust cubuktaki zil ----
+ * Yalniz yoneticide gorunur. Rozet: KARARI VERILMEMIS geri bildirim sayisi.
+ * Sunucu tarafinda 2 dk onbellekli; karar yazilinca onbellek dusuyor.
+ */
+function bellRefresh(){
+  if(!(BOOT&&BOOT.isAdmin)) return;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||!r.admin) return;
+      var btn=$('btnBell'), el=$('bellCount'), n=r.count||0;
+      btn.hidden=false;
+      el.hidden=!n;
+      el.textContent=n>99?'99+':String(n);
+      btn.classList.toggle('has-new',!!n);
+      btn.title=n?(n+' feedback waiting for a decision'):'Feedback';
+    })
+    .withFailureHandler(function(){})
+    .feedbackBadge();
+}
 
 function ibLog(m){
   var el=$('inboxLog');
@@ -3398,9 +3419,12 @@ function ibItemHtml(it,i){
     ? '<button class="ib-shot" type="button" data-shot="'+i+'">'+
       '<span class="ib-load">Loading screenshot…</span></button>'
     : '';
-  return '<div class="ib-item'+(it.shotId?'':' no-shot')+'">'+
+  return '<div class="ib-item'+(it.shotId?'':' no-shot')+
+         (IB.sel[it.row]?' picked':'')+'" data-item="'+it.row+'">'+
     '<div>'+
       '<div class="ib-meta">'+
+        '<label class="ib-pick"><input type="checkbox" data-pick="'+it.row+'"'+
+          (IB.sel[it.row]?' checked':'')+'><span>Select</span></label>'+
         ibBadge(it.type||'—',tcls)+ibBadge(it.priority||'—',pcls)+
         '<span class="ib-id">'+esc(it.id||'')+'</span>'+
         '<span class="ib-who">'+esc(it.name||it.email||'')+
@@ -3445,6 +3469,16 @@ function ibRenderList(){
   Array.prototype.forEach.call(host.querySelectorAll('select[data-row]'),function(sel){
     sel.onchange=function(){ ibSetStatus(parseInt(sel.getAttribute('data-row'),10), sel.value); };
   });
+  Array.prototype.forEach.call(host.querySelectorAll('input[data-pick]'),function(cb){
+    cb.onchange=function(){
+      var row=parseInt(cb.getAttribute('data-pick'),10);
+      if(cb.checked) IB.sel[row]=true; else delete IB.sel[row];
+      var card=host.querySelector('[data-item="'+row+'"]');
+      if(card) card.classList.toggle('picked',cb.checked);
+      ibSyncBar();
+    };
+  });
+  ibSyncBar();
   Array.prototype.forEach.call(host.querySelectorAll('.ib-shot'),function(btn){
     var it=IB.view[parseInt(btn.getAttribute('data-shot'),10)];
     ibLoadShot(btn,it);
@@ -3490,6 +3524,77 @@ function ibSetStatus(row,status){
     .setFeedbackStatus(row,status);
 }
 
+/* ---- secim cubugu ve gelistirme kuyrugu ----
+ * "Send" iki is yapar: (1) secilen kayitlar sayfada Planned olarak
+ * isaretlenir -- karar kalici kayit olur; (2) uygulanabilir bir brif metni
+ * panoya kopyalanir.
+ *
+ * NEDEN KOPYA: bu panodan disariya kendiliginden is akitacak bir kanal yok;
+ * brif, gelistirme oturumuna YAPISTIRILMAK icin hazirlaniyor. Elle derleyip
+ * yazmakla farki: tek tusla, eksiksiz ve her seferinde ayni bicimde.
+ */
+function ibSelCount(){ return Object.keys(IB.sel).length; }
+
+function ibSyncBar(){
+  var n=ibSelCount();
+  $('ibBar').hidden=!n;
+  $('ibSelN').textContent=n+(n===1?' item selected':' items selected');
+}
+
+function ibSelected(){
+  return IB.items.filter(function(it){ return IB.sel[it.row]; });
+}
+
+/* Brif yapistirildigi yerde tek basina anlasilsin: kim, ne zaman, hangi
+   oncelik, hangi kayit numarasi. Ekran goruntusunun BAGLANTISI yazilir ama
+   goruntunun kendisi metne sigmaz -- brif bunu acikca soyluyor. */
+function ibBrief(list){
+  var head='RO Monthly Report - implementation queue ('+list.length+' item'+
+           (list.length===1?'':'s')+', '+new Date().toISOString().slice(0,10)+')';
+  var body=list.map(function(it,i){
+    return (i+1)+') ['+(it.id||('row '+it.row))+'] '+(it.type||'?')+' - '+
+           (it.priority||'?')+' - '+(it.name||it.email||'')+
+           (it.date?' - '+it.date:'')+'\n'+
+           it.message.split('\n').map(function(l){ return '   '+l; }).join('\n')+
+           (it.shotLink?'\n   Screenshot: '+it.shotLink+
+                        '  (open the Feedback inbox to see it)':'');
+  }).join('\n\n');
+  return head+'\n\n'+body+'\n\nMarked as Planned in the feedback sheet.';
+}
+
+function ibCopy(txt,doneMsg){
+  var fallback=function(){
+    ibLog(txt);                       /* pano kapaliysa metin yine de gorunsun */
+    showToast('Clipboard blocked - the text is shown below','error');
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){
+      ibLog(doneMsg); showToast(doneMsg,'success');
+    },fallback);
+  } else fallback();
+}
+
+function ibQueue(){
+  var list=ibSelected();
+  if(!list.length) return;
+  var rows=list.map(function(it){ return it.row; });
+  ibLog('Sending…');
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||r.error){ ibLog('Error: '+((r&&r.error)||'unknown')); return; }
+      var sent={};
+      (r.rows||[]).forEach(function(x){ sent[x]=true; });
+      IB.items.forEach(function(it){ if(sent[it.row]) it.status='Planned'; });
+      IB.sel={};
+      ibCopy(ibBrief(list),
+             (r.rows||[]).length+' item(s) queued and copied - paste into the development chat.');
+      ibRenderList();
+      bellRefresh();
+    })
+    .withFailureHandler(function(e){ ibLog('Server error: '+((e&&e.message)||e)); })
+    .queueFeedback(rows);
+}
+
 /* Duz metin dokum: gelen kutusundaki her sey tek blok halinde kopyalanir,
    baska bir yere (e-posta, not, sohbet) oldugu gibi yapistirilabilir. */
 function ibCopyText(){
@@ -3499,14 +3604,11 @@ function ibCopyText(){
            (it.status?' | status: '+it.status:'')+'\n'+it.message+
            (it.shotLink?'\nScreenshot: '+it.shotLink:'');
   });
-  var txt=lines.join('\n\n')||'(empty)';
-  var done=function(){ ibLog('Copied '+ibVisible().length+' item(s).'); showToast('Copied','success'); };
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(txt).then(done,function(){ ibLog(txt); });
-  } else { ibLog(txt); }
+  ibCopy(lines.join('\n\n')||'(empty)', 'Copied '+ibVisible().length+' item(s).');
 }
 
 function openInbox(){
+  IB.sel={};
   $('dlgInbox').showModal();
   ibRenderFilters();
   $('ibList').innerHTML='<div class="ib-empty">Loading…</div>';
@@ -3531,8 +3633,11 @@ function initPanels(){
   $('btnSettings').onclick=function(){ $('dlgSettings').showModal(); loadPeriodList(); };
   $('btnCloseSettings').onclick=function(){ $('dlgSettings').close(); };
   $('btnInbox').onclick=function(){ $('dlgSettings').close(); openInbox(); };
-  $('btnCloseInbox').onclick=function(){ $('dlgInbox').close(); };
+  $('btnBell').onclick=function(){ openInbox(); };
+  $('btnCloseInbox').onclick=function(){ $('dlgInbox').close(); bellRefresh(); };
   $('btnIbCopy').onclick=ibCopyText;
+  $('btnIbSend').onclick=ibQueue;
+  $('btnIbNone').onclick=function(){ IB.sel={}; ibRenderList(); };
   $('btnScan').onclick=function(){
     logS('Scanning Gmail…');
     google.script.run
