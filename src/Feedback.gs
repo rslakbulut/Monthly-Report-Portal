@@ -564,9 +564,13 @@ function uiTestMail() {
   } catch (e) {
     return { ok: true, message: 'Test e-mail FAILED: ' + e.message +
       '\n\nMost likely the script has not been re-authorized after the' +
-      ' "send e-mail" permission was added.\nFix: open the Apps Script editor' +
-      ' (Extensions > Apps Script), pick any function and press Run once,' +
-      ' then approve the permission dialog.' };
+      ' "send e-mail" permission was added.' +
+      '\n\nFix (once, by the account that deployed the web app):' +
+      '\n  1. Go to https://script.google.com and open this project' +
+      ' (it is a STANDALONE script, not attached to a spreadsheet).' +
+      '\n  2. Pick any function in the toolbar and press Run.' +
+      '\n  3. Approve the permission dialog — it must list "Send email as you".' +
+      '\n  4. Come back here and press Test e-mail again.' };
   }
 }
 
