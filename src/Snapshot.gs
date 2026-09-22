@@ -276,6 +276,14 @@ function driveReadFile_(id) {
   return res.getContentText('UTF-8');
 }
 
+/** Dosyayi cope tasir (kalici silmez -- yanlislikla silinen geri alinabilsin). */
+function driveTrashFile_(id) {
+  driveApi_(DRIVE_V3 + '/' + encodeURIComponent(id), {
+    method: 'patch', contentType: 'application/json; charset=UTF-8',
+    payload: JSON.stringify({ trashed: true })
+  });
+}
+
 /** 'Drive API 403: ...' mesajindan HTTP kodunu cikarir. */
 function driveApiCode_(e) {
   var m = /Drive API (\d+)/.exec(String((e && e.message) || e));
@@ -551,6 +559,39 @@ function refreshPeriodSnapshot_(key) {
   if (snap.error) return snap;
   var info = saveSnapshot_(key, snap);
   return { snap: snap, info: info };
+}
+
+/**
+ * Bir donemin SNAPSHOT izlerini siler: iki Drive dosyasi (cope), indeks
+ * satiri, cache kopyalari ve trend ozeti. Kayit defterinden dusurmeyi
+ * cagiran yapar (removePeriod).
+ *
+ * Yanlis dosya eklendiginde gerekiyor: eski snapshot kalirsa donem kayittan
+ * silinse bile Drive'da yetim dosya ve trend'de sahte bir ay kaliyordu.
+ */
+function dropSnapshot_(key) {
+  var idx = snapIndex_();
+  var entry = idx[key];
+  if (entry) {
+    ['o', 'd'].forEach(function (slot) {
+      if (!entry[slot]) return;
+      try { driveTrashFile_(entry[slot]); } catch (e) { /* zaten silinmis olabilir */ }
+    });
+    delete idx[key];
+    saveSnapIndex_(idx);
+  }
+  try {
+    var cache = CacheService.getScriptCache();
+    cache.remove('snapo_' + key);
+    cache.remove('snapd_' + key);
+  } catch (e) {}
+  try {
+    var all = readTrend_();
+    if (all[key]) {
+      delete all[key];
+      PropertiesService.getScriptProperties().setProperty(PROP_TREND, JSON.stringify(all));
+    }
+  } catch (e) {}
 }
 
 /** Yonetici "Yenile" dugmesi. */

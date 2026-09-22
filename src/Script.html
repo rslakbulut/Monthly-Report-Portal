@@ -240,6 +240,9 @@ var T={
   execScopeFam:'By business line',execScopeRo:'By RO',
   scopeNow:'Showing',scopeSwitchTo:'switch to',
   show:'Show',hide:'Hide',roListHidden:'Hidden — open to compare ROs side by side',
+  registeredPeriods:'Registered periods',remove:'Remove',noPeriods:'No period registered yet.',
+  removeConfirm:'Remove period {k} from the dashboard? The source spreadsheet is not touched.',
+  fewSites:'Only {n} site sheet(s) recognised — this is probably not the monthly report file.',
   viewAs:'View as',viewChart:'Chart',viewGap:'Gap',viewTable:'Table',
   gapTitle:'Gap to plan',
   gapSub:'YTD Real − B1 YTD per RO and project type. Number = projects behind/ahead; colour = how big that gap is against its own plan.',
@@ -271,6 +274,9 @@ var T={
   execScopeFam:'İş kolu bazında',execScopeRo:'RO bazında',
   scopeNow:'Gösterilen',scopeSwitchTo:'geçmek için tıklayın:',
   show:'Göster',hide:'Gizle',roListHidden:'Gizli — RO’ları yan yana görmek için açın',
+  registeredPeriods:'Kayıtlı dönemler',remove:'Kaldır',noPeriods:'Henüz kayıtlı dönem yok.',
+  removeConfirm:'{k} dönemi dashboard’dan kaldırılsın mı? Kaynak spreadsheet’e dokunulmaz.',
+  fewSites:'Yalnız {n} site sayfası tanındı — bu büyük ihtimalle aylık rapor dosyası değil.',
   viewAs:'Görünüm',viewChart:'Grafik',viewGap:'Sapma',viewTable:'Tablo',
   gapTitle:'Plana göre sapma',
   gapSub:'RO ve proje tipi bazında YTD Real − B1 YTD. Sayı = kaç proje geride/önde; renk = bu sapmanın kendi planına göre büyüklüğü.',
@@ -3198,12 +3204,66 @@ function logS(m){ $('settingsLog').textContent=m; }
  * Bu yapilmazsa o donemi ilk acan kullanici parcali okuma yolunu (ve uzun
  * beklemeyi) ustlenir; burada bekleyen kisi zaten yonetici.
  */
+/* ---------- Ayarlar: kayitli donemler ----------
+   Panelde yalniz "ekle" vardi. Yanlis dosya eklendiginde (ornek: Agustos
+   icin aylik rapor yerine baska bir dosyanin linki) donemi kaldirmanin tek
+   yolu Apps Script editoru idi. Liste hangi ayin hangi dosyadan geldigini
+   ve KAC SITE TANINDIGINI gosteriyor -- yanlis dosya oradan hemen belli
+   oluyor (48 yerine 1). */
+function renderPeriodList(rows){
+  var box=$('periodList'); if(!box) return;
+  if(!rows||!rows.length){ box.innerHTML='<div class="p-empty">'+esc(t('noPeriods'))+'</div>'; return; }
+  box.innerHTML=rows.map(function(r){
+    var n=(r.sites==null)?null:r.sites;
+    var bad=(n!=null&&n<SITE_WARN_MIN);
+    return '<div class="prow'+(bad?' bad':'')+'">'+
+      '<div class="p-main"><b>'+esc(r.label||r.key)+'</b>'+
+        '<span class="p-file">'+esc(r.name||'')+'</span></div>'+
+      '<span class="p-sites'+(bad?' bad':'')+'">'+
+        (n==null?'—':nf(n)+' '+esc(sitesWord(n)))+'</span>'+
+      '<button class="btn ghost p-del" type="button" data-delkey="'+esc(r.key)+'">'+
+        esc(t('remove'))+'</button>'+
+    '</div>';
+  }).join('');
+  box.querySelectorAll('[data-delkey]').forEach(function(b){
+    b.onclick=function(){
+      var key=b.getAttribute('data-delkey');
+      if(!window.confirm(t('removeConfirm').replace('{k}',key))) return;
+      logS('Removing '+key+'…');
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); showToast(r&&r.error||'Failed','error'); return; }
+          logS(r.message||(key+' removed')); showToast(r.message||'Removed','success');
+          loadPeriodList(); boot();
+        })
+        .withFailureHandler(function(e){ var m=e&&e.message||e; logS('Server error: '+m); showToast('Server error: '+m,'error'); })
+        .uiRemovePeriod(key);
+    };
+  });
+}
+/* Bu esigin altinda kalan donem "yanlis dosya" olarak isaretlenir. Kayitta
+   48 site var; bir avuc site tanindiysa dosya aylik rapor degildir. */
+var SITE_WARN_MIN=10;
+function loadPeriodList(){
+  if(!hasServer()) return;
+  google.script.run
+    .withSuccessHandler(function(r){ if(r&&r.periods) renderPeriodList(r.periods); })
+    .withFailureHandler(function(){})
+    .uiListPeriods();
+}
 function buildSnapshotFor(key, done){
   logS('Building snapshot for '+key+'… (reading 48 sheets, this takes a moment)');
   google.script.run
     .withSuccessHandler(function(r){
       if(!r||r.error) logS('Snapshot could not be built: '+((r&&r.error)||'unknown'));
-      else logS(r.message);
+      else {
+        logS(r.message);
+        /* Yanlis dosya eklendiginde bu SESSIZ kaliyordu: donem ekleniyor,
+           ekran sifirlarla aciliyordu. Tanınan site sayisi dusukse uyar. */
+        if(r.siteCount!=null&&r.siteCount<SITE_WARN_MIN)
+          showToast(t('fewSites').replace('{n}',nf(r.siteCount)),'error');
+      }
+      loadPeriodList();
       done();
     })
     .withFailureHandler(function(e){ logS('Snapshot build failed: '+((e&&e.message)||e)); done(); })
@@ -3214,7 +3274,7 @@ function initPanels(){
   $('btnHelp').onclick=function(){ openHelp(''); };
   $('btnHelpClose').onclick=closeHelp;
   $('helpScrim').onclick=closeHelp;
-  $('btnSettings').onclick=function(){ $('dlgSettings').showModal(); };
+  $('btnSettings').onclick=function(){ $('dlgSettings').showModal(); loadPeriodList(); };
   $('btnCloseSettings').onclick=function(){ $('dlgSettings').close(); };
   $('btnScan').onclick=function(){
     logS('Scanning Gmail…');

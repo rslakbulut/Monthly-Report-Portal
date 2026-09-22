@@ -285,6 +285,14 @@
       <input type="text" id="inpUrl" placeholder="https://docs.google.com/spreadsheets/d/…" spellcheck="false">
     </div>
     <div class="btn-row"><button class="btn" id="btnAdd" type="button" data-i18n="add">Add</button></div>
+
+    <!-- Kayitli donemler: hangi ay hangi dosyadan geliyor, kac site tanindi.
+         Yanlis dosya eklendiginde tek cozum Apps Script editorunden elle
+         removePeriod cagirmakti; artik buradan silinebiliyor. -->
+    <div class="fgroup">
+      <span class="flabel" data-i18n="registeredPeriods">Registered periods</span>
+      <div class="plist" id="periodList"></div>
+    </div>
     <div class="log" id="settingsLog" aria-live="polite"></div>
   </div>
 </dialog>

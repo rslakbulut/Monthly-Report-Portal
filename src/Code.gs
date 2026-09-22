@@ -247,6 +247,9 @@ function uiRemovePeriod(key) {
   var deny = requireAdmin_(); if (deny) return deny;
   return removePeriod(key);
 }
+function uiListPeriods() {
+  return listPeriodsDetailed();   // kendi icinde requireAdmin_ var
+}
 function uiSetGmailQuery(q) {
   var deny = requireAdmin_(); if (deny) return deny;
   return { ok: true, query: setGmailQuery(q) };

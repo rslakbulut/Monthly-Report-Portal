@@ -200,11 +200,50 @@ function listPeriods_() {
   return out;
 }
 
-/** Bir donemi kayittan siler (yanlis dosya eklenirse). */
+/**
+ * Bir donemi kayittan siler (yanlis dosya eklenirse).
+ * Snapshot izleri de temizlenir; aksi halde donem listeden kalkiyor ama
+ * Drive'da yetim snapshot dosyasi ve trend ozetinde sahte bir ay kaliyordu.
+ * Kaynak spreadsheet'e DOKUNULMAZ -- yalniz dashboard'un kendi kaydi silinir.
+ */
 function removePeriod(key) {
   var periods = readPeriods_();
   if (!periods[key]) return { error: 'Not in registry: ' + key };
+  var name = periods[key].name;
   delete periods[key];
   writePeriods_(periods);
-  return { ok: true };
+  try { dropSnapshot_(key); } catch (e) { /* kayit yine de dusmeli */ }
+  return { ok: true, key: key, name: name,
+           message: key + ' removed' + (name ? ' (' + name + ')' : '') };
+}
+
+/**
+ * Ayarlar ekranindaki donem listesi: hangi donem hangi dosyadan geliyor,
+ * kac site tanindi, ne zaman kuruldu. Yanlis dosya eklendiginde bunu
+ * gormek icin gerekiyor -- panelde yalniz "ekle" vardi, "hangileri ekli"
+ * ve "sil" yoktu.
+ */
+function listPeriodsDetailed() {
+  var deny = requireAdmin_(); if (deny) return deny;
+  var trend = {};
+  try { trend = readTrend_(); } catch (e) {}
+  var out = listPeriods_().map(function (p) {
+    var key = periodKey_(p.year, p.month);
+    var row = { key: key, name: p.name, id: p.id, source: p.source || 'manual',
+                label: MONTH_LABELS[p.month] + ' ' + p.year,
+                sites: null, builtAt: null };
+    /* Site sayisi trend ozetinden: ScriptProperties'te tek okuma, Drive'a
+       gitmeye gerek yok (snapshot dosyasi ~300KB). */
+    try {
+      var t = trend[key];
+      if (t) {
+        row.builtAt = t.builtAt;
+        var n = 0;
+        for (var ro in (t.ro || {})) if (t.ro.hasOwnProperty(ro)) n += t.ro[ro].sites || 0;
+        row.sites = n;
+      }
+    } catch (e) {}
+    return row;
+  });
+  return { ok: true, periods: out };
 }
