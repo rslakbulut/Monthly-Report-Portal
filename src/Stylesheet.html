@@ -1634,4 +1634,61 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
   .kpi,.ro-row,.panel,.tablewrap,.site-row,.chart{break-inside:avoid; box-shadow:none; border:1px solid #ccc}
   .kpi,.ro-row,.panel{background:#fff!important}
 }
+/* ---------- geri bildirim gelen kutusu ----------
+   Karar verilecek ekran: mesaj ve ekran goruntusu YAN YANA dursun, sahibi
+   "bunu devreye alayim mi" sorusunu tek bakista cevaplasin. Dar ekranda
+   goruntu mesajin altina gecer. */
+dialog.panelx.wide{max-width:min(980px,96vw); width:min(980px,96vw)}
+.ib-bar{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.ib-filters{display:flex; gap:6px; flex-wrap:wrap; flex:1}
+.ib-f{
+  min-height:34px; padding:0 12px; font:inherit; font-size:12.5px; font-weight:600;
+  border:1px solid var(--border-strong); border-radius:999px; background:transparent;
+  color:var(--text-dim); cursor:pointer;
+}
+.ib-f:hover{background:var(--sunken)}
+.ib-f[aria-pressed=true]{background:var(--valeo-mid); border-color:var(--valeo-mid); color:#fff}
+.ib-list{display:flex; flex-direction:column; gap:12px}
+.ib-item{
+  border:1px solid var(--border); border-radius:var(--r-md); background:var(--card-2);
+  padding:14px; display:grid; grid-template-columns:1fr 240px; gap:14px; align-items:start;
+}
+.ib-item.no-shot{grid-template-columns:1fr}
+@media (max-width:720px){ .ib-item{grid-template-columns:1fr} }
+.ib-meta{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px}
+.ib-badge{
+  font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+  padding:3px 9px; border-radius:999px; border:1px solid var(--border-strong); color:var(--text-dim);
+}
+/* Durum renkleri repodaki tokenlardan: --bad / --good / --warn ailesi.
+   Kirmizi burada "hata" degil "hata bildirimi" demek; onceligi ayirt etmek
+   icin ACIL olan ayrica dolu zemin aliyor. */
+.ib-badge.bug{background:var(--bad-bg); border-color:var(--bad-line); color:var(--bad)}
+.ib-badge.imp{background:var(--good-bg); border-color:var(--good-line); color:var(--good)}
+.ib-badge.urgent{background:var(--bad); border-color:var(--bad); color:#fff}
+/* Koyu modda --bad acik bir kirmizi (#ff8f8f): beyaz yazi 2:1'e duser.
+   Dolgu ayni kalsin diye yazi koyuya cevriliyor (olculen kontrast 7.4:1). */
+body.dark-mode .ib-badge.urgent{color:#3a0d10}
+.ib-who{font-size:12.5px; color:var(--text-dim); margin-left:auto}
+.ib-msg{font-size:14px; line-height:1.55; white-space:pre-wrap; margin:0 0 10px}
+.ib-foot{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.ib-foot select{
+  min-height:36px; padding:0 10px; font:inherit; font-size:13px;
+  border:1px solid var(--border-strong); border-radius:var(--r-sm);
+  background:var(--card); color:var(--text);
+}
+.ib-id{font:12px ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--text-dim)}
+.ib-shot{
+  border:1px solid var(--border-strong); border-radius:var(--r-sm); overflow:hidden;
+  background:var(--sunken); display:block; width:100%; padding:0; cursor:zoom-in;
+}
+.ib-shot img{display:block; width:100%; height:auto}
+.ib-shot .ib-load{display:block; padding:24px 10px; font-size:12.5px; color:var(--text-dim); text-align:center}
+.ib-empty{padding:26px; text-align:center; color:var(--text-dim); font-size:13.5px}
+/* Buyutulmus goruntu: tam ekran, tiklayinca kapanir. */
+.ib-zoom{
+  position:fixed; inset:0; z-index:90; background:rgba(4,27,60,.82);
+  display:flex; align-items:center; justify-content:center; padding:24px; cursor:zoom-out;
+}
+.ib-zoom img{max-width:100%; max-height:100%; border-radius:var(--r-sm); box-shadow:var(--sh-3)}
 </style>

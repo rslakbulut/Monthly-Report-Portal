@@ -3373,6 +3373,156 @@ function buildSnapshotFor(key, done){
     .withFailureHandler(function(e){ logS('Snapshot build failed: '+((e&&e.message)||e)); done(); })
     .uiRefreshPeriod(key);
 }
+/* ================= geri bildirim gelen kutusu =================
+ * Geri bildirimleri okumak icin spreadsheet'i acmak, ekran goruntusunu
+ * gormek icin de her satirin Drive baglantisini ayri sekmede aramak
+ * gerekiyordu. Burada ikisi yan yana: mesaj + goruntu + karar.
+ */
+var IB={items:[],filter:'ALL',shots:{}};
+
+function ibLog(m){
+  var el=$('inboxLog');
+  el.textContent=m||'';
+  el.hidden=!m;            /* bos kutu ekranda bir seyin eksik oldugunu dusundurtuyor */
+}
+
+function ibBadge(txt,cls){ return '<span class="ib-badge '+cls+'">'+esc(txt)+'</span>'; }
+
+function ibItemHtml(it,i){
+  var tcls=/bug/i.test(it.type)?'bug':'imp';
+  var pcls=/urgent/i.test(it.priority)?'urgent':'';
+  var sel=['','Reviewing','Planned','Done','Rejected'].map(function(v){
+    return '<option value="'+esc(v)+'"'+(v===it.status?' selected':'')+'>'+
+           esc(v||'— no decision —')+'</option>'; }).join('');
+  var shot=it.shotId
+    ? '<button class="ib-shot" type="button" data-shot="'+i+'">'+
+      '<span class="ib-load">Loading screenshot…</span></button>'
+    : '';
+  return '<div class="ib-item'+(it.shotId?'':' no-shot')+'">'+
+    '<div>'+
+      '<div class="ib-meta">'+
+        ibBadge(it.type||'—',tcls)+ibBadge(it.priority||'—',pcls)+
+        '<span class="ib-id">'+esc(it.id||'')+'</span>'+
+        '<span class="ib-who">'+esc(it.name||it.email||'')+
+          (it.date?' · '+esc(it.date):'')+'</span>'+
+      '</div>'+
+      '<p class="ib-msg">'+esc(it.message)+'</p>'+
+      '<div class="ib-foot">'+
+        '<label class="ib-id" for="ibs'+i+'">Decision</label>'+
+        '<select id="ibs'+i+'" data-row="'+it.row+'">'+sel+'</select>'+
+        (it.comments?'<span class="ib-id">note: '+esc(it.comments)+'</span>':'')+
+      '</div>'+
+    '</div>'+shot+'</div>';
+}
+
+function ibVisible(){
+  return IB.items.filter(function(it){
+    if(IB.filter==='ALL') return true;
+    if(IB.filter==='OPEN') return !it.status || it.status==='Reviewing';
+    if(IB.filter==='SHOT') return !!it.shotId;
+    return (it.type||'').toUpperCase()===IB.filter;
+  });
+}
+
+function ibRenderFilters(){
+  var defs=[['ALL','All'],['OPEN','Not decided'],['BUG','Bugs'],
+            ['IMPROVEMENT','Improvements'],['SHOT','With screenshot']];
+  $('ibFilters').innerHTML=defs.map(function(d){
+    return '<button class="ib-f" type="button" data-f="'+d[0]+'" aria-pressed="'+
+           (IB.filter===d[0])+'">'+esc(d[1])+'</button>'; }).join('');
+  Array.prototype.forEach.call($('ibFilters').querySelectorAll('.ib-f'),function(b){
+    b.onclick=function(){ IB.filter=b.getAttribute('data-f'); ibRenderFilters(); ibRenderList(); };
+  });
+}
+
+function ibRenderList(){
+  var list=ibVisible();
+  var host=$('ibList');
+  if(!list.length){ host.innerHTML='<div class="ib-empty">Nothing here yet.</div>'; return; }
+  /* Indeks GORUNEN listeye gore; goruntu yuklerken bu listeden okunuyor. */
+  IB.view=list;
+  host.innerHTML=list.map(ibItemHtml).join('');
+  Array.prototype.forEach.call(host.querySelectorAll('select[data-row]'),function(sel){
+    sel.onchange=function(){ ibSetStatus(parseInt(sel.getAttribute('data-row'),10), sel.value); };
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('.ib-shot'),function(btn){
+    var it=IB.view[parseInt(btn.getAttribute('data-shot'),10)];
+    ibLoadShot(btn,it);
+  });
+}
+
+/* Goruntuler tek tek, gorundukleri anda cekiliyor: 6 MB'lik goruntuleri
+   tek yanitta tasimak listeyi dakikalarca bekletirdi. */
+function ibLoadShot(btn,it){
+  function show(url){
+    btn.innerHTML='<img alt="screenshot" src="'+url+'">';
+    btn.onclick=function(){ ibZoom(url); };
+  }
+  if(IB.shots[it.shotId]){ show(IB.shots[it.shotId]); return; }
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||r.error){ btn.innerHTML='<span class="ib-load">'+esc((r&&r.error)||'not available')+'</span>'; return; }
+      IB.shots[it.shotId]=r.dataUrl; show(r.dataUrl);
+    })
+    .withFailureHandler(function(e){
+      btn.innerHTML='<span class="ib-load">'+esc((e&&e.message)||'error')+'</span>'; })
+    .feedbackShot(it.shotId);
+}
+
+function ibZoom(url){
+  var d=document.createElement('div');
+  d.className='ib-zoom';
+  d.innerHTML='<img alt="screenshot" src="'+url+'">';
+  d.onclick=function(){ d.remove(); };
+  document.body.appendChild(d);
+}
+
+function ibSetStatus(row,status){
+  ibLog('Saving decision…');
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||r.error){ ibLog('Error: '+((r&&r.error)||'unknown')); return; }
+      IB.items.forEach(function(it){ if(it.row===r.row) it.status=r.status; });
+      ibLog('Row '+r.row+' → '+(r.status||'(cleared)'));
+      showToast('Decision saved','success');
+    })
+    .withFailureHandler(function(e){ ibLog('Server error: '+((e&&e.message)||e)); })
+    .setFeedbackStatus(row,status);
+}
+
+/* Duz metin dokum: gelen kutusundaki her sey tek blok halinde kopyalanir,
+   baska bir yere (e-posta, not, sohbet) oldugu gibi yapistirilabilir. */
+function ibCopyText(){
+  var lines=ibVisible().map(function(it){
+    return '--- '+(it.id||('row '+it.row))+' | '+(it.type||'?')+' | '+(it.priority||'?')+
+           ' | '+(it.date||'')+' | '+(it.name||it.email||'')+
+           (it.status?' | status: '+it.status:'')+'\n'+it.message+
+           (it.shotLink?'\nScreenshot: '+it.shotLink:'');
+  });
+  var txt=lines.join('\n\n')||'(empty)';
+  var done=function(){ ibLog('Copied '+ibVisible().length+' item(s).'); showToast('Copied','success'); };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(done,function(){ ibLog(txt); });
+  } else { ibLog(txt); }
+}
+
+function openInbox(){
+  $('dlgInbox').showModal();
+  ibRenderFilters();
+  $('ibList').innerHTML='<div class="ib-empty">Loading…</div>';
+  ibLog('');
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||r.error){ $('ibList').innerHTML='<div class="ib-empty">'+esc((r&&r.error)||'unknown')+'</div>'; return; }
+      IB.items=r.items||[];
+      if(!r.statusCol) ibLog('No "Status" column yet — it will be created on the first decision.');
+      ibRenderList();
+    })
+    .withFailureHandler(function(e){
+      $('ibList').innerHTML='<div class="ib-empty">'+esc((e&&e.message)||'error')+'</div>'; })
+    .listFeedback();
+}
+
 function initPanels(){
   $('helpSearch').oninput=function(){ fillHelp(this.value); };
   $('btnHelp').onclick=function(){ openHelp(''); };
@@ -3380,6 +3530,9 @@ function initPanels(){
   $('helpScrim').onclick=closeHelp;
   $('btnSettings').onclick=function(){ $('dlgSettings').showModal(); loadPeriodList(); };
   $('btnCloseSettings').onclick=function(){ $('dlgSettings').close(); };
+  $('btnInbox').onclick=function(){ $('dlgSettings').close(); openInbox(); };
+  $('btnCloseInbox').onclick=function(){ $('dlgInbox').close(); };
+  $('btnIbCopy').onclick=ibCopyText;
   $('btnScan').onclick=function(){
     logS('Scanning Gmail…');
     google.script.run

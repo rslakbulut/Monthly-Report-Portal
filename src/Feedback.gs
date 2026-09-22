@@ -738,3 +738,118 @@ function checkFeedbackSheet() {
   }
   log('=== bitti ===');
 }
+
+/* ===================== GERI BILDIRIM GELEN KUTUSU =====================
+ * Geri bildirimleri okumak icin tek yol spreadsheet'i acmak, ekran
+ * goruntusunu gormek icin de Drive baglantisini ayri bir sekmede acmakti.
+ * Bu blok ayni veriyi panonun ICINDE, ekran goruntusu satirin yanindayken
+ * gosteriyor: sahibi "bunu devreye alayim mi" kararini tek ekranda verebilsin.
+ *
+ * Yalniz OKUR; tek yazdigi sey yonetici karari (Status sutunu).
+ */
+
+/** Drive baglantisindan dosya kimligini cikarir. */
+function driveIdFromLink_(link) {
+  var s = String(link || '');
+  var m = /\/d\/([A-Za-z0-9_\-]+)/.exec(s) || /[?&]id=([A-Za-z0-9_\-]+)/.exec(s);
+  return m ? m[1] : '';
+}
+
+/**
+ * Tum geri bildirimleri dondurur (en yenisi ustte).
+ * Ekran goruntusunun kendisi burada TASINMAZ -- yalnizca kimligi. Goruntu
+ * ayri ayri, gorundugu anda istenir (feedbackShot); 6 MB'lik goruntuleri
+ * tek yanitta tasimak listeyi kilitlerdi.
+ */
+function listFeedback() {
+  var deny = requireAdmin_(); if (deny) return deny;
+  var t, m;
+  try { t = feedbackSheet_(); m = t.head.map; }
+  catch (e) { return { error: 'Feedback sheet could not be opened: ' + e.message }; }
+
+  var cId   = pickCol_(m, ['FEEDBACKID', 'ID']);
+  var cMail = pickCol_(m, ['EMAIL', 'USER', 'KULLANICI']);
+  var cType = pickCol_(m, ['FEEDBACKTYPE', 'TYPE', 'TUR']);
+  var cPrio = pickCol_(m, ['PRIORITY', 'ONCELIK']);
+  var cMsg  = pickCol_(m, ['MESSAGE', 'MESAJ', 'FEEDBACK']);
+  var cDate = pickCol_(m, ['CREATEDAT', 'DATE', 'TARIH']);
+  var cShot = pickCol_(m, ['SCREENSHOT', 'IMAGE', 'EKRANGORUNTUSU', 'GORSEL']);
+  var cStat = pickCol_(m, ['STATUS', 'DURUM']);
+  var cCom  = pickCol_(m, ['COMMENTS', 'COMMENT', 'YORUM']);
+  if (cMsg === -1) return { error: 'The feedback sheet has no "Message" column.' };
+
+  var last = t.sheet.getLastRow();
+  if (last < 2) return { ok: true, items: [], statusCol: cStat >= 0 };
+  var vals = t.sheet.getRange(2, 1, last - 1, Math.max(1, t.head.lastCol)).getValues();
+  var tz = Session.getScriptTimeZone();
+  var items = [];
+  for (var i = 0; i < vals.length; i++) {
+    var v = vals[i];
+    var msg = String(v[cMsg] == null ? '' : v[cMsg]).trim();
+    if (!msg) continue;                       /* bos satir: atla */
+    var d = (cDate >= 0) ? v[cDate] : '';
+    items.push({
+      row: i + 2,
+      id: cId >= 0 ? String(v[cId] || '') : '',
+      email: cMail >= 0 ? String(v[cMail] || '') : '',
+      name: cMail >= 0 ? displayNameFromEmail_(String(v[cMail] || '')) : '',
+      type: cType >= 0 ? String(v[cType] || '') : '',
+      priority: cPrio >= 0 ? String(v[cPrio] || '') : '',
+      message: msg,
+      date: (d instanceof Date) ? Utilities.formatDate(d, tz, 'yyyy-MM-dd HH:mm') : String(d || ''),
+      shotId: cShot >= 0 ? driveIdFromLink_(v[cShot]) : '',
+      shotLink: cShot >= 0 ? String(v[cShot] || '') : '',
+      status: cStat >= 0 ? String(v[cStat] || '') : '',
+      comments: cCom >= 0 ? String(v[cCom] || '') : ''
+    });
+  }
+  items.reverse();                            /* en yenisi ustte */
+  return { ok: true, items: items, statusCol: cStat >= 0 };
+}
+
+/**
+ * Bir ekran goruntusunu data URL olarak dondurur.
+ * Drive baglantisi tarayicida dogrudan <img> icinde calismaz (oturum/izin);
+ * goruntuyu betigin kendi yetkisiyle okuyup gomuyoruz. Betik yalnizca KENDI
+ * olusturdugu dosyalari gorebiliyor (drive.file), yani kapsam geri bildirim
+ * ekran goruntuleriyle sinirli.
+ */
+function feedbackShot(fileId) {
+  var deny = requireAdmin_(); if (deny) return deny;
+  var id = String(fileId || '').replace(/[^A-Za-z0-9_\-]/g, '');
+  if (!id) return { error: 'No screenshot.' };
+  try {
+    var meta = driveGetMeta_(id);
+    var res = driveApi_(DRIVE_V3 + '/' + encodeURIComponent(id) + '?alt=media',
+                        { method: 'get' });
+    var blob = res.getBlob();
+    var mime = blob.getContentType() || 'image/png';
+    return { ok: true, name: (meta && meta.name) || 'screenshot',
+             dataUrl: 'data:' + mime + ';base64,' + Utilities.base64Encode(blob.getBytes()) };
+  } catch (e) {
+    return { error: 'Screenshot could not be read: ' + e.message };
+  }
+}
+
+var FEEDBACK_STATUSES = ['', 'Reviewing', 'Planned', 'Done', 'Rejected'];
+
+/** Yonetici kararini Status sutununa yazar. Baska hicbir sutuna dokunmaz. */
+function setFeedbackStatus(row, status) {
+  var deny = requireAdmin_(); if (deny) return deny;
+  var st = String(status || '');
+  if (FEEDBACK_STATUSES.indexOf(st) === -1) return { error: 'Unknown status.' };
+  var r = parseInt(row, 10);
+  if (!(r > 1)) return { error: 'Bad row.' };
+  try {
+    var t = feedbackSheet_();
+    var cStat = pickCol_(t.head.map, ['STATUS', 'DURUM']);
+    if (cStat < 0) {
+      cStat = ensureColumn_(t.sheet, t.head, ['STATUS', 'DURUM'], 'Status');
+    }
+    if (r > t.sheet.getLastRow()) return { error: 'That row no longer exists.' };
+    t.sheet.getRange(r, cStat + 1).setValue(st);
+    return { ok: true, row: r, status: st };
+  } catch (e) {
+    return { error: 'Could not write: ' + e.message };
+  }
+}
