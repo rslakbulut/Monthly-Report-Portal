@@ -20,8 +20,28 @@ var RO_LABELS = {
   PTE: 'Power Thermal Europe'
 };
 
-/** Dashboard'da RO kartlarinin gosterim sirasi. */
-var RO_ORDER = ['PAS', 'PDA', 'PDC', 'PDE', 'PTA', 'PTC', 'PTE'];
+/**
+ * Dashboard'da RO'larin gosterim sirasi.
+ *
+ * ALFABETIK DEGIL, iki gerekceyle:
+ *
+ * 1) RENK ERISILEBILIRLIGI (olculdu, dataviz validator). Kategorik paletin
+ *    guvenligi HUE SIRASINDAN gelir: yan yana dusen iki renk ayrilabilir
+ *    olmali. Alfabetik sirada PDE (mavi) ile PTA (mor) komsu oluyordu ve
+ *    gece modunda bu cift protanopide DeltaE 1.9 -- yani kirmizi-yesil renk
+ *    korlugu olan bir okuyucu icin AYNI RENK. Normal gormede de 9.8
+ *    (esik 15). Bu sira ile iki modda da butun kontroller geciyor:
+ *      acik: en kotu komsu CVD DeltaE 9.1 / normal 19.6
+ *      gece: en kotu komsu CVD DeltaE 8.4 / normal 19.3
+ *    Hicbir RO'nun rengi DEGISMEDI -- yalniz sira degisti; renk kimligi
+ *    (PDE mavi, PAS turuncu ...) her yerde korunuyor.
+ *
+ * 2) IS MANTIGI. Bu sira ayni zamanda is kollarini grupluyor:
+ *    once POWER DRIVE (PDE, PAS, PDA, PDC), sonra POWER THERMAL
+ *    (PTC, PTE, PTA) -- ekrandaki is kolu grafigiyle ayni kirilim.
+ *    (PAS = Power Asia, Power Drive grubunda; kullanici teyidi.)
+ */
+var RO_ORDER = ['PDE', 'PAS', 'PDA', 'PDC', 'PTC', 'PTE', 'PTA'];
 
 var SITE_REGISTRY = [
   { ro: 'PAS', site: 'Bekasi 2',                  key: 'BEKASI' },

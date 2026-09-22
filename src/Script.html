@@ -255,6 +255,7 @@ var T={
   gapNote:'Colour is relative to each cell’s own B1 YTD',
   execB1:'B1',execB1Ytd:'B1 YTD',execYtdReal:'YTD Real',behindPlan:'Behind Budget YTD',
   mxTypology:'Project typology',mxEyebrow:'Management view',
+  mxUnclassified:'No project type',
   mxTitle:'RO × project typology',
   mxSub:'P1 · P10 · TTM × NEW / REMAN — B1, B1 YTD and YTD Real side by side',
   hcBudget:'budget',sample:'sample',
@@ -293,6 +294,7 @@ var T={
   gapNote:'Renk, her hücrenin KENDİ B1 YTD’sine göre',
   execB1:'B1',execB1Ytd:'B1 YTD',execYtdReal:'YTD Real',behindPlan:'B1 YTD’nin gerisinde',
   mxTypology:'Proje tipolojisi',mxEyebrow:'Yönetim görünümü',
+  mxUnclassified:'Tipi girilmemiş',
   mxTitle:'RO × proje tipolojisi',
   mxSub:'P1 · P10 · TTM × NEW / REMAN — B1, B1 YTD ve YTD Real yan yana',
   hcBudget:'bütçe',sample:'örnek',
@@ -929,7 +931,13 @@ function siteMetrics(site){
     planTurnoverM:r.planYtdTurnover/1000,
     portfolioCount:r.count, portfolioTurnoverM:r.turnover/1000,
     delta:(b.ytdCount==null)?null:(r.ytdCount-b.ytdCount),
-    deltaTurnoverM:(r.planYtdTurnover?(r.ytdTurnover-r.planYtdTurnover)/1000:null)
+    /* DENETIM BULGUSU: eskiden plan 0 ise null donuyordu, yani "plani 0
+       olan ama launch etmis" site ciro gorunumunde "n/a" goruluyordu --
+       ayni site adet gorunumunde gercek sayiyi gosteriyordu (47 site'in
+       7'sinde olculdu). 0 bir BILINMEYEN degil, bilinen bir degerdir;
+       fark her zaman hesaplanir. Site'in hic verisi yoksa (bilinmeyen)
+       adet tarafiyla AYNI kapi kullanilir. */
+    deltaTurnoverM:(b.ytdCount==null)?null:(r.ytdTurnover-r.planYtdTurnover)/1000
   };
 }
 function sumMetrics(list){
@@ -1125,7 +1133,9 @@ function kpiRow(a){
       sub:'<b>'+nf(a.realCount)+'</b> '+esc(t('of'))+' '+nf(a.budgetYTD)+' '+esc(t('projects')),
       meter:pctPlan||0,
       footL:'Budget YTD '+money(a.planTurnoverM),
-      footR:deltaPill(a.delta)
+      /* Kartin basligi PARA (61.2 M€); cip ADET. Birimsizken "-675" para
+         gibi okunuyordu -- RO satirlarinda oldugu gibi birim yaziliyor. */
+      footR:deltaPill(a.delta,t('projects'))
     })+
     kpiCard({
       hue:'var(--ro-PTA)', icon:ICON_PLANT, label:'Sites reported', gloss:'Sites reported',
@@ -1768,6 +1778,20 @@ function execBarChart(mode,unit,half,withSwitch){
   var key=BC_SERIES.map(function(sr){
     return '<span class="bc-kk"><i style="background:'+sr[2]+'"></i>'+esc(t(sr[1]))+'</span>';
   }).join('');
+  /* DENETIM BULGUSU: adet gorunumunde her cubuk P1/P10/TTM olarak
+     yigiliyor ve bunu YALNIZ ton farki anlatiyordu -- anahtari yoktu,
+     yani okuyucu hangi dilimin ne oldugunu ancak uzerine gelerek
+     ogrenebiliyordu. Yigin varsa ton anahtari da ciziliyor; renk tek
+     basina bilgi tasimiyor. Serinin kendi rengi ornek olarak kullaniliyor
+     (YTD real), cunku tonlar seri renginin uzerinde uygulaniyor. */
+  if(!money){
+    var tref=BC_SERIES[2][2];
+    key+='<span class="bc-ksep" aria-hidden="true"></span>'+
+      EXEC_TYPES.map(function(tp){
+        return '<span class="bc-kk"><i style="background:'+tref+
+          ';opacity:'+(1-BC_TYPE_TONE[tp]).toFixed(2)+'"></i>'+esc(tp)+'</span>';
+      }).join('');
+  }
 
   var body='<div class="bc-body">'+
     '<div class="bc-wrap"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" '+
@@ -1869,8 +1893,10 @@ function execViewSeg(){
    ikinci kez daraltmak slaytla ayni sey olmazdi (grafik tarafinda da ayni
    kural gecerli). */
 var MX_COLS=[['b1','execB1'],['ytd','execB1Ytd'],['real','execYtdReal']];
-function mxCell(c,money){
-  var late=(c.real<c.ytd);
+/* plain=true: performans satiri degil, mutabakat satiri -- kirmizi
+   "plandan geride" isareti orada anlamsiz olurdu. */
+function mxCell(c,money,plain){
+  var late=!plain&&(c.real<c.ytd);
   var f=function(v){ return money?nf(v,2):nf(Math.round(v)); };
   return '<td class="mx-v">'+f(c.b1)+'</td>'+
     '<td class="mx-v mx-dim">'+f(c.ytd)+'</td>'+
@@ -1881,7 +1907,7 @@ function mxCell(c,money){
    (P1/P10/OI), ikinci sutun alt kirilim (NEW/REMAN). Ilk surumde REMAN
    satirlari tek hucreyle basliyordu ve butun satir bir sutun KAYIYORDU --
    B1 degeri B1 YTD sutununda gorunuyordu. */
-function mxRow(label,sub,lists,fn,money,cls){
+function mxRow(label,sub,lists,fn,money,cls,plain){
   var html='<tr'+(cls?' class="'+cls+'"':'')+'>';
   if(sub==null){
     html+='<th class="mx-rh" scope="row" colspan="2">'+esc(label||'')+'</th>';
@@ -1889,7 +1915,7 @@ function mxRow(label,sub,lists,fn,money,cls){
     html+='<th class="mx-rh" scope="row">'+esc(label||'')+'</th>'+
           '<th class="mx-rh2" scope="row">'+esc(sub)+'</th>';
   }
-  lists.forEach(function(L){ html+=mxCell(fn(L.list),money); });
+  lists.forEach(function(L){ html+=mxCell(fn(L.list),money,plain); });
   return html+'</tr>';
 }
 function execMatrix(){
@@ -1918,6 +1944,32 @@ function execMatrix(){
     }, false, i%2===0?'mx-grp':'');
   });
   body+=mxRow('TTM',null,cols,function(list){ return execCountCell(list,'TTM','ALL'); },false,'mx-grp');
+  /* DENETIM BULGUSU — tablo kendi icinde toplanmiyordu.
+     Bolum 4'un TOTAL satiri, P1 + P10 + TTM satirlarinin toplamina esit
+     degil (olculdu: B1 3.813 vs 3.799, B1 YTD 1.886 vs 1.831; YTD Real
+     tam tutuyor). Fark, sayfada TOPLAM'a girmis ama bir proje tipine
+     yazilmamis projelerdir -- kaynaktaki gercek bir tutarsizlik.
+     Sessizce yutmuyoruz (okuyucu satirlari toplayip tutmayinca tabloya
+     guvenini kaybeder) ve TOPLAM'i da degistirmiyoruz (KPI kartlari ayni
+     TOPLAM'i kullaniyor, degistirirsek ekran kendi kendiyle celisirdi).
+     Cozum: farki kendi satirinda gostermek. Sifirsa satir cizilmez. */
+  var unRows=[], anyUn=false;
+  cols.forEach(function(L){
+    var tot=execCountCell(L.list,'TOTAL','ALL'), sum=execZero();
+    [['P1','NEW'],['P1','REMAN'],['P10','NEW'],['P10','REMAN']].forEach(function(x){
+      var c=execCountCell(L.list,x[0],x[1]); sum.b1+=c.b1; sum.ytd+=c.ytd; sum.real+=c.real;
+    });
+    var tt=execCountCell(L.list,'TTM','ALL');
+    sum.b1+=tt.b1; sum.ytd+=tt.ytd; sum.real+=tt.real;
+    var d={b1:tot.b1-sum.b1, ytd:tot.ytd-sum.ytd, real:tot.real-sum.real};
+    if(d.b1||d.ytd||d.real) anyUn=true;
+    unRows.push(d);
+  });
+  if(anyUn){
+    var ui=0;
+    body+=mxRow(t('mxUnclassified'),null,cols,function(){ return unRows[ui++]; },
+                false,'mx-grp mx-un',true);
+  }
   body+=mxRow(t('execTotal'),null,cols,function(list){
     return execCountCell(list,'TOTAL','ALL'); },false,'mx-sum');
 
@@ -1981,9 +2033,16 @@ function gapNum(v,money){
   var sign=(a===0)?'±':(v>0?'+':'−');
   return sign+(money?nf(a,1):nf(a));
 }
-function gapCell(c,money,label){
+/* Ciro tarafinda B1 (yillik Budget Year) YALNIZ TOPLAM satirinda gecerli:
+   Bolum 3 ORDER INTAKE yalniz TOTAL/VS/OES veriyor, P1/P10/TTM kirilimi yok.
+   Tip satirlarinda o alan anlamsiz cikiyor (denetimde olculdu: tipolojinin
+   B1 toplami 336.98, gercek TOPLAM 115.97 -- ucu de ayni degeri tasidigi
+   icin uc katina cikiyor). Ipucunda o yuzden "—" yaziyor; gosterilen
+   hesaplar zaten B1 kullanmiyor (sapma = YTD Real - B1 YTD). */
+function gapCell(c,money,label,noB1){
   var gap=c.real-c.ytd, tone=gapTone(c);
-  var tip=label+' — B1 '+(money?nf(c.b1,1):nf(Math.round(c.b1)))+
+  var b1=noB1?'—':(money?nf(c.b1,1):nf(Math.round(c.b1)));
+  var tip=label+' — B1 '+b1+
     ' · B1 YTD '+(money?nf(c.ytd,1):nf(Math.round(c.ytd)))+
     ' · YTD Real '+(money?nf(c.real,1):nf(Math.round(c.real)));
   return '<div class="gp-c gp-t'+tone+'" title="'+esc(tip)+'">'+esc(gapNum(gap,money))+'</div>';
@@ -2017,7 +2076,8 @@ function gapBlock(title,unit,rows,cols,money){
     cols.forEach(function(c){
       var cell=r.fn(c.list);
       all.push(cell);
-      html+=gapCell(cell,money,c.label+' · '+((r.g?r.g+' ':'')+(r.s||'')).trim());
+      html+=gapCell(cell,money,c.label+' · '+((r.g?r.g+' ':'')+(r.s||'')).trim(),
+                    money&&!r.total);
     });
     var sum={b1:0,ytd:0,real:0};
     all.forEach(function(x){ sum.b1+=x.b1; sum.ytd+=x.ytd; sum.real+=x.real; });
@@ -2053,7 +2113,7 @@ function execGapMatrix(){
     {g:'P10',s:'NEW',   fn:cell('P10','NEW')},
     {g:'',   s:'REMAN', fn:cell('P10','REMAN')},
     {g:'TTM',s:'',      fn:cell('TTM','ALL')},
-    {g:t('execTotal'),s:'', fn:cell('TOTAL','ALL')}
+    {g:t('execTotal'),s:'', fn:cell('TOTAL','ALL'), total:true}
   ];
 
   var scale='<div class="gp-legend"><span>'+esc(t('gapBehind'))+'</span>'+
