@@ -351,6 +351,58 @@ function feedbackFolderId_() {
  * @param {{type:string, priority:string, message:string,
  *          image:string=, imageName:string=}} payload
  */
+/* ---------- geri bildirim e-posta bildirimi ----------
+ * Bu HIC YOKTU: geri bildirim yalniz spreadsheet'e yaziliyordu, kimseye
+ * haber gitmiyordu. Sayfayi acip bakmayan bir sahip geri bildirimi hic
+ * gormuyordu.
+ *
+ * Alici: RO_DASH_ADMIN_EMAILS ayarlanmissa o liste, yoksa web app'i deploy
+ * eden hesap (yani "varsayilan olarak yalniz ben" -- yetki mantigiyla ayni).
+ * Posta gonderimi SAVE'i asla bozmaz: try/catch icinde ve sonucu ayri bir
+ * alanda donuyor, kullaniciya "kaydedildi ama e-posta gitmedi" diyebilelim.
+ */
+function feedbackRecipients_() {
+  var list = adminEmails_();
+  if (list && list.length) return list;
+  var me = '';
+  try { me = Session.getEffectiveUser().getEmail() || ''; } catch (e) {}
+  return me ? [me] : [];
+}
+
+function notifyFeedback_(info) {
+  var to = feedbackRecipients_();
+  if (!to.length) return { sent: false, reason: 'no recipient' };
+  var who = (info.user && info.user.name ? info.user.name + ' <' + info.user.email + '>'
+                                         : (info.user && info.user.email) || 'unknown');
+  var ok = !info.error;
+  var subject = (ok ? '[RO Dashboard] ' : '[RO Dashboard — NOT SAVED] ') +
+                info.type + ' · ' + info.priority + ' — ' + who;
+  var lines = [
+    'Type      : ' + info.type,
+    'Priority  : ' + info.priority,
+    'From      : ' + who,
+    'When      : ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(),
+                                          'yyyy-MM-dd HH:mm'),
+    '',
+    info.message,
+    ''
+  ];
+  if (info.link) lines.push('Screenshot: ' + info.link);
+  if (ok) {
+    lines.push('Sheet     : row ' + info.row + ' — ' +
+               'https://docs.google.com/spreadsheets/d/' + FEEDBACK_SHEET_ID + '/edit');
+  } else {
+    lines.push('!! The sheet write FAILED, so this message exists only in this e-mail:');
+    lines.push('   ' + info.error);
+  }
+  try {
+    MailApp.sendEmail({ to: to.join(','), subject: subject, body: lines.join('\n') });
+    return { sent: true, to: to };
+  } catch (e) {
+    return { sent: false, reason: e.message };
+  }
+}
+
 function submitFeedback(payload) {
   var p = payload || {};
   var type = String(p.type || '').trim();
@@ -405,18 +457,72 @@ function submitFeedback(payload) {
     row[cMsg] = message + ((link && cShot < 0) ? '\n\nScreenshot: ' + link : '');
 
     sheet.appendRow(row);
+    var rowNo = sheet.getLastRow();
+    var mail = notifyFeedback_({ type: type, priority: priority, message: message,
+                                 user: user, link: link, row: rowNo });
     return {
       ok: true,
-      row: sheet.getLastRow(),
+      row: rowNo,
       link: link,
+      mailed: mail.sent,
       warning: target.createdTab
         ? 'The "' + FEEDBACK_TAB_NAME + '" tab did not exist and was created.'
-        : null
+        : (mail.sent ? null : 'Saved, but the notification e-mail could not be sent: ' +
+                              mail.reason)
     };
   } catch (e) {
-    return { error: 'Could not save: ' + e.message };
+    /* Sayfaya yazilamadiysa geri bildirim KAYBOLMASIN: icerik e-postayla
+       yine de gider ve konu satirinda "NOT SAVED" yazar. */
+    var rescue = notifyFeedback_({ type: type, priority: priority, message: message,
+                                   user: user, link: link, error: e.message });
+    return { error: 'Could not save: ' + e.message +
+                    (rescue.sent ? ' — the content was e-mailed to the dashboard owner instead.'
+                                 : '') };
   } finally {
     try { lock.releaseLock(); } catch (e2) {}
+  }
+}
+
+/**
+ * Ayarlar ekranindaki "Feedback check" dugmesi.
+ * Ayni teshisi Apps Script editorune girmeden, panelin log kutusunda verir:
+ * hedef dosya/sekme, sutun eslesmesi, kayitli satir sayisi, son kayit ve
+ * bildirim e-postasinin kime gidecegi. Sorun burada gorunur hale gelir.
+ */
+function uiCheckFeedback() {
+  var deny = requireAdmin_(); if (deny) return deny;
+  var out = [];
+  var to = feedbackRecipients_();
+  out.push('Notification e-mail -> ' + (to.length ? to.join(', ') : '(NO RECIPIENT — set RO_DASH_ADMIN_EMAILS)'));
+  try {
+    var t = feedbackSheet_();
+    var m = t.head.map;
+    var cMsg = pickCol_(m, ['MESSAGE', 'MESAJ', 'FEEDBACK']);
+    out.push('File  : ' + t.sheet.getParent().getName());
+    out.push('Tab   : ' + t.sheet.getName() + (t.createdTab ? '  (JUST CREATED — the old tab was not found!)' : ''));
+    out.push('Header: ' + t.head.row.join(' | '));
+    out.push('Column: Email=' + pickCol_(m, ['EMAIL', 'USER', 'KULLANICI']) +
+             '  Type=' + pickCol_(m, ['FEEDBACKTYPE', 'TYPE', 'TUR']) +
+             '  Priority=' + pickCol_(m, ['PRIORITY', 'ONCELIK']) +
+             '  Message=' + cMsg +
+             '  CreatedAt=' + pickCol_(m, ['CREATEDAT', 'DATE', 'TARIH']) +
+             '  Screenshot=' + pickCol_(m, ['SCREENSHOT', 'IMAGE', 'EKRANGORUNTUSU', 'GORSEL']));
+    if (cMsg === -1) out.push('!! No Message column -> every submission is REJECTED.');
+    var last = t.sheet.getLastRow();
+    out.push('Rows  : ' + last + ' (header included)');
+    if (last > 1 && cMsg >= 0) {
+      var vals = t.sheet.getRange(last, 1, 1, t.head.lastCol).getValues()[0];
+      var cDate = pickCol_(m, ['CREATEDAT', 'DATE', 'TARIH']);
+      out.push('Last  : ' + (cDate >= 0 ? String(vals[cDate]) + ' — ' : '') +
+               String(vals[cMsg]).slice(0, 120));
+    } else if (last <= 1) {
+      out.push('Last  : (no feedback recorded yet)');
+    }
+    return { ok: true, message: out.join('\n') };
+  } catch (e) {
+    out.push('ERROR : ' + e.message);
+    out.push('!! The deploying account needs EDIT access to that spreadsheet.');
+    return { ok: true, message: out.join('\n') };
   }
 }
 

@@ -3429,6 +3429,19 @@ function initPanels(){
       .withFailureHandler(function(e){ var m=e&&e.message||e; logS('Error: '+m); showToast('Error: '+m,'error'); })
       .uiEnsureSnapshots();
   };
+  /* Geri bildirim boru hattini panelde gorunur kilar: hedef sekme, sutun
+     eslesmesi, kayitli satir sayisi, son kayit ve bildirim e-postasinin
+     alicisi. Once bunlarin hicbiri gorunmuyordu. */
+  $('btnCheckFb').onclick=function(){
+    logS('Checking feedback pipeline…');
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); return; }
+        logS(r.message);
+      })
+      .withFailureHandler(function(e){ logS('Server error: '+((e&&e.message)||e)); })
+      .uiCheckFeedback();
+  };
   $('btnAdd').onclick=function(){
     logS('Adding…');
     google.script.run
