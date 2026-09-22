@@ -3367,6 +3367,178 @@ function logS(m){
    yolu Apps Script editoru idi. Liste hangi ayin hangi dosyadan geldigini
    ve KAC SITE TANINDIGINI gosteriyor -- yanlis dosya oradan hemen belli
    oluyor (48 yerine 1). */
+/* ================== PARSER DENETIMI ==================
+ * "Sayilar yanlis geliyor" tespitini "su hucre yanlis okunuyor" tespitine
+ * cevirmek icin. Her ozet deger, okundugu HUCRE ADRESI ve ham icerigiyle;
+ * gerceklesen toplamlar ise toplami olusturan TUM proje satirlariyla
+ * gosteriliyor -- hangi satirin neden sayilip sayilmadigi gorunsun.
+ */
+var AUD={sites:[],i:0,last:null};
+
+/* Denetim EKRANDA ACIK olan donemi okur: baska bir donemi denetlemek,
+   kullanicinin bakmadigi sayilari tartismak olurdu. */
+function audPeriodKey(){
+  return (DATA&&DATA.period&&DATA.period.key)||
+         (BOOT&&BOOT.periods&&BOOT.periods[0]&&BOOT.periods[0].key)||'';
+}
+
+function audLog(m){ var el=$('auditLog'); el.textContent=m||''; el.hidden=!m; }
+
+function audNum(v,unit){
+  if(v==null) return '<span class="aud-na">n/a</span>';
+  return (unit==='M€')?(m2(v)+' <i>M€</i>'):(nf(v)+' <i>'+esc(t('projects'))+'</i>');
+}
+
+function audCellsHtml(cells){
+  if(!cells||!cells.length) return '<span class="aud-na">computed, not a single cell</span>';
+  return cells.map(function(c){
+    return '<span class="aud-cell" title="'+esc(c.ctx)+'"><b>'+esc(c.a1)+'</b> '+
+           esc(c.raw===''?'(empty)':c.raw)+(c.note?' <em>'+esc(c.note)+'</em>':'')+'</span>';
+  }).join('');
+}
+
+function audRender(r){
+  if(!r||r.error){ $('audBody').innerHTML='<div class="ib-empty">'+esc((r&&r.error)||'unknown')+'</div>'; return; }
+  AUD.last=r;
+  var s=r.site;
+  var h='<div class="aud-head">'+
+    '<b>'+esc(s.ro)+' · '+esc(s.site)+'</b>'+
+    '<span>sheet <code>'+esc(s.sheet)+'</code> · month '+esc(s.month)+'/'+esc(s.year)+
+    ' · status '+esc(s.status)+'</span>'+
+    '<span>'+esc(s.period)+'</span>'+
+  '</div>';
+
+  /* Panodaki degerler FILTRESIZ okunuyor (TOTAL, NEW+REMAN). Filtre acikken
+     ekrandaki sayi farkli olur; bu not olmadan "tutmuyor" sanilir. */
+  h+='<p class="aud-note">Values below are unfiltered: row <b>TOTAL</b>, '+
+     '<b>NEW + REMAN</b> — the same thing the dashboard shows when no filter is set.</p>';
+
+  h+='<table class="aud-t"><thead><tr><th>Value</th><th>Number</th>'+
+     '<th>Where it comes from</th><th>Cells read</th></tr></thead><tbody>';
+  (r.summary||[]).forEach(function(x){
+    h+='<tr><td>'+esc(x.label)+'</td>'+
+       '<td class="aud-v">'+audNum(x.value,x.unit)+'</td>'+
+       '<td class="aud-src">'+esc(x.source)+'</td>'+
+       '<td>'+audCellsHtml(x.cells)+'</td></tr>';
+  });
+  h+='</tbody></table>';
+
+  var c=r.cross||{};
+  var diff=(c.sheetReal==null)?null:(c.parsedReal-c.sheetReal);
+  h+='<div class="aud-cross'+(diff?' bad':'')+'">'+
+     '<b>Cross-check</b> — the sheet\'s own <i>Real Launches</i> column says '+
+     (c.sheetReal==null?'n/a':nf(c.sheetReal))+', counted from the detail blocks: '+
+     nf(c.parsedReal)+
+     (diff?' → <b>difference '+(diff>0?'+':'')+nf(diff)+'</b>':' → match')+
+     '<div>'+audCellsHtml(c.cells)+'</div></div>';
+
+  h+='<table class="aud-t"><thead><tr><th>Detail block</th><th>Rows</th>'+
+     '<th>Projects</th><th>Turnover k€</th><th>Real YTD</th><th>Real k€</th>'+
+     '<th>Plan YTD k€</th></tr></thead><tbody>';
+  (r.blocks||[]).forEach(function(b){
+    h+='<tr><td>'+esc(b.block)+'</td><td>'+nf(b.rows)+'</td><td>'+nf(b.count)+'</td>'+
+       '<td>'+nf(Math.round(b.turnover))+'</td><td>'+nf(b.ytdCount)+'</td>'+
+       '<td>'+nf(Math.round(b.ytdTurnover))+'</td>'+
+       '<td>'+nf(Math.round(b.planYtdTurnover))+'</td></tr>';
+  });
+  h+='</tbody></table>';
+
+  h+='<div class="aud-sub">Every project row the parser read'+
+     (r.rowsCut?' (first '+nf(r.rows.length)+' of '+nf(r.rowsTotal)+')':'')+
+     ' — <b>Real YTD</b> marks the rows counted into Real launches.</div>';
+  h+='<div class="aud-scroll"><table class="aud-t rows"><thead><tr>'+
+     '<th>Row</th><th>Block</th><th>Project</th><th>Type</th>'+
+     '<th>Plan date</th><th>Real date</th><th>k€</th><th>Real YTD</th><th>Plan YTD</th>'+
+     '</tr></thead><tbody>';
+  (r.rows||[]).forEach(function(x){
+    h+='<tr'+(x.inRealYtd?' class="in"':'')+'>'+
+       '<td>'+esc(x.row)+'</td><td>'+esc(x.block)+'</td>'+
+       '<td>'+esc(x.model||'')+'</td><td>'+esc(x.type||'')+'</td>'+
+       '<td>'+esc(x.planRaw||'')+(x.planMonth?' <i>→'+x.planMonth+'</i>':'')+'</td>'+
+       '<td>'+esc(x.realRaw||'')+(x.realMonth?' <i>→'+x.realMonth+'</i>':'')+'</td>'+
+       '<td>'+nf(Math.round(x.turnover))+'</td>'+
+       '<td>'+(x.inRealYtd?'✓':'')+'</td><td>'+(x.inPlanYtd?'✓':'')+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+
+  if((r.warnings||[]).length){
+    h+='<div class="aud-warn"><b>Parser warnings</b><ul>'+
+       r.warnings.map(function(w){ return '<li>'+esc(w)+'</li>'; }).join('')+'</ul></div>';
+  }
+  $('audBody').innerHTML=h;
+}
+
+function audLoad(){
+  var it=AUD.sites[AUD.i]; if(!it) return;
+  $('selAudSite').value=it.key;
+  $('audBody').innerHTML='<div class="ib-empty">Reading '+esc(it.site)+'…</div>';
+  audLog('');
+  google.script.run
+    .withSuccessHandler(audRender)
+    .withFailureHandler(function(e){
+      $('audBody').innerHTML='<div class="ib-empty">'+esc((e&&e.message)||'error')+'</div>'; })
+    .auditSite(audPeriodKey(), it.key);
+}
+
+function audStep(d){
+  AUD.i=Math.max(0,Math.min(AUD.sites.length-1,AUD.i+d));
+  audLoad();
+}
+
+/* Tabloyu duz metin olarak: spreadsheet'in yanina koyup satir satir
+   karsilastirmak icin. */
+function audText(){
+  var r=AUD.last; if(!r) return '';
+  var L=[];
+  L.push(r.site.ro+' · '+r.site.site+'  (sheet '+r.site.sheet+', '+r.site.month+'/'+r.site.year+')');
+  L.push(r.site.period);
+  L.push('unfiltered: row TOTAL, NEW + REMAN');
+  L.push('');
+  (r.summary||[]).forEach(function(x){
+    var v=(x.value==null)?'n/a':(x.unit==='M€'?m2(x.value)+' M€':nf(x.value)+' projects');
+    L.push(x.label+': '+v);
+    L.push('   from: '+x.source);
+    (x.cells||[]).forEach(function(c){ L.push('   cell '+c.a1+' = "'+c.raw+'"'+(c.note?' ('+c.note+')':'')); });
+  });
+  var c=r.cross||{};
+  L.push('');
+  L.push('cross-check — sheet Real Launches: '+(c.sheetReal==null?'n/a':c.sheetReal)+
+         ' / counted from detail: '+c.parsedReal);
+  L.push('');
+  L.push('block                 rows  proj   k€    realYTD  real k€  planYTD k€');
+  (r.blocks||[]).forEach(function(b){
+    L.push(pad(b.block,21)+pad(b.rows,6)+pad(b.count,6)+pad(Math.round(b.turnover),7)+
+           pad(b.ytdCount,8)+pad(Math.round(b.ytdTurnover),9)+Math.round(b.planYtdTurnover));
+  });
+  L.push('');
+  L.push('row  block                 project                        type  plan      real      k€     realYTD');
+  (r.rows||[]).forEach(function(x){
+    L.push(pad(x.row,5)+pad(x.block,22)+pad(String(x.model||'').slice(0,29),31)+
+           pad(x.type||'',6)+pad(x.planRaw||'',10)+pad(x.realRaw||'',10)+
+           pad(Math.round(x.turnover),7)+(x.inRealYtd?'YES':''));
+  });
+  if((r.warnings||[]).length){ L.push(''); L.push('warnings:'); r.warnings.forEach(function(w){ L.push(' - '+w); }); }
+  return L.join('\n');
+  function pad(v,n){ var s=String(v==null?'':v); while(s.length<n) s+=' '; return s; }
+}
+
+function openAudit(){
+  $('dlgAudit').showModal();
+  $('audBody').innerHTML='<div class="ib-empty">Loading site list…</div>';
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||r.error){ $('audBody').innerHTML='<div class="ib-empty">'+esc((r&&r.error)||'unknown')+'</div>'; return; }
+      AUD.sites=r.sites||[]; AUD.i=0;
+      $('selAudSite').innerHTML=AUD.sites.map(function(x,i){
+        return '<option value="'+esc(x.key)+'">'+esc(x.ro+' · '+x.site)+'</option>'; }).join('');
+      if(!AUD.sites.length){ $('audBody').innerHTML='<div class="ib-empty">No site sheet in this period.</div>'; return; }
+      audLoad();
+    })
+    .withFailureHandler(function(e){
+      $('audBody').innerHTML='<div class="ib-empty">'+esc((e&&e.message)||'error')+'</div>'; })
+    .auditSiteList(audPeriodKey());
+}
+
 /* ---- Ayarlar: herkes GORUR, yalniz yonetici DEGISTIRIR ----
  * Once bu panel yoneticiden baskasina hic gosterilmiyordu; "hangi ay hangi
  * dosyadan geliyor, bu donem kac site tanidi" bilgisi kimse tarafindan
@@ -3729,6 +3901,22 @@ function initPanels(){
   };
   $('btnCloseSettings').onclick=function(){ $('dlgSettings').close(); };
   $('btnInbox').onclick=function(){ $('dlgSettings').close(); openInbox(); };
+  $('btnAudit').onclick=function(){ $('dlgSettings').close(); openAudit(); };
+  $('btnCloseAudit').onclick=function(){ $('dlgAudit').close(); };
+  $('btnAudPrev').onclick=function(){ audStep(-1); };
+  $('btnAudNext').onclick=function(){ audStep(1); };
+  $('selAudSite').onchange=function(){
+    for(var i=0;i<AUD.sites.length;i++) if(AUD.sites[i].key===this.value){ AUD.i=i; break; }
+    audLoad();
+  };
+  $('btnAudCopy').onclick=function(){
+    var txt=audText();
+    if(!txt) return;
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(function(){
+        audLog('Copied.'); showToast('Copied','success'); },function(){ audLog(txt); });
+    } else audLog(txt);
+  };
   $('btnBell').onclick=function(){ openInbox(); };
   $('btnCloseInbox').onclick=function(){ $('dlgInbox').close(); bellRefresh(); };
   $('btnIbCopy').onclick=ibCopyText;

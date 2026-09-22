@@ -85,6 +85,34 @@ eq(pl.budgetYear.P10.NEW,   17, 'B4 "PCO /P10" satiri P10 olarak okundu = 17');
 eq(pl.budgetYTD.P10.NEW,     9, 'B4 Budget YTD P10 = 9');
 eq(pl.crossCheck.TOTAL.NEW, 31, 'B4 Real Launches (yalniz capraz dogrulama) = 31');
 
+/* Denetim izi: panodaki bir sayinin HANGI HUCREDEN geldigini soyleyebilmek
+   denetim ekraninin tek isi. Iz gercek parser'in icinden toplaniyor; bu test
+   izin dogru hucreyi gosterdigini ve normalde KAPALI oldugunu dogruluyor. */
+console.log('\n1b) Denetim izi — okunan hucrenin adresi');
+{
+  eq(colLetter_(0), 'A', 'sutun 0 -> A');
+  eq(colLetter_(25), 'Z', 'sutun 25 -> Z');
+  eq(colLetter_(26), 'AA', 'sutun 26 -> AA');
+
+  const before = [];
+  AUDIT_TRACE = before;
+  const w2 = [];
+  parseProjectLaunchBudget_(g, w2);
+  AUDIT_TRACE = null;
+
+  const hit = before.filter(x => x.ctx === 'S4 TOTAL budget NEW')[0];
+  eq(!!hit, true, 'TOTAL/Budget Year hucresi ize dustu');
+  eq(hit.value, 36, 'izdeki deger parser ciktisiyla ayni');
+  /* Fixture'da TOTAL satiri 0-tabanli 3. sutunda etiketli, degerler 5.
+     sutunda; satir numarasi 1-tabanli beklenir. */
+  eq(hit.a1, colLetter_(5) + hit.row, 'adres sutun harfi + satir numarasi');
+  eq(g[hit.row - 1][5], 36, 'adres gercekten o hucreyi gosteriyor');
+
+  const after = [];
+  parseProjectLaunchBudget_(g, after);   /* iz KAPALIYKEN */
+  eq(after.length, 0, 'iz kapaliyken hicbir kayit toplanmiyor');
+}
+
 const hrRes = parseHumanResources_(g, warn);
 eq(hrRes.count, 2, 'Headcount: benzersiz kisi = 2 (ayni kisi iki rolde bir kez)');
 eq(hrRes.roles.length, 3, 'Headcount: 3 dolu rol satiri (bos Quality PTM sayilmadi)');

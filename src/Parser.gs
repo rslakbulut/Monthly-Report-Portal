@@ -125,10 +125,38 @@ function pair_(grid, row, cols, warnings, ctx) {
   };
 }
 
+/* ---- denetim izi ----
+ * "Bu sayi nereden geliyor?" sorusunun tek dogru cevabi OKUNAN HUCRENIN
+ * KENDISI. Ozet degerlerin hepsi cell_'den gectigi icin iz burada
+ * toplaniyor: tek yerde, ayri bir "denetim parser'i" yazmadan -- ikinci bir
+ * parser yazmak, denetimin asil parser'i degil KENDINI dogrulamasi demek
+ * olurdu. Normalde AUDIT_TRACE null'dir ve hicbir maliyeti yoktur.
+ */
+var AUDIT_TRACE = null;
+/* Detay satirlari ayri toplanir: res.projects yalniz en buyuk 15'i tasiyor,
+   denetimde ise HER satir gerekiyor (eksik sayilan satir tam da aranan sey). */
+var AUDIT_ROWS = null;
+
+/** 0 tabanli sutun -> A1 harfi (0 -> A, 26 -> AA). */
+function colLetter_(col) {
+  var s = '', n = col + 1;
+  while (n > 0) { var r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = (n - 1 - r) / 26; }
+  return s;
+}
+function a1_(row, col) { return colLetter_(col) + (row + 1); }
+
 /** Hucreyi sayi olarak okur; bos/hatali ise null doner ve uyari yazar. */
 function cell_(grid, row, col, warnings, ctx) {
   if (row < 0 || row >= grid.length || col < 0 || col >= grid[row].length) return null;
   var n = readNumber_(grid[row][col]);
+  if (AUDIT_TRACE) {
+    AUDIT_TRACE.push({
+      ctx: ctx, a1: a1_(row, col), row: row + 1, col: col + 1,
+      raw: String(grid[row][col] == null ? '' : grid[row][col]).slice(0, 40),
+      value: n.ok ? n.value : null,
+      note: n.ok ? '' : n.reason
+    });
+  }
   if (n.ok) return n.value;
   if (n.reason !== 'empty') warnings.push(ctx + ': ' + n.reason);
   return null;
@@ -284,6 +312,20 @@ function parseDetailBlock_(grid, startRow, spec, year, reportMonth, warnings) {
       });
     }
 
+    if (AUDIT_ROWS) {
+      AUDIT_ROWS.push({
+        block: spec.match, a1: a1_(r2, 0), row: r2 + 1,
+        model: modelCol !== null ? cellText_(row[modelCol]) : '',
+        type: type || '',
+        turnover: turnover,
+        planRaw: planCol !== null ? cellText_(row[planCol]) : '',
+        planMonth: plan.ok ? plan.month : null,
+        realRaw: realCol !== null ? cellText_(row[realCol]) : '',
+        realMonth: real.ok ? real.month : null,
+        inRealYtd: m.ytdCount === 1,
+        inPlanYtd: m.planYtdCount === 1
+      });
+    }
     addMeasure_(res.total, m);
     if (type) {
       if (!res.byType[type]) res.byType[type] = emptyMeasure_();

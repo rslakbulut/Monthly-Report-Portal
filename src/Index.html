@@ -268,6 +268,30 @@
   </div>
 </dialog>
 
+<!-- Parser denetimi: panodaki alti sayinin HANGI HUCREDEN geldigini,
+     gerceklesen toplamlari olusturan proje satirlariyla birlikte gosterir.
+     Amac "yanlis" demekle "nerede yanlis" demek arasindaki farki kapatmak. -->
+<dialog class="panelx wide" id="dlgAudit" aria-labelledby="auditTitle">
+  <div class="panel-head">
+    <h2 id="auditTitle">Parser audit — where each number comes from</h2>
+    <button class="tbtn icon" id="btnCloseAudit" type="button" aria-label="Close">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </div>
+  <div class="panel-body">
+    <div class="ib-bar">
+      <button class="btn ghost" id="btnAudPrev" type="button">‹ Previous</button>
+      <select id="selAudSite" class="aud-sel" aria-label="Site"></select>
+      <button class="btn ghost" id="btnAudNext" type="button">Next ›</button>
+      <span class="spacer-x" style="flex:1"></span>
+      <button class="btn ghost" id="btnAudCopy" type="button">Copy as text</button>
+    </div>
+    <div id="audBody"></div>
+    <div class="log" id="auditLog" aria-live="polite" hidden></div>
+  </div>
+</dialog>
+
 <!-- Gelen kutusu: geri bildirimler ve ekran goruntuleri panonun icinde.
      Spreadsheet'i acip her goruntuyu ayri sekmede aramaya gerek kalmasin. -->
 <dialog class="panelx wide" id="dlgInbox" aria-labelledby="inboxTitle">
@@ -324,6 +348,7 @@
       <button class="btn ghost" id="btnTrigger" type="button" data-i18n="installScan">Install daily scan</button>
       <button class="btn ghost" id="btnSnapTrigger" type="button">Install hourly refresh</button>
       <button class="btn ghost" id="btnEnsureSnaps" type="button">Build missing periods</button>
+      <button class="btn ghost" id="btnAudit" type="button">Parser audit</button>
       <button class="btn ghost" id="btnInbox" type="button">Feedback inbox</button>
       <button class="btn ghost" id="btnCheckFb" type="button">Feedback check</button>
       <button class="btn ghost" id="btnTestMail" type="button">Test e-mail</button>
