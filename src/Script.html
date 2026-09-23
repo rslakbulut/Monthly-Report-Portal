@@ -1792,7 +1792,6 @@ function execBarChart(mode,unit,half,withSwitch){
      daraldi. */
   var bar=Math.min(30,bw*0.26), gap=4;
   var span=bar*3+gap*2;
-  var labelAll=rows.length<=4;
   var bars='';
   rows.forEach(function(r,i){
     var cx=x0off+bw*(i+0.5), x0=cx-span/2;
@@ -1806,11 +1805,11 @@ function execBarChart(mode,unit,half,withSwitch){
         bars+='<rect x="'+x.toFixed(1)+'" y="'+yv.toFixed(1)+'" width="'+bar+'" height="'+h.toFixed(1)+
           '" rx="'+Math.min(bar/2,6)+'" fill="url(#bcG'+uid+k+')"/>';
       }
-      /* Her noktaya sayi yazmak okunmuyor: yedi kolonda 21 rakam ust uste
-         biniyordu. Kolon sayisi azken (is kolu gorunumu) uc deger de
-         yaziliyor; kalabaliklasinca yalniz SONUC serisi (YTD real)
-         etiketleniyor, digerleri izgaradan ve ipucundan okunuyor. */
-      if(val>0&&(labelAll||k===2))
+      /* Uc degerin ucu de yaziliyor (kullanici karari: "sayilar onemli").
+         Bir onceki turda kalabalik diye yalniz sonuc serisi etiketlenmisti;
+         sayilarin kendisi bilgi tasidigi icin geri alindi. Yer, cubuklarin
+         genislemesiyle zaten acildi. */
+      if(val>0)
         bars+='<text x="'+(x+bar/2).toFixed(1)+'" y="'+(yv-8).toFixed(1)+'" text-anchor="middle" '+
           'class="bc-v bc-v'+k+'">'+execFmt(val,u)+'</text>';
     });
@@ -2524,7 +2523,10 @@ function srchMove(d){
 function srchGo(i){
   var it=SRCH.items[i]; if(!it) return;
   srchClose();
-  if(it.kind==='site'){ openSiteByKey(it.key); return; }
+  /* Site secilince TAM SAYFAYA gidilmiyor: sagdan acilan cekmece aciliyor.
+     Kullanici karari -- listedeki site satirina tiklayinca da ayni cekmece
+     aciliyor; iki yerde iki farkli davranis kafa karistiriyordu. */
+  if(it.kind==='site'){ openDrawer(it.key); return; }
   F.ro=it.ro; F.site='ALL'; NAV.level='ro'; NAV.expandedRo=it.ro;
   buildRoSiteSelects(); render();
   window.scrollTo({top:0,behavior:'smooth'});
