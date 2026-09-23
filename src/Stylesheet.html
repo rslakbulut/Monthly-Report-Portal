@@ -517,6 +517,8 @@ body.has-rail:has(.rail:focus-within){padding-left:var(--rail-open)}
 .bc-panel .panel-h{display:flex; align-items:center; justify-content:space-between; gap:16px}
 /* Sabit yukseklik + preserveAspectRatio:none yazilari yatayda geriyordu.
    Oranla verilince SVG kendi olceginde kaliyor. */
+/* Oran artik SATIR ICI olarak SVG'nin viewBox'indan geliyor (Script.html);
+   buradaki deger yalnizca yedek. */
 .bc-wrap{width:100%; aspect-ratio:1180/260; max-width:100%}
 /* Aile grafigi: iki birim yan yana. Iki AYRI grafik -- ayni eksene iki olcek
    koymak (cift eksen) veriyi yanlis okutur. */
@@ -739,7 +741,11 @@ body.dark-mode{
    sutun sayisini bilir: genis kartta cizim alani sinirlanip ortalaniyor.
    (Oran SVG viewBox'iyla ayni kalmali; degistirilirse SVG mektup-kutusuna
    dusup cubuklar ortada daraliyor -- onizlemede goruldu.) */
-.bc-body{min-width:0}
+/* width:100% SART: margin:0 auto bir esnek ogede otomatik kenar bosluguyla
+   birlikte "germe"yi iptal ediyor ve kutu icerige gore daraliyordu -- genis
+   kartta cizim alani 1388px yerine 792px kaliyor, cubuklar inceliyordu
+   (olculdu). */
+.bc-body{min-width:0; width:100%}
 @container (min-width:1000px){ .bc-body{max-width:980px; margin:0 auto} }
 .bc-wrap svg{width:100%; height:100%; display:block; overflow:visible}
 .bc-ax{font-size:11px; fill:var(--text-mute); font-weight:600}
@@ -1796,11 +1802,19 @@ body.dark-mode .bell-n{color:#3a0d10}
 }
 .aud-warn ul{margin:6px 0 0; padding-left:18px}
 
-/* Grafikteki TOPLAM kolonu: bir kategori degil -- tiklanmaz, uzerine
-   gelinince vurgulanmaz, etiketi notr. */
-.bc-lb-total{cursor:default; color:var(--text-dim)}
-.bc-lb-total:hover{background:none}
-.bc-lb-total .bc-lb-c{color:var(--text)}
+/* TOPLAM seridi: grafigin ustunde uc sayi. Cubuk alanina girmiyor cunku
+   toplam olcegi tek basina belirleyip diger kolonlari eziyordu. */
+.bc-sum{
+  display:flex; align-items:baseline; gap:18px; flex-wrap:wrap;
+  padding:10px 14px; margin-bottom:12px; border-radius:var(--r-sm);
+  background:var(--sunken); border:1px solid var(--border);
+}
+.bc-sm{display:inline-flex; align-items:baseline; gap:7px}
+.bc-sm i{width:9px; height:9px; border-radius:2px; display:inline-block; transform:translateY(-1px)}
+.bc-sm b{font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+.bc-sm em{font-style:normal; font-size:11px; font-weight:700; color:var(--text-dim)}
+.bc-sm-n{margin-left:auto; font-size:10.5px; font-weight:800; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--text-mute)}
 .bc-g.bc-total{cursor:default}
 
 </style>

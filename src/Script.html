@@ -1753,7 +1753,14 @@ function execBarChart(mode,unit,half,withSwitch){
   var uid='c'+(++BC_UID)+'_';
   var u=unit||EXV.unit;
   var st=F.status, ty=execTypeRow(), money=(u==='OI');
-  var rows=execBarRows(mode,st,ty,money,u);
+  var all=execBarRows(mode,st,ty,money,u);
+  /* TOPLAM artik cubuk alaninda DEGIL, grafigin ustunde sayi seridinde.
+     Sebep olculdu: toplam en buyuk RO'nun ~2 kati oldugu icin olcegi tek
+     basina belirliyor, geri kalan yedi cubuk yariya iniyor ve kucuk RO'lar
+     (1.0 M€) hic gorunmuyordu. Toplam bir buyukluk karsilastirmasi degil bir
+     BASLIK; yeri sayi olarak ustu. */
+  var total=null;
+  var rows=all.filter(function(r){ if(r.isTotal){ total=r; return false; } return true; });
   if(!rows.length) return '';
 
   /* Genis ekranda kap genisledikce SVG de uzuyordu (1920'de 538px).
@@ -1779,8 +1786,13 @@ function execBarChart(mode,unit,half,withSwitch){
   /* Iki kategoride (aile grafigi) sutun ekrani kapliyor ve cubuklar birbirinden
      kopuk duruyordu: sutun genisligi sinirlanip blok ortalaniyor. */
   var bw=Math.min(iw/rows.length,300), x0off=PL+(iw-bw*rows.length)/2;
-  var bar=Math.min(34,bw*0.19), gap=7;
+  /* Hayalet izler (her cubugun arkasindaki acik dolgu) KALKTI: yedi kolonda
+     24 fazladan sekil demekti ve hicbir bilgi tasimiyordu -- izgara zaten
+     olcegi veriyor. Yer acildigi icin cubuklar kalinlasti, aradaki bosluk
+     daraldi. */
+  var bar=Math.min(30,bw*0.26), gap=4;
   var span=bar*3+gap*2;
+  var labelAll=rows.length<=4;
   var bars='';
   rows.forEach(function(r,i){
     var cx=x0off+bw*(i+0.5), x0=cx-span/2;
@@ -1790,12 +1802,15 @@ function execBarChart(mode,unit,half,withSwitch){
         '" width="'+(bw-6).toFixed(1)+'" height="'+(ih+18)+'" rx="12"/>');
     BC_SERIES.forEach(function(sr,k){
       var val=r.c[sr[0]], x=x0+k*(bar+gap), yv=y(val), h=Math.max(0,PT+ih-yv);
-      bars+='<rect class="bc-track" x="'+x.toFixed(1)+'" y="'+PT+'" width="'+bar+'" height="'+ih+'" rx="'+(bar/2)+'"/>';
       if(h>0){
         bars+='<rect x="'+x.toFixed(1)+'" y="'+yv.toFixed(1)+'" width="'+bar+'" height="'+h.toFixed(1)+
           '" rx="'+Math.min(bar/2,6)+'" fill="url(#bcG'+uid+k+')"/>';
       }
-      if(val>0)
+      /* Her noktaya sayi yazmak okunmuyor: yedi kolonda 21 rakam ust uste
+         biniyordu. Kolon sayisi azken (is kolu gorunumu) uc deger de
+         yaziliyor; kalabaliklasinca yalniz SONUC serisi (YTD real)
+         etiketleniyor, digerleri izgaradan ve ipucundan okunuyor. */
+      if(val>0&&(labelAll||k===2))
         bars+='<text x="'+(x+bar/2).toFixed(1)+'" y="'+(yv-8).toFixed(1)+'" text-anchor="middle" '+
           'class="bc-v bc-v'+k+'">'+execFmt(val,u)+'</text>';
     });
@@ -1804,11 +1819,6 @@ function execBarChart(mode,unit,half,withSwitch){
   });
 
   var labels=rows.map(function(r){
-    if(r.isTotal){
-      return '<span class="bc-lb bc-lb-total" style="width:'+(100/rows.length)+'%">'+
-        '<span class="bc-lb-c">TOTAL</span>'+
-        '<span class="bc-lb-n">'+esc(nf(r.list.length)+' '+sitesWord(r.list.length))+'</span></span>';
-    }
     var inner = mode==='family'
       ? '<span class="bc-lb-c">'+esc(r.label)+'</span>'+
         '<span class="bc-lb-ros">'+r.ros.map(function(x){
@@ -1824,8 +1834,30 @@ function execBarChart(mode,unit,half,withSwitch){
   var key=BC_SERIES.map(function(sr){
     return '<span class="bc-kk"><i style="background:'+sr[2]+'"></i>'+esc(t(sr[1]))+'</span>';
   }).join('');
-  var body='<div class="bc-body">'+
-    '<div class="bc-wrap"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" '+
+  /* Toplam seridi: grafigin ustunde uc sayi. Cubuk degil sayi, cunku burada
+     is karsilastirma degil "genel durum ne" -- ve olcegi bozmuyor. */
+  var sum='';
+  if(total){
+    sum='<div class="bc-sum">'+BC_SERIES.map(function(sr,k){
+      return '<span class="bc-sm"><i style="background:'+sr[2]+'"></i>'+
+        '<b>'+execFmt(total.c[sr[0]],u)+'</b>'+
+        '<em>'+esc(t(sr[1]))+'</em></span>';
+    }).join('')+
+    '<span class="bc-sm-n">TOTAL · '+esc(nf(total.list.length)+' '+sitesWord(total.list.length))+
+    '</span></div>';
+  }
+
+  /* Genis kartta cizim alani 980px'e kapanmisti (iki kategorili aile
+     grafigi orada rahat duruyor). RO gorunumunde YEDI kategori var; ayni
+     kapak cubuklari inceltip sikisik gosteriyordu. Kategori coksa kart ne
+     kadar genisse o kadar kullaniliyor. */
+  var body=sum+'<div class="bc-body"'+(rows.length>=5?' style="max-width:none"':'')+'>'+
+    /* Oran SVG'nin KENDI viewBox'indan geliyor. CSS'te sabit bir oran
+       tutuluyordu; kart tek sutuna dusup genisleyince viewBox ile oran
+       ayrisiyor ve SVG mektup-kutusuna dusuyordu (cubuklar ortada dar bir
+       serit halinde kaliyordu, olculdu). */
+    '<div class="bc-wrap" style="aspect-ratio:'+W+'/'+H+'"><svg viewBox="0 0 '+W+' '+H+
+      '" preserveAspectRatio="xMidYMid meet" role="img" '+
       'aria-label="'+esc(t('execChartTitle'))+'">'+
       '<defs>'+BC_SERIES.map(function(sr,k){
         return '<linearGradient id="bcG'+uid+k+'" x1="0" y1="0" x2="0" y2="1">'+
@@ -1868,7 +1900,11 @@ function execBarChart(mode,unit,half,withSwitch){
 function execPair(mode){
   /* Anahtar yalniz ILK kartta: ikisini birden cevirdigi icin iki kopya
      ayni isi yapan iki kontrol gibi gorunurdu. */
-  var a=execBarChart(mode,'OI',true,true), b=execBarChart(mode,'COUNT',true);
+  /* RO gorunumunde 7 kategori var ve kartlar zaten alt alta duser; dar
+     tuval (620) orada cubuklari inceltiyordu. Is kolu gorunumunde 2 kategori
+     var, kartlar yan yana sigiyor. */
+  var half=(mode!=='ro');
+  var a=execBarChart(mode,'OI',half,true), b=execBarChart(mode,'COUNT',half);
   if(!a&&!b) return '';
   return '<div class="bc-pair bc-pair-'+esc(mode)+'">'+a+b+'</div>';
 }
