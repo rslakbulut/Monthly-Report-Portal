@@ -1720,11 +1720,25 @@ function execBarRows(mode,st,ty,money,u){
     src=BOOT.roOrder.filter(function(ro){ return !EX.fam||FAMILY[ro]===EX.fam; })
       .map(function(ro){ return {key:ro,label:ro,ros:[ro],list:sitesOfRo(ro)}; });
   }
-  return src.map(function(o){
+  var out=src.map(function(o){
     o.c=execCell(o.list,ty,st,u);
     if(!money) o.byType=EXEC_TYPES.map(function(tp){ return {tp:tp,c:execCountCell(o.list,tp,st)}; });
     return o;
   }).filter(function(r){ return r.c.b1>0||r.c.ytd>0||r.c.real>0; });
+
+  /* TOPLAM kolonu (kullanici talebi): gorunen kolonlarin toplami. Tek kolon
+     kaldiysa toplam o kolonun kendisidir, eklenmez. Toplam bir kategori
+     DEGIL: tiklanmaz (filtre surmez) ve kendi listesi ustteki kolonlarin
+     birlesimi -- ayni site iki kolona giremedigi icin cift sayim olmaz. */
+  if(out.length>1){
+    var all=[];
+    out.forEach(function(o){ all=all.concat(o.list); });
+    var tot={key:'TOTAL',label:'TOTAL',ros:[],list:all,isTotal:true};
+    tot.c=execCell(all,ty,st,u);
+    if(!money) tot.byType=EXEC_TYPES.map(function(tp){ return {tp:tp,c:execCountCell(all,tp,st)}; });
+    out.push(tot);
+  }
+  return out;
 }
 /* unit verilirse secili birimden BAGIMSIZ cizer (aile grafigi iki birimi
    yan yana gosteriyor). half=true dar kolon icin daha kucuk viewBox. */
@@ -1769,9 +1783,10 @@ function execBarChart(mode,unit,half,withSwitch){
   var bars='';
   rows.forEach(function(r,i){
     var cx=x0off+bw*(i+0.5), x0=cx-span/2;
-    bars+='<g class="bc-g" data-'+(mode==='family'?'exfam':'exro')+'="'+esc(r.key)+'">'+
-      '<rect class="bc-hit" x="'+(x0off+bw*i+3).toFixed(1)+'" y="'+(PT-18)+'" width="'+(bw-6).toFixed(1)+
-        '" height="'+(ih+18)+'" rx="12"/>';
+    bars+='<g class="bc-g'+(r.isTotal?' bc-total':'')+'"'+
+      (r.isTotal?'':' data-'+(mode==='family'?'exfam':'exro')+'="'+esc(r.key)+'"')+'>'+
+      (r.isTotal?'':'<rect class="bc-hit" x="'+(x0off+bw*i+3).toFixed(1)+'" y="'+(PT-18)+
+        '" width="'+(bw-6).toFixed(1)+'" height="'+(ih+18)+'" rx="12"/>');
     BC_SERIES.forEach(function(sr,k){
       var val=r.c[sr[0]], x=x0+k*(bar+gap), yv=y(val), h=Math.max(0,PT+ih-yv);
       bars+='<rect class="bc-track" x="'+x.toFixed(1)+'" y="'+PT+'" width="'+bar+'" height="'+ih+'" rx="'+(bar/2)+'"/>';
@@ -1808,6 +1823,11 @@ function execBarChart(mode,unit,half,withSwitch){
   });
 
   var labels=rows.map(function(r){
+    if(r.isTotal){
+      return '<span class="bc-lb bc-lb-total" style="width:'+(100/rows.length)+'%">'+
+        '<span class="bc-lb-c">TOTAL</span>'+
+        '<span class="bc-lb-n">'+esc(nf(r.list.length)+' '+sitesWord(r.list.length))+'</span></span>';
+    }
     var inner = mode==='family'
       ? '<span class="bc-lb-c">'+esc(r.label)+'</span>'+
         '<span class="bc-lb-ros">'+r.ros.map(function(x){
