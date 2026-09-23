@@ -923,12 +923,22 @@ function budgetOf(site){
   var bt=site.budgetTurnover&&site.budgetTurnover[k];
   return { count:pickStatus_(bc), ytdCount:pickStatus_(by), turnover:pickStatus_(bt) };
 }
+/* Budget YTD CIROSU: resmi kaynak "LS OI <yil>" sayfasidir (kullanici
+   karari). Orada tek bir toplam var; NEW/REMAN, P1/P10/TTM veya VS/OES
+   kirilimi YOK. Bu yuzden yalniz kirilim filtresi KAPALIYKEN kullanilir;
+   bir filtre acikken o filtreye ait plan degeri ancak detay tablolarindan
+   cikarilabilir ve oraya dusulur. Sayfa yoksa da ayni yedek calisir. */
+function planTurnoverMOf(site,r){
+  var unfiltered=(F.status==='ALL'&&F.type==='ALL'&&F.customer==='ALL');
+  if(unfiltered&&typeof site.budgetYtdOI==='number') return site.budgetYtdOI;
+  return r.planYtdTurnover/1000;
+}
 function siteMetrics(site){
   var b=budgetOf(site), r=realizedOf(site);
   return {
     budgetCount:b.count, budgetYTD:b.ytdCount, budgetTurnover:b.turnover,
     realCount:r.ytdCount, realTurnoverM:r.ytdTurnover/1000,
-    planTurnoverM:r.planYtdTurnover/1000,
+    planTurnoverM:planTurnoverMOf(site,r),
     portfolioCount:r.count, portfolioTurnoverM:r.turnover/1000,
     delta:(b.ytdCount==null)?null:(r.ytdCount-b.ytdCount),
     /* DENETIM BULGUSU: eskiden plan 0 ise null donuyordu, yani "plani 0
@@ -937,7 +947,9 @@ function siteMetrics(site){
        7'sinde olculdu). 0 bir BILINMEYEN degil, bilinen bir degerdir;
        fark her zaman hesaplanir. Site'in hic verisi yoksa (bilinmeyen)
        adet tarafiyla AYNI kapi kullanilir. */
-    deltaTurnoverM:(b.ytdCount==null)?null:(r.ytdTurnover-r.planYtdTurnover)/1000
+    /* Sapma da ayni plan kaynagini kullanmali; aksi halde ekranda gosterilen
+       Budget YTD ile sapmanin dayandigi plan farkli olurdu. */
+    deltaTurnoverM:(b.ytdCount==null)?null:(r.ytdTurnover/1000-planTurnoverMOf(site,r))
   };
 }
 function sumMetrics(list){
@@ -3060,6 +3072,9 @@ function unpackSite(p){
     ro:p.ro, site:p.site, key:p.key, sheet:p.sheet, month:p.month, status:p.status,
     headcount:p.hc||0,
     budgetCount:p.bc, budgetYTDCount:p.by, budgetTurnover:p.bt,
+    /* Budget YTD cirosu "LS OI <yil>" sayfasindan (M€). Yoksa undefined
+       kalir ve detaydan hesaplanan degere dusulur. */
+    budgetYtdOI:(typeof p.bq==='number')?p.bq:null,
     detail:{blocks:blocks,total:total},
     /* agir yari sonra gelir (prefetchDetails) */
     indicators:{}, hrRoles:[], topProjects:[], warnings:[], mismatch:[]

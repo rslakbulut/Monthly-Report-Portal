@@ -104,6 +104,23 @@ function auditSite(periodKey, siteKey) {
              planYtdCount: t.planYtdCount || 0, planYtdTurnover: t.planYtdTurnover || 0 };
   });
 
+  /* Budget YTD cirosu artik "LS OI <yil>" sayfasindan; denetimde de oradan
+     okundugu GORUNMELI, yoksa kullanici hala detay tablolarina bakar. */
+  var ls = null;
+  try { ls = readLsOiBudget_(ss, found.month); } catch (e) { ls = null; }
+  var lsVal = (ls && typeof ls.values[siteKey] === 'number') ? ls.values[siteKey] : null;
+  var lsRow = (lsVal != null)
+    ? { key: 'budgetYtdOI', label: 'Budget YTD — O.I', unit: 'M€', value: lsVal,
+        source: 'Sheet "' + ls.sheet + '" · row ' + reg.site + ' / Budget · column ' +
+                colLetter_(ls.column - 1) + ' (month ' + ls.month +
+                ', values are already cumulative — months are NOT added up)',
+        cells: [] }
+    : { key: 'budgetYtdOI', label: 'Budget YTD — O.I', unit: 'M€',
+        value: planTurnover / 1000,
+        source: (ls ? 'NOT FOUND in "' + ls.sheet + '" — fallback: ' : 'No LS OI sheet — fallback: ') +
+                'detail blocks · projects whose PLAN date <= reporting month',
+        cells: [] };
+
   var summary = [
     { key: 'budgetYearOI', label: 'Budget Year — O.I', unit: 'M€',
       value: auditPair_(oi.TOTAL),
@@ -117,10 +134,7 @@ function auditSite(periodKey, siteKey) {
       value: auditPair_(bYtd.TOTAL),
       source: 'Section 4 PROJECT LAUNCH · row TOTAL · column Budget YTD (NEW + REMAN)',
       cells: auditCells_(trace, 'S4 TOTAL ytd') },
-    { key: 'budgetYtdOI', label: 'Budget YTD — O.I', unit: 'M€',
-      value: planTurnover / 1000,
-      source: 'Detail blocks · projects whose PLAN date <= reporting month · Turnover (k€) / 1000',
-      cells: [] },
+    lsRow,
     { key: 'realQty', label: 'Real (launched YTD) — projects', unit: 'projects',
       value: realCount,
       source: 'Detail blocks · projects whose REAL date <= reporting month',

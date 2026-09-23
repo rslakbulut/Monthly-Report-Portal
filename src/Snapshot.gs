@@ -66,7 +66,7 @@ var SNAP_VERSION = 1;                          // SEKIL surumu: paketleme bicimi
                                sayilar eskidir; servis edilir ve ARKA PLANDA
                                yeniden kurulmasi planlanir.
    Boylece veri katmani degistiginde kimsenin elle bir sey yapmasi gerekmiyor. */
-var DATA_REV = 2;
+var DATA_REV = 3;   /* 3: Budget YTD cirosu "LS OI <yil>" sayfasindan */
 
 /* Olcu alanlarinin SABIT sirasi. Sira degisirse SNAP_VERSION artirilmali. */
 var MEASURE_FIELDS = ['count', 'turnover', 'ytdCount', 'ytdTurnover',
@@ -208,10 +208,25 @@ function buildSnapshot_(key) {
   /* Kayitta eskimis olabilir (donem eski kuralla eklenmisse): tazele. */
   try { setPeriodMonths_(key, coverMonths); } catch (e) {}
 
+  /* Budget YTD CIROSU artik "LS OI <yil>" sayfasindan geliyor (kullanici
+     karari). Detaydan hesaplanan deger yedek olarak yerinde kaliyor: sayfa
+     yoksa ya da bir site eslesmezse eski davranis surer, ekran bos kalmaz. */
+  var lsoi = null;
+  try { lsoi = readLsOiBudget_(ss, maxMonth); } catch (e) { lsoi = null; }
+  if (lsoi) {
+    for (var li = 0; li < overview.length; li++) {
+      var val = lsoi.values[overview[li].key];
+      if (typeof val === 'number') overview[li].bq = val;   // M€
+    }
+  }
+
   return {
     v: SNAP_VERSION,
     rev: DATA_REV,
     builtAt: new Date().toISOString(),
+    lsOi: lsoi ? { sheet: lsoi.sheet, month: lsoi.month, column: lsoi.column,
+                   matched: Object.keys(lsoi.values).length,
+                   unmatched: lsoi.unmatched, warnings: lsoi.warnings } : null,
     period: { key: key, year: period.year, month: period.month, months: coverMonths,
               label: monthSpanLabel_(coverMonths) + ' ' + period.year, name: period.name },
     reportMonth: maxMonth,
