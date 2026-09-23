@@ -1703,11 +1703,10 @@ function execCell(list,type,status,u){
    bilesenleri HTML, SVG icine gomulemezdi; sutun genisligi ayni oldugu icin
    hizalama birebir tutuyor. */
 var BC_SERIES=[['b1','execBudgetYear','#94a3b8'],['ytd','lnBdgt','#0a7ddb'],['real','lnReal','#12803c']];
-/* Yigin tonlari. ONCEKI degerler (0 / .22 / .44) ekranda AYIRT EDILMIYORDU:
-   30px'lik bir cubukta %78 ve %56 saydamlik gozle ayni gorunuyor, yani
-   altta P1/P10/TTM anahtari vardi ama grafikte karsiligi yoktu (kullanici
-   bildirimi). Adimlar aciklikta gercekten ayrilacak kadar buyutuldu. */
-var BC_TYPE_TONE={P1:0.0,P10:0.42,TTM:0.72};
+/* P1/P10/TTM yigini KALDIRILDI (kullanici karari): 30px'lik bir cubukta uc
+   ton, uc seri icin dokuz ton demekti ve tonlar ayrildiginda bile okunmuyordu.
+   Kirilim Table ve Gap gorunumlerinde satir satir zaten var; grafik "kim
+   onde kim geride" sorusunu cevapliyor, kirilimi degil. Cubuklar duz. */
 
 /* mode 'family' -> POWER DRIVE / POWER THERMAL, 'ro' -> tek tek RO'lar.
    Ikisi ayni cizim koduyla uretiliyor; tek fark satir kumesi ve alt etiket. */
@@ -1726,7 +1725,6 @@ function execBarRows(mode,st,ty,money,u){
   }
   var out=src.map(function(o){
     o.c=execCell(o.list,ty,st,u);
-    if(!money) o.byType=EXEC_TYPES.map(function(tp){ return {tp:tp,c:execCountCell(o.list,tp,st)}; });
     return o;
   }).filter(function(r){ return r.c.b1>0||r.c.ytd>0||r.c.real>0; });
 
@@ -1739,7 +1737,6 @@ function execBarRows(mode,st,ty,money,u){
     out.forEach(function(o){ all=all.concat(o.list); });
     var tot={key:'TOTAL',label:'TOTAL',ros:[],list:all,isTotal:true};
     tot.c=execCell(all,ty,st,u);
-    if(!money) tot.byType=EXEC_TYPES.map(function(tp){ return {tp:tp,c:execCountCell(all,tp,st)}; });
     out.push(tot);
   }
   return out;
@@ -1794,27 +1791,7 @@ function execBarChart(mode,unit,half,withSwitch){
     BC_SERIES.forEach(function(sr,k){
       var val=r.c[sr[0]], x=x0+k*(bar+gap), yv=y(val), h=Math.max(0,PT+ih-yv);
       bars+='<rect class="bc-track" x="'+x.toFixed(1)+'" y="'+PT+'" width="'+bar+'" height="'+ih+'" rx="'+(bar/2)+'"/>';
-      if(!money&&r.byType&&h>0){
-        /* Yigili: P1 -> P10 -> TTM, ayni serinin tonlari.
-           Parcalari TEK TEK yuvarlamak olmuyor: kisa parcalar hap gibi
-           gorunuyor ve aralarinda basamak olusuyordu (onizlemede goruldu).
-           Dogrusu, cubugun tamaminin sekliyle KIRPMAK; parcalar duz ciziliyor,
-           yuvarlak tepe kirpma maskesinden geliyor. */
-        var cid='bc'+uid+i+'_'+k;
-        var tot=0; r.byType.forEach(function(b){ tot+=b.c[sr[0]]||0; });
-        var acc=0, segs='';
-        r.byType.forEach(function(b){
-          var part=(b.c[sr[0]]||0); if(tot<=0||part<=0) return;
-          var ph=h*(part/tot), py=PT+ih-acc-ph;
-          segs+='<rect x="'+x.toFixed(1)+'" y="'+py.toFixed(1)+'" width="'+bar+'" height="'+ph.toFixed(1)+
-            '" fill="'+sr[2]+'" fill-opacity="'+(1-BC_TYPE_TONE[b.tp])+
-            '" stroke="var(--card)" stroke-width="1.6"><title>'+esc(b.tp+': '+nf(part))+'</title></rect>';
-          acc+=ph;
-        });
-        bars+='<clipPath id="'+cid+'"><rect x="'+x.toFixed(1)+'" y="'+yv.toFixed(1)+'" width="'+bar+
-          '" height="'+h.toFixed(1)+'" rx="'+Math.min(bar/2,6)+'"/></clipPath>'+
-          '<g clip-path="url(#'+cid+')">'+segs+'</g>';
-      } else if(h>0){
+      if(h>0){
         bars+='<rect x="'+x.toFixed(1)+'" y="'+yv.toFixed(1)+'" width="'+bar+'" height="'+h.toFixed(1)+
           '" rx="'+Math.min(bar/2,6)+'" fill="url(#bcG'+uid+k+')"/>';
       }
@@ -1847,22 +1824,6 @@ function execBarChart(mode,unit,half,withSwitch){
   var key=BC_SERIES.map(function(sr){
     return '<span class="bc-kk"><i style="background:'+sr[2]+'"></i>'+esc(t(sr[1]))+'</span>';
   }).join('');
-  /* DENETIM BULGUSU: adet gorunumunde her cubuk P1/P10/TTM olarak
-     yigiliyor ve bunu YALNIZ ton farki anlatiyordu -- anahtari yoktu,
-     yani okuyucu hangi dilimin ne oldugunu ancak uzerine gelerek
-     ogrenebiliyordu. Yigin varsa ton anahtari da ciziliyor; renk tek
-     basina bilgi tasimiyor. Serinin kendi rengi ornek olarak kullaniliyor
-     (YTD real), cunku tonlar seri renginin uzerinde uygulaniyor. */
-  if(!money){
-    var tref=BC_SERIES[2][2];
-    key+='<span class="bc-ksep" aria-hidden="true"></span>'+
-      '<span class="bc-kcap">stacked by project type</span>'+
-      EXEC_TYPES.map(function(tp){
-        return '<span class="bc-kk bc-kt"><i style="background:'+tref+
-          ';opacity:'+(1-BC_TYPE_TONE[tp]).toFixed(2)+'"></i>'+esc(tp)+'</span>';
-      }).join('');
-  }
-
   var body='<div class="bc-body">'+
     '<div class="bc-wrap"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" '+
       'aria-label="'+esc(t('execChartTitle'))+'">'+
