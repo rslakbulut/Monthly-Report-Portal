@@ -1703,7 +1703,11 @@ function execCell(list,type,status,u){
    bilesenleri HTML, SVG icine gomulemezdi; sutun genisligi ayni oldugu icin
    hizalama birebir tutuyor. */
 var BC_SERIES=[['b1','execBudgetYear','#94a3b8'],['ytd','lnBdgt','#0a7ddb'],['real','lnReal','#12803c']];
-var BC_TYPE_TONE={P1:0.0,P10:0.22,TTM:0.44};
+/* Yigin tonlari. ONCEKI degerler (0 / .22 / .44) ekranda AYIRT EDILMIYORDU:
+   30px'lik bir cubukta %78 ve %56 saydamlik gozle ayni gorunuyor, yani
+   altta P1/P10/TTM anahtari vardi ama grafikte karsiligi yoktu (kullanici
+   bildirimi). Adimlar aciklikta gercekten ayrilacak kadar buyutuldu. */
+var BC_TYPE_TONE={P1:0.0,P10:0.42,TTM:0.72};
 
 /* mode 'family' -> POWER DRIVE / POWER THERMAL, 'ro' -> tek tek RO'lar.
    Ikisi ayni cizim koduyla uretiliyor; tek fark satir kumesi ve alt etiket. */
@@ -1804,7 +1808,7 @@ function execBarChart(mode,unit,half,withSwitch){
           var ph=h*(part/tot), py=PT+ih-acc-ph;
           segs+='<rect x="'+x.toFixed(1)+'" y="'+py.toFixed(1)+'" width="'+bar+'" height="'+ph.toFixed(1)+
             '" fill="'+sr[2]+'" fill-opacity="'+(1-BC_TYPE_TONE[b.tp])+
-            '" stroke="var(--card)" stroke-width="1"><title>'+esc(b.tp+': '+nf(part))+'</title></rect>';
+            '" stroke="var(--card)" stroke-width="1.6"><title>'+esc(b.tp+': '+nf(part))+'</title></rect>';
           acc+=ph;
         });
         bars+='<clipPath id="'+cid+'"><rect x="'+x.toFixed(1)+'" y="'+yv.toFixed(1)+'" width="'+bar+
@@ -1852,8 +1856,9 @@ function execBarChart(mode,unit,half,withSwitch){
   if(!money){
     var tref=BC_SERIES[2][2];
     key+='<span class="bc-ksep" aria-hidden="true"></span>'+
+      '<span class="bc-kcap">stacked by project type</span>'+
       EXEC_TYPES.map(function(tp){
-        return '<span class="bc-kk"><i style="background:'+tref+
+        return '<span class="bc-kk bc-kt"><i style="background:'+tref+
           ';opacity:'+(1-BC_TYPE_TONE[tp]).toFixed(2)+'"></i>'+esc(tp)+'</span>';
       }).join('');
   }
@@ -3570,25 +3575,17 @@ function openAudit(){
  */
 var SET={readOnly:!(window.BOOT&&BOOT.isAdmin)};
 
-/* Yalniz yoneticiye ait eylemler. Geri bildirim dugmeleri de burada: gelen
-   kutusu BASKA kullanicilarin mesajlarini ve ekran goruntulerini tasiyor,
-   "panel herkese acik" bunu kapsamaz. */
-var SET_ADMIN_ONLY=['btnScan','btnSaveQuery','btnTrigger','btnSnapTrigger',
-                    'btnEnsureSnaps','btnInbox','btnCheckFb','btnTestMail','btnAdd'];
-
 function applySettingsPerms(){
   var ro=SET.readOnly;
-  SET_ADMIN_ONLY.forEach(function(id){ var el=$(id); if(el) el.hidden=ro; });
-  ['inpQuery','inpUrl'].forEach(function(id){
-    var el=$(id); if(!el) return;
-    el.readOnly=ro;                     /* disabled DEGIL: metin secilip
-                                           kopyalanabilsin, soluk gorunmesin */
-    el.setAttribute('aria-readonly',ro?'true':'false');
-  });
-  /* Link kutusunun etiketi "elle donem ekle" diyor; ekleyemeyecek kisiye
-     bu kutuyu hic gostermemek daha durust. */
-  var urlGroup=$('inpUrl'); 
-  if(urlGroup&&urlGroup.parentNode) urlGroup.parentNode.hidden=ro;
+  /* Yonetici alanlari BLOK olarak gizlenir (data-adm): tek tek dugme
+     gizlemek geriye bos satirlar birakiyordu. Yonetici olmayana kalan:
+     aciklama, salt-okuma notu ve kayitli donem listesi. */
+  var dlg=$('dlgSettings');
+  if(dlg){
+    Array.prototype.forEach.call(dlg.querySelectorAll('[data-adm]'),function(el){
+      el.hidden=ro;
+    });
+  }
   var note=$('setRoNote'); if(note) note.hidden=!ro;
 }
 
