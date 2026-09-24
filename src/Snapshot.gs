@@ -48,6 +48,7 @@ var PROP_SNAP_INDEX  = 'RO_DASH_SNAP_INDEX';   // {key: {o:fileId, d:fileId}}
 var PROP_SNAP_FOLDER = 'RO_DASH_SNAP_FOLDER';  // Drive klasor id'si
 var PROP_TREND       = 'RO_DASH_TREND';        // {key: {builtAt, ro:{...}}}  — tum donemler
 var PROP_LAST_STORE_ERR = 'RO_DASH_LAST_STORE_ERR';   // son kalici yazma hatasi (teshis)
+var PROP_REBUILD_Q   = 'RO_DASH_REBUILD_Q';    // ["2026-06", ...] yeniden kurulacak donemler
 
 /* ESKI depo anahtarlari: RO_DASH_SNAP_<yil>-<ay>_<parca no>
    DIKKAT: sadece PROP_SNAP_PREFIX ile "baslayan" anahtarlari silmek
@@ -483,6 +484,12 @@ function saveSnapshot_(key, snap) {
   try {
     driveWrite_(key, 'o', overviewJson);
     driveWrite_(key, 'd', detailsJson);
+    /* Indekse VERI SURUMU yaziliyor: boylece "snapshot'i var ama eski
+       mantikla kurulmus" donemler dosyayi acmadan bulunabiliyor. */
+    try {
+      var idx = snapIndex_();
+      if (idx[key]) { idx[key].rev = DATA_REV; saveSnapIndex_(idx); }
+    } catch (e2) {}
     cleanupLegacyProps_();          // eski ScriptProperties deposundan kalanlar
     PropertiesService.getScriptProperties().deleteProperty(PROP_LAST_STORE_ERR);
   } catch (e) {
@@ -688,7 +695,10 @@ function ensureSnapshots(limit) {
   for (var i = 0; i < periods.length; i++) {
     var key = periodKey_(periods[i].year, periods[i].month);
     var entry = idx[key];
-    if (entry && entry.o) continue;              // zaten var
+    /* "Var" yetmiyor: ESKI MANTIKLA kurulmus snapshot da yenilenmeli.
+       Aksi halde veri katmani degistiginde gecmis aylar eski sayilarla
+       kaliyordu ve bunu kimse fark etmiyordu. */
+    if (entry && entry.o && entry.rev === DATA_REV) continue;
     if (built.length >= max) { pending++; continue; }
     try {
       var res = refreshPeriodSnapshot_(key);
@@ -702,8 +712,11 @@ function uiEnsureSnapshots() {
   var deny = requireAdmin_(); if (deny) return deny;
   var r = ensureSnapshots(3);
   return { ok: true, built: r.built, pending: r.pending,
-           message: r.built.length + ' period(s) built' +
-                    (r.pending ? ', ' + r.pending + ' still pending — run again.' : '.') };
+           message: r.built.length + ' period(s) rebuilt' +
+                    (r.built.length ? ' (' + r.built.join(', ') + ')' : '') +
+                    (r.pending ? ' — ' + r.pending + ' still pending, run again.' : '.') +
+                    '\nRebuilds periods that have no snapshot OR were built with an older' +
+                    ' data version (currently rev ' + DATA_REV + ').'};
 }
 
 /**
@@ -738,12 +751,33 @@ function getTrend() {
  * tetikleyiciyi yanlislikla silmeden temizlenebiliyorlar (Apps Script'te
  * proje basina 20 tetikleyici siniri var).
  */
+function rebuildQueue_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PROP_REBUILD_Q);
+  if (!raw) return [];
+  try { return JSON.parse(raw) || []; } catch (e) { return []; }
+}
+function saveRebuildQueue_(list) {
+  PropertiesService.getScriptProperties().setProperty(PROP_REBUILD_Q,
+    JSON.stringify(list.slice(0, 24)));
+}
+
+/**
+ * HATA DUZELTMESI: eskiden yalniz "bir tetikleyici kur" diyordu, HANGI donem
+ * oldugunu kimse tasimiyordu; tetikleyici de her zaman EN GUNCEL donemi
+ * tazeliyordu. Sonuc: gecmis bir ayi acan kullanici icin surekli yeniden
+ * kurma planlaniyor ama hep yanlis donem kuruluyordu -- o ay hicbir zaman
+ * tazelenmiyordu. Artik donem bir kuyruga yaziliyor.
+ */
 function scheduleRebuild_(key) {
   var cache = CacheService.getScriptCache();
   var flag = 'rebuild_sched_' + key;
   try { if (cache.get(flag)) return false; }            // 10 dk icinde zaten planlandi
   catch (e) {}
   try { cache.put(flag, '1', 600); } catch (e) {}
+  try {
+    var q = rebuildQueue_();
+    if (q.indexOf(key) === -1) { q.push(key); saveRebuildQueue_(q); }
+  } catch (e) {}
   try {
     cleanupOneShotTriggers_();
     ScriptApp.newTrigger('rebuildOnce').timeBased().after(60 * 1000).create();
@@ -760,10 +794,35 @@ function cleanupOneShotTriggers_() {
   }
 }
 
-/** Tek seferlik tetikleyicinin ucu: once kendini temizler, sonra tazeler. */
+/**
+ * Tek seferlik tetikleyicinin ucu: once kendini temizler, sonra KUYRUKTAKI
+ * donemleri tazeler. Kuyruk bossa (eski davranis) en guncel donemi tazeler.
+ * Tek calistirmada en fazla uc donem: Apps Script'in 6 dk sinirina takilip
+ * hicbirini bitirememektense uctan sonrasi bir sonraki tura kalir.
+ */
 function rebuildOnce() {
   cleanupOneShotTriggers_();
-  return refreshAllSnapshots();
+  var q = rebuildQueue_();
+  if (!q.length) return refreshAllSnapshots();
+
+  var todo = q.slice(0, 3), rest = q.slice(3);
+  var done = [], failed = [];
+  for (var i = 0; i < todo.length; i++) {
+    try {
+      var res = refreshPeriodSnapshot_(todo[i]);
+      if (res.error) failed.push(todo[i] + ': ' + res.error);
+      else done.push(todo[i]);
+    } catch (e) { failed.push(todo[i] + ': ' + e.message); }
+  }
+  saveRebuildQueue_(rest);
+  /* Kalan varsa bir tur daha planla; yoksa kuyruk bos kaliyor. */
+  if (rest.length) {
+    try {
+      cleanupOneShotTriggers_();
+      ScriptApp.newTrigger('rebuildOnce').timeBased().after(60 * 1000).create();
+    } catch (e) {}
+  }
+  return { refreshed: done, failed: failed, pending: rest.length };
 }
 
 /** Snapshot tazeleme tetikleyicisini kurar (saatte bir). */
