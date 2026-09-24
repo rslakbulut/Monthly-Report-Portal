@@ -38,59 +38,113 @@ function parseIndicators_(grid, warnings) {
   return out;
 }
 
-/* Bir satirin gercekten bir "rol | kisi" satiri oldugunu anlamak icin
-   aranan kelimeler. Sayfadaki roller: Project Manager, R&D/Process/Quality/
-   Purchasing/Supply chain PTM. Hicbiri eslesmezse o site icin headcount 0
-   kalir — uydurma sayi uretmektense sifir gostermek dogru. */
-var HR_ROLE_WORDS = ['MANAGER', 'PTM', 'LEADER', 'ENGINEER', 'RESPONSIBLE', 'COORDINATOR'];
+/* ROL SOZLUGU — bir hucrenin KISI ADI mi ROL ETIKETI mi oldugunu ayirir.
+   Tabloda roller sutun basligindadir, ama govdenin ortasinda da bir rol
+   etiketi belirebiliyor (ornek: "DESIGNER" yazip altina iki isim). O yuzden
+   her hucre bu sozlukle sinaniyor. Liste genis tutuldu: yeni bir rol
+   eklendiginde kisi sanilip SAYILMASI, sayilmamasindan daha kotu. */
+var HR_ROLE_WORDS = [
+  'MANAGER', 'PTM', 'LEADER', 'ENGINEER', 'RESPONSIBLE', 'COORDINATOR',
+  'DESIGNER', 'DESIGN', 'SUPERVISOR', 'DIRECTOR', 'SPECIALIST', 'TECHNICIAN',
+  'BUYER', 'PLANNER', 'ANALYST', 'CHAMPION', 'OWNER', 'TEAM', 'ROLE',
+  'PROJECT', 'QUALITY', 'PURCHASING', 'SUPPLY', 'PROCESS', 'LOGISTIC',
+  'INDUSTRIAL', 'METHOD', 'CONTROLLER', 'PILOT', 'EXPERT'
+];
+
+/* Kisi olmayan doldurma degerleri. */
+var HR_EMPTY_WORDS = ['N/A', 'NA', 'TBD', 'TBC', '-', '--', 'X', 'XX', 'NONE',
+                      'VACANT', 'OPEN', 'YOK', '?'];
+
+function hrIsRoleText_(t) {
+  var n = normText_(t);
+  if (!n) return false;
+  for (var i = 0; i < HR_ROLE_WORDS.length; i++) {
+    if (n.indexOf(HR_ROLE_WORDS[i]) !== -1) return true;
+  }
+  return false;
+}
+
+function hrIsPersonText_(t) {
+  var n = normText_(t);
+  if (!n || n.length < 2) return false;
+  if (HR_EMPTY_WORDS.indexOf(n) !== -1) return false;
+  if (/^[\d.,%\/\\:\s-]+$/.test(n)) return false;      // sayi, tarih, tire
+  if (hrIsRoleText_(n)) return false;                  // rol etiketi
+  return /[A-Z]/.test(n);
+}
 
 /**
  * Bolum 2 "HUMAN RESOURCES" — proje ekibi kadrosu.
  *
- * Sayfada sayi degil ISIM var (Project Manager, R&D/Process/Quality/Purchasing/
- * Supply chain PTM satirlari). Bu yuzden "headcount" = bu bolumde adi gecen
- * BENZERSIZ kisi sayisi. Ayni kisi birden fazla rolu tasiyorsa bir kez sayilir.
+ * ONCEKI HALI YANLISTI: tabloyu "rol | kisi" SATIRLARI sanip her satirin ilk
+ * iki dolu hucresine bakiyordu. Gercek tablo bir MATRIS:
+ *
+ *   TEAM | Project Manager | R&D PTM | Process PTM | Quality PTM | ...
+ *     1  | J.GEOFREY       | ...     | ...         | ...         |
+ *        | DESIGNER        |         |             |             |   <- govdede rol
+ *        | PRASHANTH       |         |             |             |
+ *     2  | M.KARTHIKEYAN   | ...     |             |             |
+ *
+ * Yani roller SUTUN basligi, isimler altlarindaki hucreler ve birden cok
+ * TEAM satiri var. Eski kod 3. sutundan sonrasini hic gormuyordu.
+ *
+ * Yeni kural, hucre bazli ve sutun sayisindan bagimsiz:
+ *   - Baslik satiri bulunur (TEAM + rol adlari).
+ *   - Govdedeki HER hucre tek tek sinanir: rol etiketiyse o sutunun GECERLI
+ *     ROLU olur (ornekteki "DESIGNER"), kisi adiysa o sutunun gecerli roluyle
+ *     kaydedilir.
+ *   - Headcount = BENZERSIZ kisi sayisi (kullanici karari): ayni isim iki
+ *     rolde/iki takimda gecse de bir kez sayilir.
  */
 function parseHumanResources_(grid, warnings) {
   var res = { count: 0, roles: [] };
   var hit = findCell_(grid, 'HUMAN RESOURCES', 0);
-  if (!hit) return res;
+  if (!hit) { warnings.push('Section 2 (HUMAN RESOURCES) not found'); return res; }
 
-  var seen = {};
-  for (var r = hit.row + 1; r < Math.min(hit.row + 20, grid.length); r++) {
-    var rowText = normText_(grid[r].join(' '));
+  /* Baslik satiri: capanin altinda, en az iki rol basligi tasiyan ilk satir. */
+  var headRow = -1, roleOf = {};
+  for (var r = hit.row + 1; r < Math.min(hit.row + 8, grid.length); r++) {
+    var cols = {}, n = 0;
+    for (var c = 0; c < grid[r].length; c++) {
+      var txt = cellText_(grid[r][c]);
+      if (!txt || !hrIsRoleText_(txt)) continue;
+      if (normText_(txt) === 'TEAM') continue;          // takim numarasi sutunu
+      cols[c] = txt; n++;
+    }
+    if (n >= 2) { headRow = r; roleOf = cols; break; }
+  }
+  if (headRow < 0) {
+    warnings.push('Section 2: role header row not found — headcount 0');
+    return res;
+  }
+
+  var seen = {}, blanks = 0;
+  for (var r2 = headRow + 1; r2 < grid.length && r2 < headRow + 60; r2++) {
+    var rowText = normText_(grid[r2].join(' '));
     var stop = false;
     for (var p = 0; p < BLOCK_STOP_PATTERNS.length; p++) {
       if (rowText.indexOf(BLOCK_STOP_PATTERNS[p]) !== -1) { stop = true; break; }
     }
     if (stop) break;
-    if (isEmptyRow_(grid[r])) continue;
-
-    // Satirdaki ilk dolu hucre rol etiketi, ondan sonraki ilk dolu hucre kisi.
-    var label = '', person = '';
-    for (var c = 0; c < grid[r].length; c++) {
-      var txt = cellText_(grid[r][c]);
-      if (!txt) continue;
-      if (!label) { label = txt; continue; }
-      person = txt; break;
+    if (isEmptyRow_(grid[r2])) {
+      /* Tablo icinde bos satir olabiliyor; ust uste UC bos satir tablonun
+         bittigini soyler. Tek bos satirda durmak isimleri kaciriyordu. */
+      if (++blanks >= 3) break;
+      continue;
     }
-    if (!label || !person) continue;
-    // Sayi/tarih gibi degerler kisi adi degildir
-    if (/^[\d.,%\/-]+$/.test(person)) continue;
-    // Satirin gercekten bir ROL satiri oldugunu dogrula — boylece "TEAM | NAME"
-    // gibi baslik satirlari kisi olarak sayilmaz. Etiket bilinen rol
-    // kelimelerinden birini icermeliyken kisi hucresi icermemeli.
-    var lab = normText_(label), per = normText_(person);
-    var isRole = false, personIsRole = false;
-    for (var w = 0; w < HR_ROLE_WORDS.length; w++) {
-      if (lab.indexOf(HR_ROLE_WORDS[w]) !== -1) isRole = true;
-      if (per.indexOf(HR_ROLE_WORDS[w]) !== -1) personIsRole = true;
-    }
-    if (!isRole || personIsRole) continue;
+    blanks = 0;
 
-    var key = person.toLowerCase();
-    res.roles.push({ role: label, person: person });
-    if (!seen[key]) { seen[key] = true; res.count++; }
+    for (var c2 in roleOf) {
+      if (!roleOf.hasOwnProperty(c2)) continue;
+      var col = parseInt(c2, 10);
+      var v = cellText_(grid[r2][col]);
+      if (!v) continue;
+      if (hrIsRoleText_(v)) { roleOf[c2] = v; continue; }   // govdedeki rol etiketi
+      if (!hrIsPersonText_(v)) continue;
+      res.roles.push({ role: roleOf[c2], person: v });
+      var key = normText_(v);
+      if (!seen[key]) { seen[key] = true; res.count++; }
+    }
   }
   return res;
 }
@@ -158,8 +212,9 @@ function parseSiteSheet_(sheet, reg, sheetMonth, reportYear) {
     topProjects = topProjects.slice(0, TOP_PROJECTS_PER_BLOCK);
   }
 
-  // Capraz dogrulama: detaydan sayilan YTD adet, Bolum 4'un Real Launches'i ile
-  // tutuyor mu? Tutmuyorsa sessizce birini secmiyoruz, isaretliyoruz.
+  // Capraz dogrulama. Yon DEGISTI: ekranda artik Bolum 4'un Real Launches
+  // sutunu gosteriliyor (kullanici karari), detaydan sayilan adet ikincil.
+  // Ikisi tutmuyorsa yine sessiz kalmiyoruz -- site "veri tutarsiz" oluyor.
   var mismatch = [];
   var ytdByType = { P1: 0, P10: 0, TTM: 0 };
   detail.blocks.forEach(function (b) {
@@ -169,7 +224,7 @@ function parseSiteSheet_(sheet, reg, sheetMonth, reportYear) {
     }
   });
   PROJECT_TYPES.forEach(function (t) {
-    var sheetVal = launch.crossCheck[t] ? launch.crossCheck[t].NEW : null;
+    var sheetVal = launch.realLaunches[t] ? launch.realLaunches[t].NEW : null;
     if (sheetVal === null || sheetVal === undefined) return;
     if (Math.round(sheetVal) !== Math.round(ytdByType[t])) {
       mismatch.push(t + ': sheet ' + sheetVal + ' / detail ' + ytdByType[t]);
@@ -177,7 +232,8 @@ function parseSiteSheet_(sheet, reg, sheetMonth, reportYear) {
   });
 
   var hasAnyData = detail.total.count > 0 ||
-                   (launch.budgetYear.TOTAL && launch.budgetYear.TOTAL.NEW);
+                   (launch.budgetYear.TOTAL && launch.budgetYear.TOTAL.NEW) ||
+                   (launch.realLaunches.TOTAL && launch.realLaunches.TOTAL.NEW);
   var status = 'ok';
   if (!hasAnyData) status = 'no-data';
   else if (mismatch.length) status = 'inconsistent';
@@ -185,9 +241,11 @@ function parseSiteSheet_(sheet, reg, sheetMonth, reportYear) {
   return {
     ro: reg.ro, site: reg.site, sheet: sheet.getName(),
     month: month, year: reportYear, status: status,
-    budgetTurnover: orderIntake,     // M€  (Bolum 3, yalniz Budget Year)
-    budgetCount: launch.budgetYear,  // adet (Bolum 4)
-    budgetYTDCount: launch.budgetYTD,
+    budgetTurnover: orderIntake.budgetYear,   // M€  (Bolum 3 Budget Year)
+    launchDoneTurnover: orderIntake.launchDone, // M€  (Bolum 3 Launch Done)
+    budgetCount: launch.budgetYear,           // adet (Bolum 4 Budget Year)
+    budgetYTDCount: launch.budgetYTD,         // adet (Bolum 4 Budget YTD)
+    realCount: launch.realLaunches,           // adet (Bolum 4 Real Launches)
     detail: detail,                  // gerceklesen: adet + k€
     indicators: indicators,
     headcount: hr.count,             // Bolum 2'deki benzersiz kisi sayisi

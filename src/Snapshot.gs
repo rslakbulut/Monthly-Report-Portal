@@ -66,7 +66,7 @@ var SNAP_VERSION = 1;                          // SEKIL surumu: paketleme bicimi
                                sayilar eskidir; servis edilir ve ARKA PLANDA
                                yeniden kurulmasi planlanir.
    Boylece veri katmani degistiginde kimsenin elle bir sey yapmasi gerekmiyor. */
-var DATA_REV = 3;   /* 3: Budget YTD cirosu "LS OI <yil>" sayfasindan */
+var DATA_REV = 4;   /* 4: gerceklesen ciro/adet Bolum 3-4 tablolarindan */
 
 /* Olcu alanlarinin SABIT sirasi. Sira degisirse SNAP_VERSION artirilmali. */
 var MEASURE_FIELDS = ['count', 'turnover', 'ytdCount', 'ytdTurnover',
@@ -115,6 +115,9 @@ function packOverviewSite_(site) {
     month: site.month, status: site.status,
     hc: site.headcount || 0,
     bc: site.budgetCount, by: site.budgetYTDCount, bt: site.budgetTurnover,
+    /* Bolum 3 "Launch Done" (M€) ve Bolum 4 "Real Launches" (adet):
+       gerceklesen degerlerin ESAS kaynagi artik bunlar. */
+    ld: site.launchDoneTurnover, rc: site.realCount,
     bl: blocks,
     mm: (site.mismatch && site.mismatch.length) ? site.mismatch.length : 0
   };

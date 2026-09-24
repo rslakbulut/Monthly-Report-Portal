@@ -43,12 +43,15 @@ push({1:'EMI',4:102,7:129.69,8:122.15,9:123.59,10:108.49,11:119.56});
 push({1:'DAP',4:'-%',7:0,8:0,9:0,10:0,11:0,12:0});
 push({1:'RED LAUNCHES',4:0,7:0,8:0,9:0,10:0,11:0,12:0});
 push({});
+/* Gercek sayfadaki duzen: roller SUTUN basligi, isimler altlarinda, birden
+   cok TEAM satiri; govdenin ortasinda ("DESIGNER") ek bir rol etiketi. */
 push({1:'2.  HUMAN RESOURCES.'});
-push({1:'TEAM',3:'NAME'});
-push({1:'Project Manager',3:'John Smith'});
-push({1:'R&D PTM',3:'Ana Lopez'});
-push({1:'Process PTM',3:'John Smith'});
-push({1:'Quality PTM'});
+push({1:'TEAM',2:'Project Manager',3:'R&D PTM',4:'Process PTM',5:'Quality PTM',
+      6:'Purchasing PTM',7:'Supply chain PTM'});
+push({1:1,2:'J.GEOFREY KINGSTON',3:'Ana Lopez',4:'John Smith',6:'Mert Kaya'});
+push({2:'DESIGNER'});
+push({2:'PRASHANTH'});
+push({1:2,2:'M.KARTHIKEYAN',3:'John Smith',5:'N/A'});
 push({});
 push({1:'3. ORDER INTAKE - Budget & Real'});
 push({1:'ORDER INTAKE',5:'Budget Year 2026',7:'Launch Done (L.S sent)',9:'Current Portfolio (C.A signed)',11:'Potential O.I (C.A not signed)',13:'COMMENTS'});
@@ -72,10 +75,14 @@ push({});
 
 const warn=[];
 const oi = parseOrderIntakeBudget_(g, warn);
-eq(oi.TOTAL.NEW, 1.8, 'B3 Budget Year TOTAL NEW = 1.8 M€');
-eq(oi.VS.NEW,    1.8, 'B3 Budget Year VS NEW = 1.8 M€');
-eq(oi.OES.NEW,   0.0, 'B3 Budget Year OES NEW = 0.0');
-eq(oi.TOTAL.REMAN, 0.0, 'B3 REMAN sutunu ayri okundu');
+eq(oi.budgetYear.TOTAL.NEW, 1.8, 'B3 Budget Year TOTAL NEW = 1.8 M€');
+eq(oi.budgetYear.VS.NEW,    1.8, 'B3 Budget Year VS NEW = 1.8 M€');
+eq(oi.budgetYear.OES.NEW,   0.0, 'B3 Budget Year OES NEW = 0.0');
+eq(oi.budgetYear.TOTAL.REMAN, 0.0, 'B3 REMAN sutunu ayri okundu');
+/* Gerceklesen ciro artik BU tablodan (kullanici karari). */
+eq(oi.launchDone.TOTAL.NEW, 1.14, 'B3 Launch Done TOTAL NEW = 1.14 M€');
+eq(oi.launchDone.VS.NEW,    1.14, 'B3 Launch Done VS NEW');
+eq(oi.launchDone.OES.NEW,   0.0,  'B3 Launch Done OES NEW');
 
 const pl = parseProjectLaunchBudget_(g, warn);
 eq(pl.budgetYear.TOTAL.NEW, 36, 'B4 Budget Year TOTAL = 36');
@@ -83,7 +90,9 @@ eq(pl.budgetYTD.TOTAL.NEW,  19, 'B4 Budget YTD TOTAL = 19');
 eq(pl.budgetYear.P1.NEW,    19, 'B4 Budget Year P1 = 19');
 eq(pl.budgetYear.P10.NEW,   17, 'B4 "PCO /P10" satiri P10 olarak okundu = 17');
 eq(pl.budgetYTD.P10.NEW,     9, 'B4 Budget YTD P10 = 9');
-eq(pl.crossCheck.TOTAL.NEW, 31, 'B4 Real Launches (yalniz capraz dogrulama) = 31');
+eq(pl.realLaunches.TOTAL.NEW, 31, 'B4 Real Launches = 31 (ekrandaki deger)');
+eq(pl.realLaunches.P1.NEW,    16, 'B4 Real Launches P1 = 16');
+eq(pl.realLaunches.TTM.NEW,    2, 'B4 Real Launches TTM = 2');
 
 /* Denetim izi: panodaki bir sayinin HANGI HUCREDEN geldigini soyleyebilmek
    denetim ekraninin tek isi. Iz gercek parser'in icinden toplaniyor; bu test
@@ -114,9 +123,17 @@ console.log('\n1b) Denetim izi — okunan hucrenin adresi');
 }
 
 const hrRes = parseHumanResources_(g, warn);
-eq(hrRes.count, 2, 'Headcount: benzersiz kisi = 2 (ayni kisi iki rolde bir kez)');
-eq(hrRes.roles.length, 3, 'Headcount: 3 dolu rol satiri (bos Quality PTM sayilmadi)');
-eq(hrRes.roles[0].person, 'John Smith', 'Headcount: kisi adi dogru okundu');
+/* J.GEOFREY, Ana Lopez, John Smith, Mert Kaya, PRASHANTH, M.KARTHIKEYAN */
+eq(hrRes.count, 6, 'Headcount: benzersiz kisi = 6 (John Smith iki rolde bir kez)');
+eq(hrRes.roles.length, 7, 'Rol kaydi: 7 (ayni kisi iki rolde iki kayit)');
+eq(hrRes.roles.filter(x => x.person === 'PRASHANTH')[0].role, 'DESIGNER',
+   'Govdedeki rol etiketi altindaki isim o role yazildi');
+eq(hrRes.roles.filter(x => x.person === 'DESIGNER').length, 0,
+   'Rol etiketi KISI olarak sayilmadi');
+eq(hrRes.roles.filter(x => x.person === 'N/A').length, 0, '"N/A" kisi degil');
+eq(hrRes.roles.filter(x => String(x.person) === '1').length, 0, 'TEAM numarasi kisi degil');
+eq(hrRes.roles[0].person, 'J.GEOFREY KINGSTON', 'Ilk kayit: ilk takimin Project Manager\'i');
+eq(hrRes.roles[0].role, 'Project Manager', 'Rol sutun basligindan geldi');
 
 const ind = parseIndicators_(g, warn);
 eq(ind.EMI.target, 102, 'B1 EMI hedefi = 102');

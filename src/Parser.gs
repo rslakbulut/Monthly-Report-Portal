@@ -1,13 +1,24 @@
 /**
  * Site sayfasi ayristirici.
  *
- * KAYNAK DAGILIMI (kullanici talimati):
- *   - Bolum 3 ORDER INTAKE -> yalniz "Budget Year 2026" CIROSU (M€)
- *   - Bolum 4 PROJECT LAUNCH -> yalniz "Budget Year 2026" ve "Budget YTD" ADEDI
- *   - Diger her sey (gerceklesen adet/ciro) VS / OES / REMAN detay tablolarindan
+ * KAYNAK DAGILIMI (2026-09-24 kullanici karari -- ONCEKI KURALIN TERSI):
+ *   - Bolum 3 ORDER INTAKE  -> "Budget Year" ve "Launch Done (L.S sent)" CIROSU
+ *   - Bolum 4 PROJECT LAUNCH -> "Budget Year", "Budget YTD" ve
+ *                               "Real Launches [CUMUL]" ADEDI
+ *   - "LS OI <yil>" sayfasi  -> Budget YTD CIROSU (site sayfasinda karsiligi yok)
+ *   - Detay tablolari (VS/OES Current Portfolio + TTM) -> yalniz TIP x MUSTERI
+ *     caprazi (P1 x VS gibi), TOP projeler ve capraz dogrulama
  *
- * Ozet bloklardaki Launch Done / Real Launches / Delay sutunlari OKUNMAZ;
- * yalniz capraz dogrulama icin ayrica okunur (crossCheck).
+ * Neden degisti: gerceklesen adet/ciro detay tablolarindan proje proje
+ * sayiliyordu ve MANUEL RAPORLA TUTMUYORDU. Manuel rapor bu ozet sutunlari
+ * kullaniyor; ekrandaki deger de artik oradan geliyor. Detaydan sayilan deger
+ * kayboldu degil: tutmadiginda site "veri tutarsiz" isaretleniyor.
+ *
+ * DEGISMEYEN KURAL: hicbir deger SABIT HUCRE ADRESINDEN okunmaz. Once bolum
+ * basligi metni aranir, altindaki baslik satirindan sutun gruplari
+ * ("Budget Year", "Launch Done", "Real Launches") ve NEW/REMAN alt sutunlari,
+ * satir etiketlerinden de (TOTAL/VS/OES, P1/PCO-P10/TTM) satirlar bulunur.
+ * Site sayfalari arasinda satir/sutun kaymalari bu yuzden onemsizdir.
  */
 
 var TOP_PROJECTS_PER_BLOCK = 15;   // TOPS listesi icin blok basina saklanan proje sayisi
@@ -44,7 +55,8 @@ function addMeasure_(target, src) {
 /* ------------------------------------------------------------------ */
 
 function parseOrderIntakeBudget_(grid, warnings) {
-  var out = { TOTAL: {}, VS: {}, OES: {} };
+  var out = { budgetYear: { TOTAL: {}, VS: {}, OES: {} },
+              launchDone: { TOTAL: {}, VS: {}, OES: {} } };
   var anchor = findCell_(grid, 'ORDER INTAKE', 0);
   if (!anchor) { warnings.push('Section 3 (ORDER INTAKE) not found'); return out; }
 
@@ -56,22 +68,26 @@ function parseOrderIntakeBudget_(grid, warnings) {
   if (headerRow < 0) { warnings.push('Section 3 header (Budget Year) not found'); return out; }
 
   var groups = mapHeaderGroups_(grid[headerRow], 0);
-  var g = pickGroup_(groups, 'BUDGET YEAR');
-  if (!g) { warnings.push('Section 3: Budget Year column group missing'); return out; }
+  var gBudget = pickGroup_(groups, 'BUDGET YEAR');
+  /* "Launch Done (L.S sent)" = gerceklesen ciro. Kullanici karari: manuel
+     raporun kullandigi kaynak burasi, ekrandaki deger de buradan gelmeli
+     (once detay tablolarindan sayiliyordu ve rakamlar tutmuyordu). */
+  var gDone = pickGroup_(groups, 'LAUNCH DONE');
+  if (!gBudget) { warnings.push('Section 3: Budget Year column group missing'); return out; }
 
-  var cols = findNewRemanCols_(grid, headerRow + 1, g);
-  if (cols.NEW === null && cols.REMAN === null) {
+  var cBudget = findNewRemanCols_(grid, headerRow + 1, gBudget);
+  var cDone   = findNewRemanCols_(grid, headerRow + 1, gDone);
+  if (cBudget.NEW === null && cBudget.REMAN === null) {
     warnings.push('Section 3: NEW/REMAN sub-columns not found');
     return out;
   }
+  if (!gDone) warnings.push('Section 3: "Launch Done" column group missing');
 
   ['TOTAL', 'VS', 'OES'].forEach(function (label) {
     var row = findRowByLabel_(grid, headerRow + 1, headerRow + 12, [label], 8);
     if (row < 0) { warnings.push('Section 3: row "' + label + '" missing'); return; }
-    out[label] = {
-      NEW:   cols.NEW   === null ? null : cell_(grid, row, cols.NEW, warnings, 'S3 ' + label + ' NEW'),
-      REMAN: cols.REMAN === null ? null : cell_(grid, row, cols.REMAN, warnings, 'S3 ' + label + ' REMAN')
-    };
+    out.budgetYear[label] = pair_(grid, row, cBudget, warnings, 'S3 ' + label + ' budget');
+    out.launchDone[label] = pair_(grid, row, cDone,   warnings, 'S3 ' + label + ' done');
   });
   return out;
 }
@@ -81,7 +97,10 @@ function parseOrderIntakeBudget_(grid, warnings) {
 /* ------------------------------------------------------------------ */
 
 function parseProjectLaunchBudget_(grid, warnings) {
-  var out = { budgetYear: {}, budgetYTD: {}, crossCheck: {} };
+  /* realLaunches artik "yalniz capraz dogrulama" degil, EKRANDAKI DEGER
+     (kullanici karari): manuel rapor bu sutunu kullaniyor. Detaydan sayilan
+     adet ikincil kaldi ve yalniz tutarlilik kontrolunde kullaniliyor. */
+  var out = { budgetYear: {}, budgetYTD: {}, realLaunches: {} };
   var anchor = findCell_(grid, 'PROJECT LAUNCH', 0);
   if (!anchor) { warnings.push('Section 4 (PROJECT LAUNCH) not found'); return out; }
 
@@ -94,7 +113,7 @@ function parseProjectLaunchBudget_(grid, warnings) {
   var groups = mapHeaderGroups_(grid[headerRow], 0);
   var gBudget = pickGroup_(groups, 'BUDGET YEAR');
   var gYTD    = pickGroup_(groups, 'BUDGET YTD');
-  var gReal   = pickGroup_(groups, 'REAL LAUNCHES');   // yalniz capraz dogrulama
+  var gReal   = pickGroup_(groups, 'REAL LAUNCHES');
   var cBudget = findNewRemanCols_(grid, headerRow + 1, gBudget);
   var cYTD    = findNewRemanCols_(grid, headerRow + 1, gYTD);
   var cReal   = findNewRemanCols_(grid, headerRow + 1, gReal);
@@ -113,7 +132,7 @@ function parseProjectLaunchBudget_(grid, warnings) {
     if (row < 0) { warnings.push('Section 4: row "' + L.key + '" missing'); return; }
     out.budgetYear[L.key] = pair_(grid, row, cBudget, warnings, 'S4 ' + L.key + ' budget');
     out.budgetYTD[L.key]  = pair_(grid, row, cYTD,    warnings, 'S4 ' + L.key + ' ytd');
-    out.crossCheck[L.key] = pair_(grid, row, cReal,   warnings, 'S4 ' + L.key + ' real');
+    out.realLaunches[L.key] = pair_(grid, row, cReal, warnings, 'S4 ' + L.key + ' real');
   });
   return out;
 }

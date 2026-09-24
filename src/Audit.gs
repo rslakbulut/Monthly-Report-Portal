@@ -135,13 +135,24 @@ function auditSite(periodKey, siteKey) {
       source: 'Section 4 PROJECT LAUNCH · row TOTAL · column Budget YTD (NEW + REMAN)',
       cells: auditCells_(trace, 'S4 TOTAL ytd') },
     lsRow,
-    { key: 'realQty', label: 'Real (launched YTD) — projects', unit: 'projects',
+    /* Gerceklesen degerler artik sayfanin KENDI tablolarindan; detaydan
+       sayilan degerler asagida ayrica gosteriliyor ki fark gorunsun. */
+    { key: 'realQty', label: 'Real launches — projects', unit: 'projects',
+      value: auditPair_((site.realCount || {}).TOTAL),
+      source: 'Section 4 PROJECT LAUNCH · row TOTAL · column Real Launches [CUMUL] (NEW + REMAN)',
+      cells: auditCells_(trace, 'S4 TOTAL real') },
+    { key: 'realOI', label: 'Launch Done — O.I', unit: 'M€',
+      value: auditPair_((site.launchDoneTurnover || {}).TOTAL),
+      source: 'Section 3 ORDER INTAKE · row TOTAL · column Launch Done (L.S sent) (NEW + REMAN)',
+      cells: auditCells_(trace, 'S3 TOTAL done') },
+    { key: 'detailQty', label: 'counted from detail blocks — projects', unit: 'projects',
       value: realCount,
-      source: 'Detail blocks · projects whose REAL date <= reporting month',
+      source: 'SECONDARY · detail blocks · projects whose REAL date <= reporting month ' +
+              '(cross-check only — must match the row above)',
       cells: [] },
-    { key: 'realOI', label: 'Real (launched YTD) — O.I', unit: 'M€',
+    { key: 'detailOI', label: 'counted from detail blocks — O.I', unit: 'M€',
       value: realTurnover / 1000,
-      source: 'Detail blocks · same projects · Turnover (k€) / 1000',
+      source: 'SECONDARY · same projects · Turnover (k€) / 1000',
       cells: [] }
   ];
 
@@ -157,6 +168,7 @@ function auditSite(periodKey, siteKey) {
     }
   }
   var cross = { sheetReal: sheetReal, parsedReal: realCount, cells: realCells };
+  /* Yon degisti: ekranda SAYFANIN degeri var, detaydan sayilan ikincil. */
 
   var cut = rows.length > AUDIT_MAX_ROWS;
   return {

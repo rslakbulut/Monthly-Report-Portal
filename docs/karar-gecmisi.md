@@ -359,6 +359,26 @@ artık `CLAUDE.md` değil, burasıdır.
   gövdesini gerçek alanla değiştirmek. **Bu istisna yalnız bu karttır**; başka hiçbir yerde
   uydurma sayı yoktur ve yenisi eklenmeyecektir.
 
+- **2026-09-24 — Gerçekleşen adet ve ciro artık site sayfasının ÖZET tablolarından
+  (önceki kararın tersi).** Haziran'da alınan karar "özet bloklar okunmayacak, gerçekleşen
+  her şey VS/OES detay tablolarından sayılacak" idi; gerekçesi REMAN sütunlarının özet
+  bloklarda doldurulmamış olmasıydı. Uygulamada bu, **manuel raporla dashboard'un
+  tutmamasına** yol açtı: manuel rapor Bölüm 3'ün `Launch Done (L.S sent)` ve Bölüm 4'ün
+  `Real Launches [CUMUL]` sütunlarını kullanıyor. Kullanıcı kararı: ekrandaki değer artık
+  bu sütunlardan gelir. Detaydan sayılan değer silinmedi — ikisi tutmadığında site
+  **"veri tutarsız"** işaretleniyor ve Parser audit ekranında ikisi yan yana görünüyor.
+  Bölüm 3'te olmayan **Budget YTD cirosu** `LS OI <yıl>` sayfasından gelmeye devam ediyor
+  (2026-09-23 kararı). Bölüm 4'te bulunmayan **tip × müşteri çaprazı** (P1 × VS gibi)
+  detay tablolarından hesaplanmaya devam ediyor — özet tabloda bu kırılım yok.
+
+- **2026-09-24 — HUMAN RESOURCES bir MATRİS, satır listesi değil.** Headcount okuması
+  tabloyu "rol | kişi" satırları sanıyordu; gerçek tabloda roller **sütun başlığı**, isimler
+  altlarındaki hücreler ve birden çok `TEAM` satırı var. Ayrıca gövdenin ortasında ek bir rol
+  etiketi belirebiliyor (`DESIGNER` yazıp altına iki isim). Eski kod 3. sütundan sonrasını
+  hiç görmüyordu. Yeni kural hücre bazlı: her hücre rol sözlüğüyle sınanır — rol etiketiyse o
+  sütunun geçerli rolü olur, kişi adıysa o rolle kaydedilir. Headcount = **benzersiz kişi**
+  (aynı isim iki rolde/iki takımda bir kez sayılır, kullanıcı kararı).
+
 ## Yeni İçerik Eklerken
 
 Yeni bir kaynak proje eklenecekse: `tokens/colors-<proje-adı>.css` (aynen kopya, kaynak yorum

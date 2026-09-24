@@ -933,14 +933,28 @@ function planTurnoverMOf(site,r){
   if(unfiltered&&typeof site.budgetYtdOI==='number') return site.budgetYtdOI;
   return r.planYtdTurnover/1000;
 }
+/* GERCEKLESEN degerlerin kaynagi (kullanici karari): site sayfasindaki
+   Bolum 3 "Launch Done (L.S sent)" cirosu ve Bolum 4 "Real Launches" adedi.
+   Manuel rapor bu sutunlari kullaniyor; detaydan proje sayarak uretilen
+   degerler onlarla tutmuyordu.
+   Bolum 3'te yalniz TOTAL/VS/OES satirlari var; P1/P10/TTM filtresi acikken
+   ciroyu o tablodan alamayiz, detaydan hesaplanana dusulur. Adet tarafinda
+   Bolum 4'te P1/P10/TTM de var, oradan okunur. */
+function sheetRealOf(site){
+  var k=budgetRowKey();
+  var rc=site.realCountSheet&&site.realCountSheet[k];
+  var rt=site.launchDoneTurnover&&site.launchDoneTurnover[k];
+  return { count:pickStatus_(rc), turnoverM:pickStatus_(rt) };
+}
 function siteMetrics(site){
-  var b=budgetOf(site), r=realizedOf(site);
+  var b=budgetOf(site), r=realizedOf(site), sh=sheetRealOf(site);
   return {
     budgetCount:b.count, budgetYTD:b.ytdCount, budgetTurnover:b.turnover,
-    realCount:r.ytdCount, realTurnoverM:r.ytdTurnover/1000,
+    realCount:(sh.count!=null)?sh.count:r.ytdCount,
+    realTurnoverM:(sh.turnoverM!=null)?sh.turnoverM:(r.ytdTurnover/1000),
     planTurnoverM:planTurnoverMOf(site,r),
     portfolioCount:r.count, portfolioTurnoverM:r.turnover/1000,
-    delta:(b.ytdCount==null)?null:(r.ytdCount-b.ytdCount),
+    delta:(b.ytdCount==null)?null:(((sh.count!=null)?sh.count:r.ytdCount)-b.ytdCount),
     /* DENETIM BULGUSU: eskiden plan 0 ise null donuyordu, yani "plani 0
        olan ama launch etmis" site ciro gorunumunde "n/a" goruluyordu --
        ayni site adet gorunumunde gercek sayiyi gosteriyordu (47 site'in
@@ -949,7 +963,8 @@ function siteMetrics(site){
        adet tarafiyla AYNI kapi kullanilir. */
     /* Sapma da ayni plan kaynagini kullanmali; aksi halde ekranda gosterilen
        Budget YTD ile sapmanin dayandigi plan farkli olurdu. */
-    deltaTurnoverM:(b.ytdCount==null)?null:(r.ytdTurnover/1000-planTurnoverMOf(site,r))
+    deltaTurnoverM:(b.ytdCount==null)?null:
+      (((sh.turnoverM!=null)?sh.turnoverM:(r.ytdTurnover/1000))-planTurnoverMOf(site,r))
   };
 }
 function sumMetrics(list){
@@ -3072,6 +3087,9 @@ function unpackSite(p){
     ro:p.ro, site:p.site, key:p.key, sheet:p.sheet, month:p.month, status:p.status,
     headcount:p.hc||0,
     budgetCount:p.bc, budgetYTDCount:p.by, budgetTurnover:p.bt,
+    /* Gerceklesen: Bolum 3 "Launch Done" (M€) ve Bolum 4 "Real Launches"
+       (adet). Manuel raporun kullandigi kaynak bunlar. */
+    launchDoneTurnover:p.ld||null, realCountSheet:p.rc||null,
     /* Budget YTD cirosu "LS OI <yil>" sayfasindan (M€). Yoksa undefined
        kalir ve detaydan hesaplanan degere dusulur. */
     budgetYtdOI:(typeof p.bq==='number')?p.bq:null,
