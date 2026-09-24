@@ -1521,7 +1521,17 @@ dialog.panelx::backdrop{background:rgba(4,27,60,.6); backdrop-filter:blur(3px)}
 .p-sites.bad{color:var(--bad)}
 .p-del{min-height:30px; padding:0 12px; font-size:12px}
 
-.log{font-size:12.5px; color:var(--text-dim); white-space:pre-wrap; max-height:190px; overflow:auto; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:var(--sunken); border-radius:var(--r-sm); padding:12px}
+/* Cikti kutusu: uzun raporlar (donem kurulumu, denetim, geri bildirim
+   dokumu) 190px'lik sabit kutuda okunmuyordu. Kullanici kendisi buyutebilsin
+   diye dikey olarak SURUKLENEBILIR; varsayilan yukseklik de artti. */
+.log{
+  font-size:12.5px; color:var(--text-dim); white-space:pre-wrap;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  background:var(--sunken); border:1px solid var(--border);
+  border-radius:var(--r-sm); padding:12px;
+  min-height:120px; height:190px; max-height:70vh;
+  overflow:auto; resize:vertical;
+}
 .gloss-search{
   width:100%; min-height:44px; padding:0 14px; font:inherit; font-size:14px;
   border:1px solid var(--border-strong); border-radius:var(--r-sm);
@@ -1817,4 +1827,15 @@ body.dark-mode .bell-n{color:#3a0d10}
   text-transform:uppercase; color:var(--text-mute)}
 .bc-g.bc-total{cursor:default}
 
+
+/* Ayarlar paneli 640px'te dardi: dosya adlari ("... - July+August 2026") ve
+   cikti kutusundaki satirlar sarip okunmaz hale geliyordu. */
+#dlgSettings{max-width:min(860px,96vw); width:min(860px,96vw)}
+
+/* Mesgul dugme: kilitli ama SOLUK DEGIL -- "bozuk" degil "calisiyor"
+   okunmali. Hafif nabiz, hareket tercihini kapatanlarda sabit. */
+.btn.busy,.btn.ghost.busy{opacity:1; cursor:progress; animation:btn-busy 1.1s ease-in-out infinite}
+@keyframes btn-busy{0%,100%{filter:brightness(1)} 50%{filter:brightness(1.18)}}
+@media (prefers-reduced-motion:reduce){ .btn.busy{animation:none} }
+.btn:disabled{cursor:not-allowed}
 </style>

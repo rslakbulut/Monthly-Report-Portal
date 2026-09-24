@@ -3408,10 +3408,24 @@ function initTheme(){
 }
 
 /* ---------- panels ---------- */
+/* Sunucuya giden uzun islerde dugmenin KENDISI mesgul gorunmeli. Snapshot
+   kurulumu 40-180 sn surebiliyor; dugme aynen duruyor, cikti da panelin
+   altinda ekran disinda kaliyordu -- kullanici tikladigini anlamiyordu
+   (bildirim). Dugme kilitleniyor, metni degisiyor, is bitince geri geliyor. */
+function busyBtn(id, label){
+  var b=$(id); if(!b) return function(){};
+  var old=b.innerHTML, wasDisabled=b.disabled;
+  b.disabled=true; b.classList.add('busy'); b.innerHTML=esc(label||'Working…');
+  return function(){ b.disabled=wasDisabled; b.classList.remove('busy'); b.innerHTML=old; };
+}
+
 function logS(m){
   var el=$('settingsLog');
   el.textContent=m||'';
   el.hidden=!m;              /* bos kutu eksik bir sey varmis gibi duruyor */
+  /* Cikti panelin EN ALTINDA; ustteki bir dugmeye basinca ekranin disinda
+     kaliyordu ve "hicbir sey olmadi" sanilıyordu. */
+  if(m){ try{ el.scrollIntoView({block:'nearest'}); }catch(e){} }
 }
 /**
  * Yeni kaydedilen bir donemin snapshot'ini hemen kurar.
@@ -3972,9 +3986,11 @@ function initPanels(){
   $('btnIbSend').onclick=ibQueue;
   $('btnIbNone').onclick=function(){ IB.sel={}; ibRenderList(); };
   $('btnScan').onclick=function(){
+    var doneScan=busyBtn('btnScan','Scanning…');
     logS('Scanning Gmail…');
     google.script.run
       .withSuccessHandler(function(r){
+        doneScan();
         if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); showToast(r&&r.error||'Scan failed','error'); return; }
         var lines=(r.found||[]).map(function(f){ return (f.isNew?'NEW      ':'existing ')+f.key+'  '+f.name; });
         logS(r.threadCount+' email threads scanned.\n'+
@@ -3985,7 +4001,7 @@ function initPanels(){
         if(fresh) buildSnapshotFor(fresh.key, function(){ boot(); });
         else boot();
       })
-      .withFailureHandler(function(e){ var m=e&&e.message||e; logS('Server error: '+m); showToast('Server error: '+m,'error'); })
+      .withFailureHandler(function(e){ doneScan(); var m=e&&e.message||e; logS('Server error: '+m); showToast('Server error: '+m,'error'); })
       .uiScanGmail();
   };
   $('btnSaveQuery').onclick=function(){
@@ -4015,32 +4031,41 @@ function initPanels(){
   /* Gecmis donemlerin snapshot'i yoksa kurar; ilk kez o aya bakan kullanici
      40-60 sn beklemesin diye. Tek seferde 3 donem (6 dk yurutme siniri). */
   $('btnEnsureSnaps').onclick=function(){
-    logS('Building snapshots for periods that do not have one yet…');
+    var done=busyBtn('btnEnsureSnaps','Rebuilding… (may take a minute)');
+    logS('Rebuilding periods with no snapshot or an outdated one…\n'+
+         'This reads the spreadsheets again; it can take a minute per period.');
+    showToast('Rebuilding periods…','info');
     google.script.run.withSuccessHandler(function(r){
+        done();
         if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); showToast(r&&r.error||'Failed','error'); return; }
-        logS(r.message); showToast(r.message,'success');
+        logS(r.message); showToast(r.message.split('\n')[0],'success');
+        boot();                       /* yeni sayilar ekrana gelsin */
       })
-      .withFailureHandler(function(e){ var m=e&&e.message||e; logS('Error: '+m); showToast('Error: '+m,'error'); })
+      .withFailureHandler(function(e){ done(); var m=e&&e.message||e;
+        logS('Error: '+m); showToast('Error: '+m,'error'); })
       .uiEnsureSnapshots();
   };
   /* Geri bildirim boru hattini panelde gorunur kilar: hedef sekme, sutun
      eslesmesi, kayitli satir sayisi, son kayit ve bildirim e-postasinin
      alicisi. Once bunlarin hicbiri gorunmuyordu. */
   $('btnCheckFb').onclick=function(){
+    var doneFb=busyBtn('btnCheckFb','Checking…');
     logS('Checking feedback pipeline…');
     google.script.run
       .withSuccessHandler(function(r){
+        doneFb();
         if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); return; }
         logS(r.message);
       })
-      .withFailureHandler(function(e){ logS('Server error: '+((e&&e.message)||e)); })
+      .withFailureHandler(function(e){ doneFb(); logS('Server error: '+((e&&e.message)||e)); })
       .uiCheckFeedback();
   };
   $('btnTestMail').onclick=function(){
+    var doneMail=busyBtn('btnTestMail','Sending…');
     logS('Sending test e-mail…');
     google.script.run
-      .withSuccessHandler(function(r){ logS((r&&r.message)||(r&&r.error)||'unknown'); })
-      .withFailureHandler(function(e){ logS('Server error: '+((e&&e.message)||e)); })
+      .withSuccessHandler(function(r){ doneMail(); logS((r&&r.message)||(r&&r.error)||'unknown'); })
+      .withFailureHandler(function(e){ doneMail(); logS('Server error: '+((e&&e.message)||e)); })
       .uiTestMail();
   };
   $('btnAdd').onclick=function(){
