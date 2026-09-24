@@ -4055,32 +4055,80 @@ function initPanels(){
   };
   /* Gecmis donemlerin snapshot'i yoksa kurar; ilk kez o aya bakan kullanici
      40-60 sn beklemesin diye. Tek seferde 3 donem (6 dk yurutme siniri). */
-  $('btnEnsureSnaps').onclick=function(){
-    var done=busyBtn('btnEnsureSnaps','Rebuilding…',{
-      timeoutMs:6.5*60*1000,
-      onTimeout:function(){
-        logS('The server hit its 6-minute limit before answering.\n'+
-             'Some periods were probably rebuilt anyway — press the button '+
-             'again to continue with the rest.');
-        showToast('Timed out — press the button again to continue','error');
-      }
-    });
-    logS('Rebuilding periods with no snapshot or an outdated one…\n'+
-         'This reads the spreadsheets again; it can take a minute per period.');
-    showToast('Rebuilding periods…','info');
-    google.script.run.withSuccessHandler(function(r){
-        done();
-        if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); showToast(r&&r.error||'Failed','error'); return; }
-        var more=(r.pending>0);
-        logS((more ? 'DONE — but not finished yet.\n' : 'DONE — all periods are up to date.\n')+
-             r.message);
-        showToast(more ? r.built.length+' rebuilt, '+r.pending+' left — press again'
-                       : 'All periods are up to date', more?'info':'success');
-        boot();                       /* yeni sayilar ekrana gelsin */
+  /* Donemleri TEK TEK, pes pese kurar.
+     Once tek cagrida uc donem kuruluyordu; bir donem 40-180 sn surdugu icin
+     toplam Apps Script'in 6 dakikalik sinirini asiyor ve cagri komple
+     dusuyordu -- canlida "NetworkError: Connection failure due to HTTP 0".
+     Sunucu kesildiginde istemciye HICBIR yanit donmuyor, yani hata mesaji
+     disinda ne kuruldugu da bilinmiyordu.
+     Yeni akis: her turda BIR donem. Tur bitince sonucu yaziyoruz ve kalan
+     varsa kendiliginden bir sonraki tur basliyor; kullanici tekrar tekrar
+     basmiyor. Dugme "Stop"a donusuyor, istenirse tur sonunda duruluyor. */
+  var ENS={running:false,stop:false,round:0,built:[],t0:0};
+  function ensLog(extra){
+    var s=Math.round((Date.now()-ENS.t0)/1000);
+    var mm=Math.floor(s/60), ss=s%60;
+    logS('Rebuilding periods one by one — ' + mm+':'+(ss<10?'0':'')+ss + ' elapsed\n' +
+         (ENS.built.length ? 'Done so far: '+ENS.built.join(', ')+'\n' : '') +
+         (extra||'Reading the spreadsheets… a period takes up to ~2 minutes.'));
+  }
+  function ensFinish(msg,type){
+    ENS.running=false;
+    var b=$('btnEnsureSnaps');
+    b.disabled=false; b.classList.remove('busy');
+    b.innerHTML='Rebuild missing / outdated periods';
+    logS(msg);
+    showToast(msg.split('\n')[0],type||'success');
+    boot();                            /* yeni sayilar ekrana gelsin */
+  }
+  function ensRound(){
+    if(ENS.stop){
+      ensFinish('STOPPED after '+ENS.built.length+' period(s): '+
+                (ENS.built.join(', ')||'none')+'\nPress the button again to continue.','info');
+      return;
+    }
+    ENS.round++;
+    ensLog();
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.error){
+          ensFinish('Error: '+((r&&r.error)||'unknown'),'error'); return;
+        }
+        (r.built||[]).forEach(function(k){ ENS.built.push(k); });
+        if(r.pending>0 && (r.built||[]).length){
+          ensLog(r.pending+' period(s) left — continuing…');
+          setTimeout(ensRound,600);    /* sunucuya nefes alani */
+          return;
+        }
+        if(r.pending>0 && !(r.built||[]).length){
+          /* Ilerleme yok: sonsuz donguye girmeyelim. */
+          ensFinish('STOPPED — a period could not be rebuilt, so nothing moved.\n'+
+                    r.message,'error'); return;
+        }
+        ensFinish('DONE — all periods are up to date.\n'+
+                  (ENS.built.length ? 'Rebuilt: '+ENS.built.join(', ') : 'Nothing needed rebuilding.'));
       })
-      .withFailureHandler(function(e){ done(); var m=e&&e.message||e;
-        logS('Error: '+m); showToast('Error: '+m,'error'); })
-      .uiEnsureSnapshots();
+      .withFailureHandler(function(e){
+        var m=(e&&e.message)||String(e);
+        /* HTTP 0 = sunucu sure sinirinda kesildi. O donem yarim kalmis
+           olabilir; kullanici yeniden baslatinca ayni yerden devam eder. */
+        var cut=/HTTP 0|NetworkError|timeout/i.test(m);
+        ensFinish((cut
+          ? 'STOPPED — the server was cut off at its time limit while rebuilding.\n'+
+            'That period is probably too big to finish in one go; press the button\n'+
+            'again to retry it, or use "Refresh data" while that month is open.\n'
+          : 'Error: ')+ m +
+          (ENS.built.length ? '\nRebuilt before the error: '+ENS.built.join(', ') : ''),'error');
+      })
+      .uiEnsureSnapshots(1);
+  }
+  $('btnEnsureSnaps').onclick=function(){
+    var b=$('btnEnsureSnaps');
+    if(ENS.running){ ENS.stop=true; b.innerHTML='Stopping…'; return; }
+    ENS={running:true,stop:false,round:0,built:[],t0:Date.now()};
+    b.classList.add('busy'); b.innerHTML='Stop';
+    showToast('Rebuilding periods one by one…','info');
+    ensRound();
   };
   /* Geri bildirim boru hattini panelde gorunur kilar: hedef sekme, sutun
      eslesmesi, kayitli satir sayisi, son kayit ve bildirim e-postasinin

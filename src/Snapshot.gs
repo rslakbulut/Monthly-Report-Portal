@@ -708,9 +708,19 @@ function ensureSnapshots(limit) {
   return { built: built, pending: pending };
 }
 
-function uiEnsureSnapshots() {
+/**
+ * @param {number=} limit Bu cagrida kurulacak EN FAZLA donem sayisi.
+ *   Varsayilan 1: bir donem ~40-180 sn suruyor, uc tanesi Apps Script'in
+ *   6 dakikalik sinirini asip cagriyi komple dusuruyordu (canlida goruldu:
+ *   "NetworkError: Connection failure due to HTTP 0" -- sunucu kesilince
+ *   istemciye hicbir yanit donmuyor). Tek donem her zaman sinirin altinda
+ *   kaliyor; kalanlari istemci pes pese cagirarak bitiriyor.
+ */
+function uiEnsureSnapshots(limit) {
   var deny = requireAdmin_(); if (deny) return deny;
-  var r = ensureSnapshots(3);
+  var n = parseInt(limit, 10);
+  if (!(n > 0) || n > 3) n = 1;
+  var r = ensureSnapshots(n);
   return { ok: true, built: r.built, pending: r.pending,
            message: r.built.length + ' period(s) rebuilt' +
                     (r.built.length ? ' (' + r.built.join(', ') + ')' : '') +
