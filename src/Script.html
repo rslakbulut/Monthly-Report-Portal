@@ -3412,11 +3412,36 @@ function initTheme(){
    kurulumu 40-180 sn surebiliyor; dugme aynen duruyor, cikti da panelin
    altinda ekran disinda kaliyordu -- kullanici tikladigini anlamiyordu
    (bildirim). Dugme kilitleniyor, metni degisiyor, is bitince geri geliyor. */
-function busyBtn(id, label){
+function busyBtn(id, label, opts){
   var b=$(id); if(!b) return function(){};
-  var old=b.innerHTML, wasDisabled=b.disabled;
-  b.disabled=true; b.classList.add('busy'); b.innerHTML=esc(label||'Working…');
-  return function(){ b.disabled=wasDisabled; b.classList.remove('busy'); b.innerHTML=old; };
+  var o=opts||{};
+  var old=b.innerHTML, wasDisabled=b.disabled, t0=Date.now();
+  b.disabled=true; b.classList.add('busy');
+  function paint(){
+    var s=Math.round((Date.now()-t0)/1000);
+    var mm=Math.floor(s/60), ss=s%60;
+    b.innerHTML=esc((label||'Working…')+'  '+mm+':'+(ss<10?'0':'')+ss);
+  }
+  paint();
+  /* Geri sayan saat: "calisiyor mu, dondu mu" sorusunu ekran kendisi
+     cevapliyor. Sabit bir "…" hicbir sey soylemiyordu. */
+  var tick=setInterval(paint,1000);
+  var watchdog=null, released=false;
+  function release(){
+    if(released) return; released=true;
+    clearInterval(tick); if(watchdog) clearTimeout(watchdog);
+    b.disabled=wasDisabled; b.classList.remove('busy'); b.innerHTML=old;
+  }
+  /* Apps Script'in 6 dk sinirinda sunucu kesilir ve HICBIR yanit gelmez --
+     dugme sonsuza kadar mesgul kalirdi. Sinirdan biraz sonra kendimizi
+     kurtariyoruz ve ne yapilacagini soyluyoruz. */
+  if(o.timeoutMs){
+    watchdog=setTimeout(function(){
+      release();
+      if(o.onTimeout) o.onTimeout();
+    },o.timeoutMs);
+  }
+  return release;
 }
 
 function logS(m){
@@ -4031,14 +4056,26 @@ function initPanels(){
   /* Gecmis donemlerin snapshot'i yoksa kurar; ilk kez o aya bakan kullanici
      40-60 sn beklemesin diye. Tek seferde 3 donem (6 dk yurutme siniri). */
   $('btnEnsureSnaps').onclick=function(){
-    var done=busyBtn('btnEnsureSnaps','Rebuilding… (may take a minute)');
+    var done=busyBtn('btnEnsureSnaps','Rebuilding…',{
+      timeoutMs:6.5*60*1000,
+      onTimeout:function(){
+        logS('The server hit its 6-minute limit before answering.\n'+
+             'Some periods were probably rebuilt anyway — press the button '+
+             'again to continue with the rest.');
+        showToast('Timed out — press the button again to continue','error');
+      }
+    });
     logS('Rebuilding periods with no snapshot or an outdated one…\n'+
          'This reads the spreadsheets again; it can take a minute per period.');
     showToast('Rebuilding periods…','info');
     google.script.run.withSuccessHandler(function(r){
         done();
         if(!r||r.error){ logS('Error: '+(r&&r.error||'unknown')); showToast(r&&r.error||'Failed','error'); return; }
-        logS(r.message); showToast(r.message.split('\n')[0],'success');
+        var more=(r.pending>0);
+        logS((more ? 'DONE — but not finished yet.\n' : 'DONE — all periods are up to date.\n')+
+             r.message);
+        showToast(more ? r.built.length+' rebuilt, '+r.pending+' left — press again'
+                       : 'All periods are up to date', more?'info':'success');
         boot();                       /* yeni sayilar ekrana gelsin */
       })
       .withFailureHandler(function(e){ done(); var m=e&&e.message||e;
