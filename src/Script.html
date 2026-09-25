@@ -942,9 +942,8 @@ function planTurnoverMOf(site,r){
    Bolum 4'te P1/P10/TTM de var, oradan okunur. */
 function sheetRealOf(site){
   var k=budgetRowKey();
-  var rc=site.realCountSheet&&site.realCountSheet[k];
-  var rt=site.launchDoneTurnover&&site.launchDoneTurnover[k];
-  return { count:pickStatus_(rc), turnoverM:pickStatus_(rt) };
+  return { count:sheetVal_(site.realCountSheet&&site.realCountSheet[k],F.status),
+           turnoverM:sheetVal_(site.launchDoneTurnover&&site.launchDoneTurnover[k],F.status) };
 }
 function siteMetrics(site){
   var b=budgetOf(site), r=realizedOf(site), sh=sheetRealOf(site);
@@ -1632,6 +1631,45 @@ function execBudgetPick(site,row,status,field){
   if(status==='ALL') return (+o.NEW||0)+(+o.REMAN||0);
   return +o[status]||0;
 }
+/* Sayfadan okunan {NEW,REMAN} degeri; HIC deger yoksa null doner.
+   0 ile "yok"u ayirmak sart: sutun bulunamamis bir siteyi 0 saymak,
+   sessizce yanlis toplam uretir -- dogrusu eski hesaba dusmek. */
+function sheetVal_(o,status){
+  if(!o) return null;
+  if(status==='ALL'){
+    var a=(typeof o.NEW==='number')?o.NEW:null;
+    var b=(typeof o.REMAN==='number')?o.REMAN:null;
+    if(a==null&&b==null) return null;
+    return (a||0)+(b||0);
+  }
+  return (typeof o[status]==='number')?o[status]:null;
+}
+/* ---- yonetim ekraninin GERCEKLESEN degerleri ----
+   HATA: kartlar ve RO satirlari yeni kaynagi (Bolum 3 "Launch Done",
+   Bolum 4 "Real Launches", "LS OI" sayfasi) kullanirken, grafik/matris/gap
+   hala detay tablolarindan hesapliyordu. Ayni ekranda iki farkli sayi
+   cikiyordu (kart 16.4 M€ / grafik 10.9 M€ -- kullanici bildirimi).
+   Artik ucu de ayni kaynagi kullaniyor; sayfada o satir/sutun yoksa
+   (ornek: Bolum 3'te P1/P10/TTM satiri yok) eski hesaba dusuluyor. */
+function execRealMoney(site,row,status){
+  var v=sheetVal_(site.launchDoneTurnover&&site.launchDoneTurnover[row],status);
+  if(v!=null) return v;
+  return execRealSum(site,row==='TOTAL'?'ALL':row,status,'ytdTurnover')/1000;
+}
+function execRealCount(site,type,status){
+  var v=sheetVal_(site.realCountSheet&&site.realCountSheet[type],status);
+  if(v!=null) return v;
+  return execRealSum(site,type==='TOTAL'?'ALL':type,status,'ytdCount');
+}
+/* Budget YTD cirosu "LS OI" sayfasinda TEK TOPLAM olarak duruyor; NEW/REMAN
+   veya tip/musteri kirilimi yok. O yuzden yalniz kirilimsiz hucrede
+   kullanilir, kirilimli hucrede detaydan hesaplanana dusulur. */
+function execPlanMoney(site,row,status){
+  if(row==='TOTAL'&&status==='ALL'&&typeof site.budgetYtdOI==='number'){
+    return site.budgetYtdOI;
+  }
+  return execRealSum(site,row==='TOTAL'?'ALL':row,status,'planYtdTurnover')/1000;
+}
 /* Gerceklesen taraf: detay bloklarindan. type 'ALL' ise blogun toplami. */
 function execRealSum(site,type,status,measure){
   var n=0;
@@ -1650,7 +1688,7 @@ function execCountCell(list,type,status){
   list.forEach(function(st){
     c.b1  +=execBudgetPick(st,type,status,'budgetCount');
     c.ytd +=execBudgetPick(st,type,status,'budgetYTDCount');
-    c.real+=execRealSum(st,type==='TOTAL'?'ALL':type,status,'ytdCount');
+    c.real+=execRealCount(st,type,status);
   });
   return c;
 }
@@ -1710,8 +1748,8 @@ function execMoneyCell(list,status,type){
   var c=execZero();
   list.forEach(function(st){
     c.b1  +=execBudgetPick(st,row,status,'budgetTurnover');
-    c.ytd +=execRealSum(st,rt,status,'planYtdTurnover')/1000;
-    c.real+=execRealSum(st,rt,status,'ytdTurnover')/1000;
+    c.ytd +=execPlanMoney(st,row,status);
+    c.real+=execRealMoney(st,row,status);
   });
   return c;
 }
