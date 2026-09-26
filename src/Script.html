@@ -1595,21 +1595,6 @@ function renderRoLevel(){
 }
 
 /* ---------- level 3: tek site ---------- */
-function typeTotals(s,t2){
-  var acc=emptyM();
-  (s.detail.blocks||[]).forEach(function(b){
-    if(!statusMatches_(b.status)) return;
-    if(b.byType&&b.byType[t2]) addM(acc,b.byType[t2]);
-  });
-  return acc;
-}
-function custTotals(s,c){
-  var acc=emptyM();
-  (s.detail.blocks||[]).forEach(function(b){
-    if(!statusMatches_(b.status)||b.customer!==c) return; addM(acc,b.total);
-  });
-  return acc;
-}
 /* ---------- ust yonetim gorunumu (POWER Aftermarket raporu) ----------
    Mudurun top management'a sundugu uc slaytin ekran karsiligi:
      1) RO x proje tipolojisi matrisi (P1/P10/TTM x NEW/REMAN) + OI
@@ -2321,18 +2306,25 @@ function renderSiteLevel(){
     ' · Launch Done <b>'+money(m.realTurnoverM)+'</b> '+esc(t('of'))+' '+money(m.budgetTurnover)+
     ' &nbsp;'+statusPill(s.status)+'</div>';
 
-  var maxT=0;
-  ['P1','P10','TTM'].forEach(function(x){ var a=typeTotals(s,x); maxT=Math.max(maxT,a.count,a.ytdCount); });
+  /* Tip kirilimi: Real Launches / Budget Year, Bolum 4'ten (cekmecedeki
+     tabloyla ayni kaynak -- execCountCell). Once detaydan "gerceklesen /
+     portfoy" gosteriliyordu; ekranin geri kalaniyla tutmuyordu. */
+  var maxT=0, tcs={};
+  ['P1','P10','TTM'].forEach(function(x){
+    tcs[x]=execCountCell([s],x,F.status); maxT=Math.max(maxT,tcs[x].b1,tcs[x].real);
+  });
   var brk='';
   ['P1','P10','TTM'].forEach(function(x){
-    var a=typeTotals(s,x);
-    var w=clamp01(a.ytdCount/(maxT||1))*100;
+    var a=tcs[x];
+    var w=clamp01(a.real/(maxT||1))*100;
     brk+='<div class="brk-row" style="--ro-color:'+roColor(s.ro)+'"><span class="brk-name">'+x+'</span>'+
       '<span class="bar"><span class="bar-fill" style="width:'+w.toFixed(1)+'%"></span></span>'+
-      '<span class="num" style="font-weight:700">'+nf(a.ytdCount)+' / '+nf(a.count)+'</span></div>';
+      '<span class="num" style="font-weight:700">'+nf(a.real)+' / '+nf(a.b1)+'</span></div>';
   });
 
-  var vs=custTotals(s,'VS'), oes=custTotals(s,'OES');
+  /* Musteri ayrimi: Launch Done VS / OES, Bolum 3'ten (yoksa detaydan). */
+  var vs={ytdTurnover:execRealMoney(s,'VS',F.status)*1000},
+      oes={ytdTurnover:execRealMoney(s,'OES',F.status)*1000};
   var tot=(vs.ytdTurnover+oes.ytdTurnover)||1;
   var vsp=Math.round(vs.ytdTurnover/tot*100), oesp=100-vsp;
   var stack='<div class="stack">'+

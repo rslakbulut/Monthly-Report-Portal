@@ -416,6 +416,15 @@ function sumStatus_(o) {
 }
 
 /** Paketlenmis overview'dan RO bazinda trend satirlari uretir. */
+/** {NEW, REMAN} toplami; ikisi de sayi degilse null ("0" ile "yok" ayri). */
+function sheetSum_(o) {
+  if (!o) return null;
+  var a = (typeof o.NEW === 'number') ? o.NEW : null;
+  var b = (typeof o.REMAN === 'number') ? o.REMAN : null;
+  if (a === null && b === null) return null;
+  return (a || 0) + (b || 0);
+}
+
 function trendRollup_(sites) {
   var byRo = {};
   for (var i = 0; i < sites.length; i++) {
@@ -427,13 +436,24 @@ function trendRollup_(sites) {
     r.bc += sumStatus_(p.bc && p.bc.TOTAL);      // Budget Year adet
     r.by += sumStatus_(p.by && p.by.TOTAL);      // Budget YTD adet
     r.bt += sumStatus_(p.bt && p.bt.TOTAL);      // Budget Year ciro (M€)
+    /* Gerceklesen ve Budget YTD cirosu EKRANLA AYNI kaynaktan: Bolum 4 Real
+       Launches, Bolum 3 Launch Done, "LS OI" sayfasi. Sayfada deger yoksa o
+       site icin detay tablolarina dusulur (istemcideki kuralin aynisi).
+       Once burasi hep detaydan topluyordu; trend ile ekran ayrisacakti. */
+    var dRc = 0, dRt = 0, dPt = 0;
     for (var b = 0; b < (p.bl || []).length; b++) {
       var t = p.bl[b].t;
       if (!t) continue;
-      r.rc += t[2] || 0;                          // ytdCount      -> Real Launches
-      r.rt += (t[3] || 0) / 1000;                 // ytdTurnover k€ -> M€
-      r.pt += (t[5] || 0) / 1000;                 // planYtdTurnover
+      dRc += t[2] || 0;                           // ytdCount
+      dRt += (t[3] || 0) / 1000;                  // ytdTurnover k€ -> M€
+      dPt += (t[5] || 0) / 1000;                  // planYtdTurnover
     }
+    var sRc = sheetSum_(p.rc && p.rc.TOTAL);
+    var sRt = sheetSum_(p.ld && p.ld.TOTAL);
+    var sPt = sheetSum_(p.bq);
+    r.rc += (sRc !== null) ? sRc : dRc;
+    r.rt += (sRt !== null) ? sRt : dRt;
+    r.pt += (sPt !== null) ? sPt : dPt;
   }
   for (var ro in byRo) {
     if (!byRo.hasOwnProperty(ro)) continue;
