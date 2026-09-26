@@ -929,8 +929,13 @@ function budgetOf(site){
    bir filtre acikken o filtreye ait plan degeri ancak detay tablolarindan
    cikarilabilir ve oraya dusulur. Sayfa yoksa da ayni yedek calisir. */
 function planTurnoverMOf(site,r){
-  var unfiltered=(F.status==='ALL'&&F.type==='ALL'&&F.customer==='ALL');
-  if(unfiltered&&typeof site.budgetYtdOI==='number') return site.budgetYtdOI;
+  /* LS OI artik NEW ve REMAN'i AYRI veriyor: NEW/REMAN filtresi de buradan
+     calisir. Tip (P1/P10/TTM) ve musteri (VS/OES) kirilimi o sayfada YOK;
+     o filtreler acikken detaydan hesaplanana dusulur. */
+  if(F.type==='ALL'&&F.customer==='ALL'){
+    var v=sheetVal_(site.budgetYtdOI,F.status);
+    if(v!=null) return v;
+  }
   return r.planYtdTurnover/1000;
 }
 /* GERCEKLESEN degerlerin kaynagi (kullanici karari): site sayfasindaki
@@ -1661,12 +1666,13 @@ function execRealCount(site,type,status){
   if(v!=null) return v;
   return execRealSum(site,type==='TOTAL'?'ALL':type,status,'ytdCount');
 }
-/* Budget YTD cirosu "LS OI" sayfasinda TEK TOPLAM olarak duruyor; NEW/REMAN
-   veya tip/musteri kirilimi yok. O yuzden yalniz kirilimsiz hucrede
-   kullanilir, kirilimli hucrede detaydan hesaplanana dusulur. */
+/* Budget YTD cirosu "LS OI" sayfasinda NEW ve REMAN olarak ayri duruyor;
+   tip/musteri kirilimi YOK. O yuzden yalniz TOTAL satirinda (NEW, REMAN ya
+   da ikisi) kullanilir, tip satirlarinda detaydan hesaplanana dusulur. */
 function execPlanMoney(site,row,status){
-  if(row==='TOTAL'&&status==='ALL'&&typeof site.budgetYtdOI==='number'){
-    return site.budgetYtdOI;
+  if(row==='TOTAL'){
+    var v=sheetVal_(site.budgetYtdOI,status);   // NEW / REMAN / ikisi
+    if(v!=null) return v;
   }
   return execRealSum(site,row==='TOTAL'?'ALL':row,status,'planYtdTurnover')/1000;
 }
@@ -3128,9 +3134,11 @@ function unpackSite(p){
     /* Gerceklesen: Bolum 3 "Launch Done" (M€) ve Bolum 4 "Real Launches"
        (adet). Manuel raporun kullandigi kaynak bunlar. */
     launchDoneTurnover:p.ld||null, realCountSheet:p.rc||null,
-    /* Budget YTD cirosu "LS OI <yil>" sayfasindan (M€). Yoksa undefined
-       kalir ve detaydan hesaplanan degere dusulur. */
-    budgetYtdOI:(typeof p.bq==='number')?p.bq:null,
+    /* Budget YTD cirosu "LS OI <yil>" sayfasindan (M€), {NEW, REMAN}.
+       Eski snapshot'ta tek sayi olabilir: toplam olarak NEW'e yazilir ki
+       yeniden kurulana kadar ekran bozulmasin. Yoksa null -> detaydan. */
+    budgetYtdOI:(p.bq&&typeof p.bq==='object')?p.bq
+               :(typeof p.bq==='number'?{NEW:p.bq,REMAN:null}:null),
     detail:{blocks:blocks,total:total},
     /* agir yari sonra gelir (prefetchDetails) */
     indicators:{}, hrRoles:[], topProjects:[], warnings:[], mismatch:[]

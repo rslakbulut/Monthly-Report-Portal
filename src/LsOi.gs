@@ -143,9 +143,21 @@ function readLsOiBudget_(ss, month) {
              unmatched: [], month: month };
   }
 
-  /* Birlestirilmis hucrelerde deger yalniz SOL UST hucrede durur; RO ve site
-     adlari bu yuzden blogun ilk satirinda gorunur ve asagi dogru tasinir. */
-  var out = {}, warnings = [], unmatched = [], ro = '', siteName = '';
+  /* Birlestirilmis hucrelerde deger yalniz SOL UST hucrede durur; RO, site
+     ve NEW/REMAN etiketleri bu yuzden blogun ILK satirinda gorunur ve asagi
+     dogru TASINIR.
+     Sayfanin B sutunu "New/Reman": her sitenin altinda once NEW (birlesik),
+     sonra REMAN (birlesik) satir cifti var. Iki hata buradan cikiyordu:
+       - "NEW"/"REMAN" yazisi site adi saniliyordu (o sutunun varligindan
+         haberimiz yoktu),
+       - ayni sitenin ikinci Budget satiri ilkinin UZERINE yaziliyordu:
+         NEW + REMAN yapan bir sitede ekranda yalniz REMAN kaliyordu
+         (Campinas: NEW 0.92 + REMAN 0.10 yerine 0.10 -- kullanici bildirimi).
+     Artik her Budget satiri (site, NEW|REMAN) cifti olarak kaydediliyor ve
+     site toplami ikisinin TOPLAMI. REMAN yapmayan sitede REMAN satiri 0 ya da
+     hic yok -- toplam degismiyor; bu yuzden site sayfasina bakip "REMAN var
+     mi" diye kosul kurmak gerekmiyor, sonuc ayni ve daha saglam. */
+  var out = {}, warnings = [], unmatched = [], ro = '', siteName = '', status = '';
   for (var r = map.subRow + 1; r < grid.length; r++) {
     var row = grid[r];
     /* Satirin etiketi: "Budget" / "Real/Forecast". OI sutununun SOLUNDA arar. */
@@ -158,14 +170,18 @@ function readLsOiBudget_(ss, month) {
     }
     /* Etiketi olmayan satir veri satiri degildir (baslik, bosluk, toplam). */
     if (labelCol < 0) continue;
-    /* Etiket sutununun solundaki dolu hucreler: RO adi tanindiginda RO,
-       taninmayan metin site adidir. Birlestirilmis hucre yuzunden ikisi de
-       yalniz blogun ILK satirinda gorunur; sonraki satirlara tasinir. */
+    /* Etiket sutununun solundaki dolu hucreler, TANINDIKLARI sirayla:
+         RO adi        -> ro
+         NEW / REMAN   -> urun durumu (site adi DEGIL)
+         geri kalan    -> site adi                                     */
     for (var c2 = 0; c2 < labelCol; c2++) {
       var v = String(row[c2] == null ? '' : row[c2]).trim();
       if (!v) continue;
       var code = lsoiRoCode_(v);
       if (code) { ro = code; continue; }
+      var tv = lsoiNorm_(v);
+      if (tv === 'NEW' || tv === 'REMAN') { status = tv; continue; }
+      if (tv === 'NEWREMAN') continue;                 // sutun basligi
       siteName = v;
     }
     if (label !== 'BUDGET' || !ro || !siteName) continue;
@@ -175,9 +191,26 @@ function readLsOiBudget_(ss, month) {
       if (unmatched.indexOf(ro + ' · ' + siteName) === -1) unmatched.push(ro + ' · ' + siteName);
       continue;
     }
+    /* NEW/REMAN sutunu olmayan (eski) duzende her satir NEW sayilir. */
+    var st = status || 'NEW';
     var n = readNumber_(row[col]);
-    if (n.ok) out[reg.key] = n.value;
-    else if (n.reason !== 'empty') warnings.push('LS OI ' + reg.site + ': ' + n.reason);
+    if (!n.ok) {
+      if (n.reason !== 'empty') warnings.push('LS OI ' + reg.site + ' ' + st + ': ' + n.reason);
+      continue;
+    }
+    var rec = out[reg.key] ||
+              (out[reg.key] = { NEW: null, REMAN: null, total: 0, cells: {} });
+    if (rec[st] !== null) {
+      /* Ayni (site, durum) ikinci kez: duzen beklenenden farkli demek.
+         Toplamaya ya da ustune yazmaya karar vermek yerine ILKINI tutup
+         uyariyoruz -- sessizce yanlis sayi uretmek en kotusu. */
+      warnings.push('LS OI ' + reg.site + ': second "' + st + ' / Budget" row at ' +
+                    a1_(r, col) + ' ignored (first one at ' + rec.cells[st] + ')');
+      continue;
+    }
+    rec[st] = n.value;
+    rec.cells[st] = a1_(r, col);
+    rec.total = (rec.NEW || 0) + (rec.REMAN || 0);
   }
 
   if (unmatched.length) {

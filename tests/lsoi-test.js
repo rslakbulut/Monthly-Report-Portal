@@ -71,31 +71,31 @@ console.log('\n2) Budget satiri, rapor ayinin sutunu (aylar TOPLANMAZ)');
 {
   const r = readLsOiBudget_(fakeSS(grid()), 2);
   /* Kumulatif yazildigi icin Subat hucresi zaten Ocak+Subat'tir. */
-  eq(r.values.AVCPL, 0.78, 'Chennai 5 Subat = 0.78 (0.28+0.78 DEGIL)');
-  eq(r.values.DAEGUVPH, 0.02, 'Daegu 1 (VPH)');
-  eq(r.values.BEKASI, 0, 'Cikarang (Bekasi 2) -> Bekasi 2, sifir da bir degerdir');
-  eq(r.values.VALLAMINDIA, 0, 'Vallam (India)');
+  eq(r.values.AVCPL.total, 0.78, 'Chennai 5 Subat = 0.78 (0.28+0.78 DEGIL)');
+  eq(r.values.DAEGUVPH.total, 0.02, 'Daegu 1 (VPH)');
+  eq(r.values.BEKASI.total, 0, 'Cikarang (Bekasi 2) -> Bekasi 2, sifir da bir degerdir');
+  eq(r.values.VALLAMINDIA.total, 0, 'Vallam (India)');
 }
 
 console.log('\n3) Ay degisince sutun degisir');
 {
   const r = readLsOiBudget_(fakeSS(grid()), 3);
-  eq(r.values.AVCPL, 1.12, 'Mart sutunu okundu');
+  eq(r.values.AVCPL.total, 1.12, 'Mart sutunu okundu');
   const r1 = readLsOiBudget_(fakeSS(grid()), 1);
-  eq(r1.values.AVCPL, 0.28, 'Ocak sutunu okundu');
+  eq(r1.values.AVCPL.total, 0.28, 'Ocak sutunu okundu');
 }
 
 console.log('\n4) Real/Forecast satiri KULLANILMIYOR');
 {
   const r = readLsOiBudget_(fakeSS(grid()), 2);
   /* Daegu'nun Real satiri 0.06; Budget 0.02 okunmali. */
-  eq(r.values.DAEGUVPH, 0.02, 'Real satirinin degeri Budget yerine gecmiyor');
+  eq(r.values.DAEGUVPH.total, 0.02, 'Real satirinin degeri Budget yerine gecmiyor');
 }
 
 console.log('\n5) Ayni adli site: RO ayirir');
 {
   const r = readLsOiBudget_(fakeSS(grid()), 2);
-  eq(r.values.THSCZE, 1.25, 'Power Thermal Europe -> THSCZE');
+  eq(r.values.THSCZE.total, 1.25, 'Power Thermal Europe -> THSCZE');
   eq(r.values.CZECHOWICE, undefined, 'PDE tarafina yazilmadi');
 }
 
@@ -111,6 +111,69 @@ console.log('\n7) Sayfa yoksa sessizce yok sayilir (eski davranis surer)');
 {
   const ss = { getSheets: () => [{ getName: () => 'BURSA_06' }] };
   eq(readLsOiBudget_(ss, 2), null, 'null doner');
+}
+
+/* ---------------------------------------------------------------
+   NEW / REMAN: sayfanin B sutunu "New/Reman". Her sitenin altinda once NEW
+   (birlesik) sonra REMAN (birlesik) satir cifti var. Kullanici bildirimi:
+   Campinas NEW 0.92 + REMAN 0.10 yapiyor, ekranda yalniz 0.10 goruluyordu
+   -- REMAN satiri NEW'in UZERINE yaziliyordu ve "NEW"/"REMAN" yazisi site
+   adi saniliyordu.
+   --------------------------------------------------------------- */
+function nrGrid(siteRepeated){
+  const g = [];
+  const row = () => new Array(12).fill('');
+  let r;
+  /* 0-1: B'nin ilk iki satiri birlesik "New/Reman" basligi */
+  r = row(); r[0]='RO’s'; r[1]='New/Reman'; r[2]='2026'; r[5]='Jul.'; r[7]='Aug.'; g.push(r);
+  r = row(); r[5]='LS'; r[6]='OI'; r[7]='LS'; r[8]='OI'; g.push(r);
+  /* Campinas: NEW cifti */
+  r = row(); r[0]='Power Drive America'; r[1]='NEW'; r[2]='Campinas 1'; r[4]='Budget';
+  r[5]=10; r[6]=0.80; r[7]=12; r[8]=0.92; g.push(r);
+  r = row(); r[4]='Real/Forecast'; r[5]=9; r[6]=0.70; r[7]=11; r[8]=0.85; g.push(r);
+  /* Campinas: REMAN cifti -- site adi birlesik hucrede (bos) ya da tekrarli */
+  r = row(); r[1]='REMAN'; if (siteRepeated) r[2]='Campinas 1'; r[4]='Budget';
+  r[5]=1; r[6]=0.08; r[7]=1; r[8]=0.10; g.push(r);
+  r = row(); r[4]='Real/Forecast'; r[5]=1; r[6]=0.05; r[7]=1; r[8]=0.07; g.push(r);
+  /* Puebla: yalniz NEW yapiyor, REMAN satiri sifir */
+  r = row(); r[1]='NEW'; r[2]='Puebla 1'; r[4]='Budget'; r[7]=4; r[8]=0.40; g.push(r);
+  r = row(); r[4]='Real/Forecast'; g.push(r);
+  r = row(); r[1]='REMAN'; if (siteRepeated) r[2]='Puebla 1'; r[4]='Budget'; r[7]=0; r[8]=0; g.push(r);
+  r = row(); r[4]='Real/Forecast'; g.push(r);
+  return g;
+}
+
+[false, true].forEach(function (repeated) {
+  console.log('\n8) NEW + REMAN toplaniyor (site adi ' +
+              (repeated ? 'her satirda TEKRARLI' : 'BIRLESIK hucrede') + ')');
+  const r = readLsOiBudget_(fakeSS(nrGrid(repeated)), 8);
+  eq(r.values.CAMPINAS.NEW, 0.92, 'Campinas NEW / Budget');
+  eq(r.values.CAMPINAS.REMAN, 0.10, 'Campinas REMAN / Budget');
+  eq(Math.round(r.values.CAMPINAS.total * 100) / 100, 1.02,
+     'Campinas toplam = 0.92 + 0.10 (REMAN, NEW\'in ustune YAZILMIYOR)');
+  eq(r.values.PUEBLA.total, 0.40, 'Puebla: yalniz NEW, REMAN 0 -> toplam degismiyor');
+  eq(r.unmatched.length, 0, '"NEW"/"REMAN" yazisi site adi SANILMIYOR');
+  /* Adresler: A1 bicimi, sutun ve satir dogru. Fixture'da Aug OI = sutun 8
+     (I), Campinas NEW satiri 3, REMAN satiri 5. */
+  eq(r.values.CAMPINAS.cells.NEW, 'I3', 'NEW hucresinin adresi');
+  eq(r.values.CAMPINAS.cells.REMAN, 'I5', 'REMAN hucresinin adresi');
+});
+
+console.log('\n9) Real/Forecast satiri hic karismiyor (NEW+REMAN duzeninde de)');
+{
+  const r = readLsOiBudget_(fakeSS(nrGrid(false)), 8);
+  /* Real satirlari 0.85 + 0.07; Budget 0.92 + 0.10 okunmali. */
+  eq(Math.round(r.values.CAMPINAS.total * 100) / 100, 1.02, 'yalniz Budget satirlari');
+}
+
+console.log('\n10) Ayni (site, durum) iki kez: ilki tutulur, UYARI verilir');
+{
+  const g = nrGrid(true);
+  const dup = new Array(12).fill(''); dup[1]='NEW'; dup[2]='Campinas 1'; dup[4]='Budget'; dup[8]=5.55;
+  g.push(dup);
+  const r = readLsOiBudget_(fakeSS(g), 8);
+  eq(r.values.CAMPINAS.NEW, 0.92, 'ikinci NEW satiri ustune yazmadi');
+  eq(r.warnings.some(w => w.indexOf('second "NEW') > -1), true, 'uyari uretildi');
 }
 
 console.log('\n' + (fail ? 'FAIL' : 'PASS') + ' — ' + pass + ' gecti, ' + fail + ' kaldi');

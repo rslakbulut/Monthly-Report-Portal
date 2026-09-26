@@ -67,7 +67,7 @@ var SNAP_VERSION = 1;                          // SEKIL surumu: paketleme bicimi
                                sayilar eskidir; servis edilir ve ARKA PLANDA
                                yeniden kurulmasi planlanir.
    Boylece veri katmani degistiginde kimsenin elle bir sey yapmasi gerekmiyor. */
-var DATA_REV = 4;   /* 4: gerceklesen ciro/adet Bolum 3-4 tablolarindan */
+var DATA_REV = 5;   /* 5: LS OI NEW + REMAN ayri okunup toplaniyor */
 
 /* Olcu alanlarinin SABIT sirasi. Sira degisirse SNAP_VERSION artirilmali. */
 var MEASURE_FIELDS = ['count', 'turnover', 'ytdCount', 'ytdTurnover',
@@ -219,8 +219,10 @@ function buildSnapshot_(key) {
   try { lsoi = readLsOiBudget_(ss, maxMonth); } catch (e) { lsoi = null; }
   if (lsoi) {
     for (var li = 0; li < overview.length; li++) {
-      var val = lsoi.values[overview[li].key];
-      if (typeof val === 'number') overview[li].bq = val;   // M€
+      var rec = lsoi.values[overview[li].key];
+      /* NEW ve REMAN AYRI tasiniyor: boylece NEW/REMAN filtresi Budget YTD
+         cirosunda da calisiyor. Toplam istemcide ikisinin toplami. */
+      if (rec) overview[li].bq = { NEW: rec.NEW, REMAN: rec.REMAN };   // M€
     }
   }
 

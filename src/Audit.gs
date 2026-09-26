@@ -108,13 +108,23 @@ function auditSite(periodKey, siteKey) {
      okundugu GORUNMELI, yoksa kullanici hala detay tablolarina bakar. */
   var ls = null;
   try { ls = readLsOiBudget_(ss, found.month); } catch (e) { ls = null; }
-  var lsVal = (ls && typeof ls.values[siteKey] === 'number') ? ls.values[siteKey] : null;
-  var lsRow = (lsVal != null)
-    ? { key: 'budgetYtdOI', label: 'Budget YTD — O.I', unit: 'M€', value: lsVal,
-        source: 'Sheet "' + ls.sheet + '" · row ' + reg.site + ' / Budget · column ' +
-                colLetter_(ls.column - 1) + ' (month ' + ls.month +
+  var lsRec = ls ? ls.values[siteKey] : null;
+  /* Okunan HUCRELER adresleriyle: kullanici spreadsheet'te dogrudan
+     karsilastirabilsin (ornek: U189 NEW + U191 REMAN). */
+  var lsCells = [];
+  if (lsRec) {
+    ['NEW', 'REMAN'].forEach(function (st) {
+      if (lsRec[st] == null) return;
+      lsCells.push({ ctx: 'LS OI ' + st, a1: lsRec.cells[st], raw: String(lsRec[st]),
+                     value: lsRec[st], note: st });
+    });
+  }
+  var lsRow = lsRec
+    ? { key: 'budgetYtdOI', label: 'Budget YTD — O.I', unit: 'M€', value: lsRec.total,
+        source: 'Sheet "' + ls.sheet + '" · ' + reg.site + ' · NEW / Budget + REMAN / Budget · ' +
+                'column ' + colLetter_(ls.column - 1) + ' (month ' + ls.month +
                 ', values are already cumulative — months are NOT added up)',
-        cells: [] }
+        cells: lsCells }
     : { key: 'budgetYtdOI', label: 'Budget YTD — O.I', unit: 'M€',
         value: planTurnover / 1000,
         source: (ls ? 'NOT FOUND in "' + ls.sheet + '" — fallback: ' : 'No LS OI sheet — fallback: ') +
