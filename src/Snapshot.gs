@@ -425,6 +425,36 @@ function sheetSum_(o) {
   return (a || 0) + (b || 0);
 }
 
+/**
+ * Paketlenmis bir site kaydindan PANONUN GOSTERDIGI degerler (filtresiz:
+ * TOTAL, NEW + REMAN). Istemcideki kuralin (siteMetrics / execMoneyCell)
+ * sunucu karsiligi: once sayfanin kendi tablosu, yoksa o site icin detay.
+ * Trend ozeti ve Parser audit'in "Pano" sutunu AYNI fonksiyonu kullanir --
+ * sunucu tarafinda bu hesabin ikinci bir kopyasi yok.
+ */
+function dashValuesOf_(p) {
+  var dRc = 0, dRt = 0, dPt = 0;
+  for (var b = 0; b < (p.bl || []).length; b++) {
+    var t = p.bl[b].t;
+    if (!t) continue;
+    dRc += t[2] || 0;                           // ytdCount
+    dRt += (t[3] || 0) / 1000;                  // ytdTurnover k€ -> M€
+    dPt += (t[5] || 0) / 1000;                  // planYtdTurnover
+  }
+  var sRc = sheetSum_(p.rc && p.rc.TOTAL);
+  var sRt = sheetSum_(p.ld && p.ld.TOTAL);
+  var sPt = sheetSum_(p.bq);
+  return {
+    budgetYearOI:  sheetSum_(p.bt && p.bt.TOTAL),
+    budgetYearQty: sheetSum_(p.bc && p.bc.TOTAL),
+    budgetYtdQty:  sheetSum_(p.by && p.by.TOTAL),
+    budgetYtdOI:   (sPt !== null) ? sPt : dPt,
+    realQty:       (sRc !== null) ? sRc : dRc,
+    realOI:        (sRt !== null) ? sRt : dRt,
+    detailQty: dRc, detailOI: dRt
+  };
+}
+
 function trendRollup_(sites) {
   var byRo = {};
   for (var i = 0; i < sites.length; i++) {
@@ -433,27 +463,14 @@ function trendRollup_(sites) {
                                           rc: 0, rt: 0, pt: 0 });
     r.sites++;
     r.hc += p.hc || 0;
-    r.bc += sumStatus_(p.bc && p.bc.TOTAL);      // Budget Year adet
-    r.by += sumStatus_(p.by && p.by.TOTAL);      // Budget YTD adet
-    r.bt += sumStatus_(p.bt && p.bt.TOTAL);      // Budget Year ciro (M€)
-    /* Gerceklesen ve Budget YTD cirosu EKRANLA AYNI kaynaktan: Bolum 4 Real
-       Launches, Bolum 3 Launch Done, "LS OI" sayfasi. Sayfada deger yoksa o
-       site icin detay tablolarina dusulur (istemcideki kuralin aynisi).
-       Once burasi hep detaydan topluyordu; trend ile ekran ayrisacakti. */
-    var dRc = 0, dRt = 0, dPt = 0;
-    for (var b = 0; b < (p.bl || []).length; b++) {
-      var t = p.bl[b].t;
-      if (!t) continue;
-      dRc += t[2] || 0;                           // ytdCount
-      dRt += (t[3] || 0) / 1000;                  // ytdTurnover k€ -> M€
-      dPt += (t[5] || 0) / 1000;                  // planYtdTurnover
-    }
-    var sRc = sheetSum_(p.rc && p.rc.TOTAL);
-    var sRt = sheetSum_(p.ld && p.ld.TOTAL);
-    var sPt = sheetSum_(p.bq);
-    r.rc += (sRc !== null) ? sRc : dRc;
-    r.rt += (sRt !== null) ? sRt : dRt;
-    r.pt += (sPt !== null) ? sPt : dPt;
+    /* Ekranla AYNI kaynak ve yedek kurali: dashValuesOf_. */
+    var v = dashValuesOf_(p);
+    r.bc += v.budgetYearQty || 0;
+    r.by += v.budgetYtdQty || 0;
+    r.bt += v.budgetYearOI || 0;
+    r.rc += v.realQty;
+    r.rt += v.realOI;
+    r.pt += v.budgetYtdOI;
   }
   for (var ro in byRo) {
     if (!byRo.hasOwnProperty(ro)) continue;

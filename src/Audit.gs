@@ -104,10 +104,28 @@ function auditSite(periodKey, siteKey) {
              planYtdCount: t.planYtdCount || 0, planYtdTurnover: t.planYtdTurnover || 0 };
   });
 
+  /* Panonun o an gosterdigi snapshot. Audit sayfayi CANLI okur, pano
+     snapshot'tan okur; ikisi ayrisirsa kullanicinin gordugu "audit dogru ama
+     grafik tutmuyor" durumu olusur. Snapshot'taki degeri yan yana koyuyoruz
+     ki farkin sebebi (eski snapshot mu, mantik mi) ekranda gorunsun. */
+  var snap = null, snapSite = null;
+  try { snap = loadOverview_(periodKey); } catch (e) { snap = null; }
+  if (snap && snap.sites) {
+    for (var si = 0; si < snap.sites.length; si++) {
+      if (snap.sites[si].key === siteKey) { snapSite = snap.sites[si]; break; }
+    }
+  }
+  var dash = snapSite ? dashValuesOf_(snapSite) : null;
+
   /* Budget YTD cirosu artik "LS OI <yil>" sayfasindan; denetimde de oradan
-     okundugu GORUNMELI, yoksa kullanici hala detay tablolarina bakar. */
+     okundugu GORUNMELI, yoksa kullanici hala detay tablolarina bakar.
+     HATA DUZELTMESI: audit LS OI'yi SITENIN KENDI ayindan okuyordu, pano ise
+     DONEMIN rapor ayindan. Raporlamasi geride kalan bir sitede (ornek
+     "_05" sayfasi) iki ekran farkli Budget YTD gosteriyordu. Artik pano ne
+     kullaniyorsa o: snapshot'in rapor ayi (yoksa sitenin ayi). */
+  var lsMonth = (snap && snap.reportMonth) ? snap.reportMonth : found.month;
   var ls = null;
-  try { ls = readLsOiBudget_(ss, found.month); } catch (e) { ls = null; }
+  try { ls = readLsOiBudget_(ss, lsMonth); } catch (e) { ls = null; }
   var lsRec = ls ? ls.values[siteKey] : null;
   /* Okunan HUCRELER adresleriyle: kullanici spreadsheet'te dogrudan
      karsilastirabilsin (ornek: U189 NEW + U191 REMAN). */
@@ -180,8 +198,24 @@ function auditSite(periodKey, siteKey) {
   var cross = { sheetReal: sheetReal, parsedReal: realCount, cells: realCells };
   /* Yon degisti: ekranda SAYFANIN degeri var, detaydan sayilan ikincil. */
 
+  /* Her ozet degere panonun degerini ekle ve farki isaretle. */
+  var mismatches = 0;
+  summary.forEach(function (row) {
+    if (!dash || !(row.key in dash)) { row.dash = null; return; }
+    row.dash = dash[row.key];
+    var a = (typeof row.value === 'number') ? row.value : null;
+    var b = (typeof row.dash === 'number') ? row.dash : null;
+    row.diff = (a === null && b === null) ? false
+             : (a === null || b === null) ? true
+             : Math.abs(a - b) > 0.005;
+    if (row.diff) mismatches++;
+  });
+
   var cut = rows.length > AUDIT_MAX_ROWS;
   return {
+    snapshot: snap ? { builtAt: snap.builtAt || null, rev: snap.rev || null,
+                       currentRev: DATA_REV, reportMonth: snap.reportMonth || null,
+                       hasSite: !!snapSite, mismatches: mismatches } : null,
     ok: true,
     site: { ro: site.ro, site: site.site, key: siteKey, sheet: site.sheet,
             month: site.month, year: site.year, status: site.status,

@@ -3546,11 +3546,35 @@ function audRender(r){
   h+='<p class="aud-note">Values below are unfiltered: row <b>TOTAL</b>, '+
      '<b>NEW + REMAN</b> — the same thing the dashboard shows when no filter is set.</p>';
 
-  h+='<table class="aud-t"><thead><tr><th>Value</th><th>Number</th>'+
+  /* Pano karsilastirmasi: audit sayfayi CANLI okur, pano SNAPSHOT'tan.
+     "Audit dogru, grafik tutmuyor" durumunun sebebini ekran kendisi
+     soylesin: eski snapshot mu, mantik farki mi. */
+  var sn=r.snapshot;
+  if(!sn){
+    h+='<div class="aud-cross bad"><b>No dashboard snapshot</b> for this period — '+
+       'the dashboard cannot show these numbers yet. Use "Refresh data".</div>';
+  } else if(!sn.hasSite){
+    h+='<div class="aud-cross bad"><b>This site is not in the dashboard snapshot.</b> '+
+       'Use "Refresh data" while this month is open.</div>';
+  } else if(sn.mismatches){
+    var stale=(sn.rev!==sn.currentRev);
+    h+='<div class="aud-cross bad"><b>'+sn.mismatches+' value(s) differ from what the dashboard shows.</b><br>'+
+       'Dashboard snapshot built '+esc(sn.builtAt?new Date(sn.builtAt).toLocaleString(LOCALE):'?')+
+       (stale?' with an OLDER data version (rev '+esc(sn.rev)+', current '+esc(sn.currentRev)+').'
+             :' — the spreadsheet has probably changed since then.')+
+       '<br>Fix: open this month and press <b>Refresh data</b>; then check again.</div>';
+  } else {
+    h+='<div class="aud-cross"><b>Dashboard matches.</b> Snapshot built '+
+       esc(sn.builtAt?new Date(sn.builtAt).toLocaleString(LOCALE):'?')+'.</div>';
+  }
+
+  h+='<table class="aud-t"><thead><tr><th>Value</th><th>Live sheet</th><th>Dashboard</th>'+
      '<th>Where it comes from</th><th>Cells read</th></tr></thead><tbody>';
   (r.summary||[]).forEach(function(x){
-    h+='<tr><td>'+esc(x.label)+'</td>'+
+    h+='<tr'+(x.diff?' class="aud-diff"':'')+'><td>'+esc(x.label)+'</td>'+
        '<td class="aud-v">'+audNum(x.value,x.unit)+'</td>'+
+       '<td class="aud-v">'+(x.dash===undefined?'<span class="aud-na">—</span>':audNum(x.dash,x.unit))+
+         (x.diff?' <b class="aud-neq" title="differs from the live sheet">≠</b>':'')+'</td>'+
        '<td class="aud-src">'+esc(x.source)+'</td>'+
        '<td>'+audCellsHtml(x.cells)+'</td></tr>';
   });
@@ -3627,8 +3651,13 @@ function audText(){
   L.push(r.site.period);
   L.push('unfiltered: row TOTAL, NEW + REMAN');
   L.push('');
+  var sn=r.snapshot;
+  L.push('dashboard snapshot: '+(!sn?'NONE':(sn.builtAt||'?')+' rev '+sn.rev+'/'+sn.currentRev+
+         ' — '+(sn.mismatches?sn.mismatches+' value(s) DIFFER':'matches')));
+  L.push('');
   (r.summary||[]).forEach(function(x){
-    var v=(x.value==null)?'n/a':(x.unit==='M€'?m2(x.value)+' M€':nf(x.value)+' projects');
+    var fmt=function(v){ return (v==null)?'n/a':(x.unit==='M€'?m2(v)+' M€':nf(v)+' projects'); };
+    var v=fmt(x.value)+(x.dash!==undefined?'   | dashboard: '+fmt(x.dash)+(x.diff?'  <-- DIFFERS':''):'');
     L.push(x.label+': '+v);
     L.push('   from: '+x.source);
     (x.cells||[]).forEach(function(c){ L.push('   cell '+c.a1+' = "'+c.raw+'"'+(c.note?' ('+c.note+')':'')); });
