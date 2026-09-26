@@ -4101,80 +4101,94 @@ function initPanels(){
   };
   /* Gecmis donemlerin snapshot'i yoksa kurar; ilk kez o aya bakan kullanici
      40-60 sn beklemesin diye. Tek seferde 3 donem (6 dk yurutme siniri). */
-  /* Donemleri TEK TEK, pes pese kurar.
-     Once tek cagrida uc donem kuruluyordu; bir donem 40-180 sn surdugu icin
-     toplam Apps Script'in 6 dakikalik sinirini asiyor ve cagri komple
-     dusuyordu -- canlida "NetworkError: Connection failure due to HTTP 0".
-     Sunucu kesildiginde istemciye HICBIR yanit donmuyor, yani hata mesaji
-     disinda ne kuruldugu da bilinmiyordu.
-     Yeni akis: her turda BIR donem. Tur bitince sonucu yaziyoruz ve kalan
-     varsa kendiliginden bir sonraki tur basliyor; kullanici tekrar tekrar
-     basmiyor. Dugme "Stop"a donusuyor, istenirse tur sonunda duruluyor. */
-  var ENS={running:false,stop:false,round:0,built:[],t0:0};
-  function ensLog(extra){
-    var s=Math.round((Date.now()-ENS.t0)/1000);
-    var mm=Math.floor(s/60), ss=s%60;
-    logS('Rebuilding periods one by one — ' + mm+':'+(ss<10?'0':'')+ss + ' elapsed\n' +
-         (ENS.built.length ? 'Done so far: '+ENS.built.join(', ')+'\n' : '') +
-         (extra||'Reading the spreadsheets… a period takes up to ~2 minutes.'));
+  /* Donemleri ADIYLA, tek tek kurar.
+     Gecmis: (1) tek cagrida uc donem -> 6 dk siniri, "HTTP 0". (2) tur basina
+     bir donem ama sunucu "siradaki"ni kendi seciyordu ve turun zaman asimi
+     yoktu: takilan bir donemde ekran sonsuza kadar bekliyordu (canlida 9+ dk
+     goruldu) ve hangi donemde takildigi bilinmiyordu.
+     Simdi: once bekleyen donemlerin LISTESI aliniyor; her donem adiyla
+     kuruluyor (uiRefreshPeriod), ekranda o an hangisi oldugu yaziyor. Her tur
+     6.5 dk'da zaman asimina ugrar; takilan donem ATLANIR, siradakiyle devam
+     edilir ve sonunda neyin kurulup neyin kurulamadigi acikca yazilir. */
+  var ENS={running:false,stop:false,list:[],i:0,built:[],failed:[],t0:0,tr:0};
+  var ENS_ROUND_MS=6.5*60*1000;
+  function ensClock(t){
+    var s=Math.round((Date.now()-t)/1000), mm=Math.floor(s/60), ss=s%60;
+    return mm+':'+(ss<10?'0':'')+ss;
   }
-  function ensFinish(msg,type){
-    ENS.running=false;
+  function ensLog(){
+    var cur=ENS.list[ENS.i];
+    logS('Rebuilding '+ENS.list.length+' period(s) — '+ensClock(ENS.t0)+' total\n'+
+         (ENS.built.length ?'Done:    '+ENS.built.join(', ')+'\n':'')+
+         (ENS.failed.length?'Skipped: '+ENS.failed.map(function(f){ return f.key; }).join(', ')+'\n':'')+
+         (cur ? 'Now:     '+cur.key+'  ('+(ENS.i+1)+' of '+ENS.list.length+', '+
+                ensClock(ENS.tr)+' on this one — usually 1-2 min)' : ''));
+  }
+  var ensTicker=null;
+  function ensFinish(){
+    ENS.running=false; clearInterval(ensTicker);
     var b=$('btnEnsureSnaps');
     b.disabled=false; b.classList.remove('busy');
     b.innerHTML='Rebuild missing / outdated periods';
+    var ok=!ENS.failed.length&&!ENS.stop;
+    var msg=(ENS.stop?'STOPPED':(ok?'DONE — all periods are up to date.':'DONE — with problems.'))+'\n'+
+      (ENS.built.length?'Rebuilt: '+ENS.built.join(', ')+'\n':'')+
+      (ENS.failed.length?'Could NOT rebuild:\n'+ENS.failed.map(function(f){
+          return '  '+f.key+' — '+f.why; }).join('\n')+
+        '\nThese keep their previous numbers. Open that month and use "Refresh data" to retry it alone.\n':'')+
+      (ENS.list.length?'':'Nothing needed rebuilding.');
     logS(msg);
-    showToast(msg.split('\n')[0],type||'success');
+    showToast(msg.split('\n')[0], ok?'success':'error');
     boot();                            /* yeni sayilar ekrana gelsin */
   }
-  function ensRound(){
-    if(ENS.stop){
-      ensFinish('STOPPED after '+ENS.built.length+' period(s): '+
-                (ENS.built.join(', ')||'none')+'\nPress the button again to continue.','info');
-      return;
+  function ensNext(){
+    if(ENS.stop||ENS.i>=ENS.list.length){ ensFinish(); return; }
+    var item=ENS.list[ENS.i], settled=false;
+    ENS.tr=Date.now(); ensLog();
+    function settle(ok,why){
+      if(settled) return; settled=true;
+      clearTimeout(dog);
+      if(ok) ENS.built.push(item.key); else ENS.failed.push({key:item.key,why:why});
+      ENS.i++;
+      setTimeout(ensNext,600);         /* sunucuya nefes alani */
     }
-    ENS.round++;
-    ensLog();
+    /* Sunucu sure sinirinda kesilirse HICBIR yanit gelmez; kendimiz keseriz.
+       Sunucudaki calisma yine de bitebilir -- bir dahaki basista o donem
+       listede cikmazsa kurulmus demektir. */
+    var dog=setTimeout(function(){
+      settle(false,'no answer after 6.5 min (server time limit)');
+    },ENS_ROUND_MS);
     google.script.run
       .withSuccessHandler(function(r){
-        if(!r||r.error){
-          ensFinish('Error: '+((r&&r.error)||'unknown'),'error'); return;
-        }
-        (r.built||[]).forEach(function(k){ ENS.built.push(k); });
-        if(r.pending>0 && (r.built||[]).length){
-          ensLog(r.pending+' period(s) left — continuing…');
-          setTimeout(ensRound,600);    /* sunucuya nefes alani */
-          return;
-        }
-        if(r.pending>0 && !(r.built||[]).length){
-          /* Ilerleme yok: sonsuz donguye girmeyelim. */
-          ensFinish('STOPPED — a period could not be rebuilt, so nothing moved.\n'+
-                    r.message,'error'); return;
-        }
-        ensFinish('DONE — all periods are up to date.\n'+
-                  (ENS.built.length ? 'Rebuilt: '+ENS.built.join(', ') : 'Nothing needed rebuilding.'));
+        if(!r||r.error) settle(false,(r&&r.error)||'unknown error');
+        else settle(true);
       })
       .withFailureHandler(function(e){
         var m=(e&&e.message)||String(e);
-        /* HTTP 0 = sunucu sure sinirinda kesildi. O donem yarim kalmis
-           olabilir; kullanici yeniden baslatinca ayni yerden devam eder. */
-        var cut=/HTTP 0|NetworkError|timeout/i.test(m);
-        ensFinish((cut
-          ? 'STOPPED — the server was cut off at its time limit while rebuilding.\n'+
-            'That period is probably too big to finish in one go; press the button\n'+
-            'again to retry it, or use "Refresh data" while that month is open.\n'
-          : 'Error: ')+ m +
-          (ENS.built.length ? '\nRebuilt before the error: '+ENS.built.join(', ') : ''),'error');
+        settle(false,/HTTP 0|NetworkError/i.test(m)?'server cut off at its time limit':m);
       })
-      .uiEnsureSnapshots(1);
+      .uiRefreshPeriod(item.key);
   }
   $('btnEnsureSnaps').onclick=function(){
     var b=$('btnEnsureSnaps');
-    if(ENS.running){ ENS.stop=true; b.innerHTML='Stopping…'; return; }
-    ENS={running:true,stop:false,round:0,built:[],t0:Date.now()};
+    if(ENS.running){ ENS.stop=true; b.innerHTML='Stopping after this period…'; return; }
+    ENS={running:true,stop:false,list:[],i:0,built:[],failed:[],t0:Date.now(),tr:Date.now()};
     b.classList.add('busy'); b.innerHTML='Stop';
-    showToast('Rebuilding periods one by one…','info');
-    ensRound();
+    logS('Checking which periods need a rebuild…');
+    clearInterval(ensTicker);
+    ensTicker=setInterval(function(){ if(ENS.running&&ENS.list.length) ensLog(); },1000);
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.error){ ENS.failed.push({key:'—',why:(r&&r.error)||'unknown'}); ensFinish(); return; }
+        ENS.list=r.pending||[];
+        if(!ENS.list.length){ ensFinish(); return; }
+        showToast(ENS.list.length+' period(s) to rebuild','info');
+        ensNext();
+      })
+      .withFailureHandler(function(e){
+        ENS.failed.push({key:'—',why:(e&&e.message)||String(e)}); ensFinish();
+      })
+      .uiPendingPeriods();
   };
   /* Geri bildirim boru hattini panelde gorunur kilar: hedef sekme, sutun
      eslesmesi, kayitli satir sayisi, son kayit ve bildirim e-postasinin

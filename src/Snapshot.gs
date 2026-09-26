@@ -711,6 +711,31 @@ function ensureSnapshots(limit) {
 }
 
 /**
+ * Yeniden kurulmasi gereken donemler (snapshot'i yok ya da ESKI veri
+ * surumuyle kurulmus), en yeniden eskiye, etiketleriyle.
+ *
+ * Istemci artik donemleri ADIYLA tek tek kuruyor (uiRefreshPeriod): boylece
+ * hangi donemin calistigini gosterebiliyor ve biri takilirsa onu ATLAYIP
+ * digerlerine devam edebiliyor. Onceki akista sunucu "siradaki eksik"i kendi
+ * seciyordu; takilan donem her turda yeniden secildigi icin kuyruk
+ * ilerlemiyordu ve istemci hangi donemde oldugunu bilmiyordu.
+ */
+function uiPendingPeriods() {
+  var deny = requireAdmin_(); if (deny) return deny;
+  var periods = listPeriods_();
+  var idx = snapIndex_();
+  var out = [];
+  for (var i = 0; i < periods.length; i++) {
+    var key = periodKey_(periods[i].year, periods[i].month);
+    var entry = idx[key];
+    if (entry && entry.o && entry.rev === DATA_REV) continue;
+    out.push({ key: key, name: periods[i].name || key,
+               reason: (entry && entry.o) ? 'outdated' : 'missing' });
+  }
+  return { ok: true, pending: out, rev: DATA_REV };
+}
+
+/**
  * @param {number=} limit Bu cagrida kurulacak EN FAZLA donem sayisi.
  *   Varsayilan 1: bir donem ~40-180 sn suruyor, uc tanesi Apps Script'in
  *   6 dakikalik sinirini asip cagriyi komple dusuruyordu (canlida goruldu:
