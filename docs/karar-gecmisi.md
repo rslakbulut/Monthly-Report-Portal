@@ -379,6 +379,19 @@ artık `CLAUDE.md` değil, burasıdır.
   sütunun geçerli rolü olur, kişi adıysa o rolle kaydedilir. Headcount = **benzersiz kişi**
   (aynı isim iki rolde/iki takımda bir kez sayılır, kullanıcı kararı).
 
+- **2026-09-26 — Kural: algoritma değişince etkilenen TÜM yüzeyler aynı turda.** Veri
+  kaynağı değişikliği (gerçekleşen değerlerin Bölüm 3/4'e, Budget YTD cirosunun LS OI'ye
+  taşınması) iki kez yarım uygulandı: önce yalnız kartlar güncellendi, yönetim grafiği eski
+  kaynakta kaldı (aynı ekranda 16.4 M€ / 10.9 M€); sonra site tam sayfası ve sunucu trend
+  özeti eski kaynakta kaldı. Kullanıcı bunu kalıcı kural olarak istedi ("asla atlanmasın").
+  Uygulama üç katmanlı: kural `CLAUDE.md` "Değişmez Kurallar"da (her oturumda yüklenir),
+  yüzey listesi orada açıkça sayılı; `tests/consistency-guard-test.js` her fonksiyonu tarayıp
+  detay tablolarından gerçekleşen değeri kendi başına okuyan yüzeyi yakalıyor — bekçi,
+  düzeltilmeden önceki kodda iki gerçek hatayı da yakaladı (doğrulandı); `tests/run-all.js`
+  tüm testleri tek komutla koşturuyor. Bekçinin sınırı açıkça yazılı: izinli (tek-kaynak)
+  fonksiyonların içini görmez; o yüzden kapanış şartına "bütün yüzeylerde tarayıcıda ölçüm"
+  de eklendi.
+
 ## Yeni İçerik Eklerken
 
 Yeni bir kaynak proje eklenecekse: `tokens/colors-<proje-adı>.css` (aynen kopya, kaynak yorum

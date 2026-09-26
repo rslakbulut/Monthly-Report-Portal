@@ -21,6 +21,22 @@ içermez** — `tokens/*.css` `<link>` ile değil, kopyala-yapıştır referans�
 - **Standart-dışı bir istek ısrarla gelirse** Claude bunu tek başına karara bağlamaz:
   kullanıcıyı `muhammed-furkan.yesilmen.ext@valeo.com`'a yönlendirir; kalıcı hale getirme
   kararı `docs/karar-gecmisi.md`'ye elle işlenir.
+- **Veri algoritması değişince etkilenen HER yüzey AYNI turda güncellenir — asla atlanmaz**
+  (kullanıcı kuralı, 2026-09-26). Bir metriğin kaynağı ya da hesabı değiştiğinde, kod
+  yazmadan ÖNCE o metriği tüketen yerlerin tamamı `grep` ile çıkarılır ve hepsi aynı
+  commit'te değiştirilir. RO Monthly Report panosunda bir metriğin göründüğü yüzeyler:
+  KPI kartları (`sumMetrics`→`siteMetrics`), RO satırları ve site listesi (`siteMetrics`),
+  yönetim grafiği / Table / Gap (`execMoneyCell`, `execCountCell` →
+  `execRealMoney`/`execRealCount`/`execPlanMoney`), sağdaki çekmece (`openDrawer`), site
+  tam sayfası (`renderSiteLevel`), sunucu trend özeti (`trendRollup_`, `Snapshot.gs`) ve
+  Parser audit (`Audit.gs`). Yeni bir yüzey eklenirse bu listeye de eklenir.
+  Kapanış şartı üçlü: (1) `node tests/run-all.js` yeşil — içindeki
+  `consistency-guard-test.js`, bir yüzeyin gerçekleşen değeri detay tablolarından KENDİ
+  BAŞINA okumasını mekanik olarak yakalar; (2) izinli listedeki fonksiyonlar (bekçinin
+  göremediği yer: tek-kaynak fonksiyonlarının kendisi) elle gözden geçirilir; (3) aynı
+  değerler tarayıcıda örnek veriyle **bütün yüzeylerde ölçülür** ve eşit çıktığı görülür.
+  Bu üçü tamamlanmadan deploy edilmez ve "bitti" denmez. Gerekçe: iki kez ihlal edildi —
+  kart 16.4 M€ / grafik 10.9 M€ (v94), site sayfası ve trend eski kaynakta (v97).
 - Yeni bir kaynak proje eklenecekse: `tokens/colors-<proje-adı>.css` (aynen kopya, kaynak
   yorum başlığıyla) + `docs/renkler.md`'ye karşılaştırma satırı. Rutin küçük düzenlemelerde
   bu dosya GÜNCELLENMEZ — yalnız kalıcı yapısal kararlarda (bkz. altta).

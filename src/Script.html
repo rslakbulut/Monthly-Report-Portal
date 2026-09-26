@@ -2323,19 +2323,18 @@ function renderSiteLevel(){
   });
 
   /* Musteri ayrimi: Launch Done VS / OES, Bolum 3'ten (yoksa detaydan). */
-  var vs={ytdTurnover:execRealMoney(s,'VS',F.status)*1000},
-      oes={ytdTurnover:execRealMoney(s,'OES',F.status)*1000};
-  var tot=(vs.ytdTurnover+oes.ytdTurnover)||1;
-  var vsp=Math.round(vs.ytdTurnover/tot*100), oesp=100-vsp;
+  var vsM=execRealMoney(s,'VS',F.status), oesM=execRealMoney(s,'OES',F.status);
+  var tot=(vsM+oesM)||1;
+  var vsp=Math.round(vsM/tot*100), oesp=100-vsp;
   var stack='<div class="stack">'+
     (vsp>0?'<span style="width:'+vsp+'%;background:var(--ro-PDE)">'+(vsp>13?'VS '+vsp+'%':'')+'</span>':'')+
     (oesp>0?'<span style="width:'+oesp+'%;background:var(--ro-PTA)">'+(oesp>13?'OES '+oesp+'%':'')+'</span>':'')+
     '</div>'+
     '<div class="donut-legend" style="margin-top:14px">'+
     '<span class="lg-item"><span class="lg-dot" style="background:var(--ro-PDE)"></span>VS'+
-      '<span class="lg-val">'+money(vs.ytdTurnover/1000)+'</span></span>'+
+      '<span class="lg-val">'+money(vsM)+'</span></span>'+
     '<span class="lg-item"><span class="lg-dot" style="background:var(--ro-PTA)"></span>OES'+
-      '<span class="lg-val">'+money(oes.ytdTurnover/1000)+'</span></span></div>';
+      '<span class="lg-val">'+money(oesM)+'</span></span></div>';
 
   var f1=m.budgetTurnover||0, f2=m.portfolioTurnoverM||0, f3=m.realTurnoverM||0;
   var fmax=Math.max(f1,f2,f3)||1;
